@@ -14,7 +14,7 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ['Admin', 'Manager', 'Cashier', 'Stock Clerk'],
+        enum: ['Admin', 'Manager', 'Cashier', 'Stock Clerk', 'SuperAdmin'],
         default: 'Cashier',
     },
     pin: {
@@ -26,7 +26,7 @@ const userSchema = new mongoose.Schema({
     business: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Business',
-        required: true,
+        required: false, // SuperAdmin is not associated with a specific business
     }
 }, {
     timestamps: true,

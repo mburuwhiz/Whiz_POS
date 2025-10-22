@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WHIZ POS v2.0 - POS Terminal</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700&family=Inter&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <h1>POS Terminal</h1>
+        <p>Welcome, Cashier. This is the main sales interface.</p>
+        <a href="#" id="logout-button">Logout</a>
+    </div>
+
+    <script>
+        document.getElementById('logout-button').addEventListener('click', (e) => {
+            e.preventDefault();
+            localStorage.removeItem('token');
+            localStorage.removeItem('apiKey'); // Clear the device link
+            window.location.href = '/pos-login';
+        });
+    </script>
+</body>
+</html>

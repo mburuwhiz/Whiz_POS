@@ -28,7 +28,6 @@
             <button type="submit">Login</button>
         </form>
         <a href="/pos-login">Switch to POS Login</a>
-        <a href="/register-business">Register a New Business</a>
     </div>
 
     <script>
@@ -46,9 +45,16 @@
             });
 
             if (response.ok) {
-                const { token } = await response.json();
+                const { token, role } = await response.json();
                 localStorage.setItem('token', token);
-                window.location.href = '/dashboard';
+
+                if (role === 'SuperAdmin') {
+                    window.location.href = '/super-admin';
+                } else if (role === 'Admin') {
+                    window.location.href = '/business-admin';
+                } else {
+                    window.location.href = '/dashboard';
+                }
             } else {
                 alert(await response.text());
             }

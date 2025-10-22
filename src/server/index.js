@@ -33,16 +33,32 @@ const protect = (req, res, next) => {
         const token = authHeader.split(' ')[1];
         jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
             if (err) {
-                // This will catch expired tokens, etc.
                 return res.status(401).redirect('/login');
             }
-            // You could attach the user to the request here if needed
-            // req.user = decoded;
+            req.user = decoded;
             next();
         });
     } else {
-        // No token, redirect to login
         res.status(401).redirect('/login');
+    }
+};
+
+// Middleware to check for Super Admin
+const isSuperAdmin = async (req, res, next) => {
+    const user = await User.findById(req.user.userId);
+    if (user && user.email === process.env.SUPER_ADMIN_EMAIL) {
+        next();
+    } else {
+        res.status(403).send('Forbidden: Not a Super Admin');
+    }
+};
+
+// Middleware to check for Business Admin
+const isBusinessAdmin = (req, res, next) => {
+    if (req.user.role === 'Admin') {
+        next();
+    } else {
+        res.status(403).send('Forbidden: Not a Business Admin');
     }
 };
 
@@ -58,15 +74,19 @@ app.get('/pos-login', (req, res) => {
     res.sendFile(path.join(__dirname, 'views/pos-login.html'));
 });
 
-app.get('/register-business', (req, res) => {
-    res.sendFile(path.join(__dirname, 'views/register-business.html'));
+app.get('/super-admin', protect, isSuperAdmin, (req, res) => {
+    res.sendFile(path.join(__dirname, 'views/super-admin.html'));
 });
 
-app.get('/dashboard', protect, (req, res) => {
-    res.sendFile(path.join(__dirname, 'views/dashboard.html'));
+app.get('/business-admin', protect, isBusinessAdmin, (req, res) => {
+    res.sendFile(path.join(__dirname, 'views/business-admin.html'));
 });
 
-// API endpoint to get users for a specific business
+app.get('/pos-terminal', protect, (req, res) => {
+    res.sendFile(path.join(__dirname, 'views/pos-terminal.html'));
+});
+
+// API endpoint to get users for a specific business (for POS)
 app.get('/api/users', async (req, res) => {
     try {
         const { apiKey } = req.query;
@@ -86,14 +106,20 @@ app.get('/api/users', async (req, res) => {
     }
 });
 
-app.post('/api/register-business', async (req, res) => {
+// API endpoint for Business Admin to get their own users
+app.get('/api/business-admin/users', protect, isBusinessAdmin, async (req, res) => {
     try {
-        const { businessName, email, password, pin, registrationCode } = req.body;
+        const adminUser = await User.findById(req.user.userId);
+        const users = await User.find({ business: adminUser.business }).select('email role');
+        res.json(users);
+    } catch (error) {
+        res.status(500).send('Error fetching users.');
+    }
+});
 
-        // Verify registration code
-        if (registrationCode !== process.env.REGISTRATION_CODE) {
-            return res.status(401).send('Invalid registration code.');
-        }
+app.post('/api/super-admin/register-business', protect, isSuperAdmin, async (req, res) => {
+    try {
+        const { businessName, email, password, pin } = req.body;
 
         // Create new business
         const business = new Business({ name: businessName });
@@ -115,6 +141,26 @@ app.post('/api/register-business', async (req, res) => {
     }
 });
 
+// API endpoint for Business Admin to create a new user
+app.post('/api/business-admin/users', protect, isBusinessAdmin, async (req, res) => {
+    try {
+        const { email, password, pin, role } = req.body;
+        const adminUser = await User.findById(req.user.userId);
+
+        const newUser = new User({
+            email,
+            password,
+            pin,
+            role,
+            business: adminUser.business,
+        });
+        await newUser.save();
+        res.status(201).json(newUser);
+    } catch (error) {
+        res.status(500).send('Error creating user.');
+    }
+});
+
 app.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -131,10 +177,13 @@ app.post('/login', async (req, res) => {
             return res.status(400).send('Invalid email or password.');
         }
 
-        // Generate JWT
-        const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        // Check user role for redirection
+        const userRole = user.email === process.env.SUPER_ADMIN_EMAIL ? 'SuperAdmin' : user.role;
 
-        res.status(200).json({ token });
+        // Generate JWT
+        const token = jwt.sign({ userId: user._id, role: userRole }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+        res.status(200).json({ token, role: userRole });
     } catch (error) {
         res.status(500).send('Error logging in.');
     }
@@ -157,7 +206,7 @@ app.post('/api/login/pin', async (req, res) => {
         }
 
         // Generate JWT
-        const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        const token = jwt.sign({ userId: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
         res.status(200).json({ token });
     } catch (error) {

@@ -12,7 +12,7 @@ This document outlines the development phases for the WHIZ POS v2.0 project.
 - [x] Implement PIN-based login for POS devices
 - [x] Create Business model
 - [x] Implement business registration and API key generation
-- [ ] Implement device linking with API key
+- [x] Implement device linking with API key
 
 ## Phase 2: POS Application - Core Functionality
 

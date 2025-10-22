@@ -107,7 +107,7 @@
                     if (response.ok) {
                         const { token } = await response.json();
                         localStorage.setItem('token', token);
-                        window.location.href = '/dashboard';
+                        window.location.href = '/pos-terminal';
                     } else {
                         alert(await response.text());
                     }

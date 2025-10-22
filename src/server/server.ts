@@ -23,6 +23,7 @@ mongoose.connect(uri);
 import authRoutes from './routes/auth';
 import productRoutes from './routes/product';
 import businessRoutes from './routes/business';
+import saleRoutes from './routes/sale';
 
 const connection = mongoose.connection;
 connection.once('open', () => {
@@ -33,6 +34,7 @@ connection.once('open', () => {
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/business', businessRoutes);
+app.use('/api/sales', saleRoutes);
 
 app.listen(port, () => {
     console.log(`Server is running on port: ${port}`);

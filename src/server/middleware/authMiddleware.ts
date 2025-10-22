@@ -52,3 +52,19 @@ export const authorize = (...roles: string[]) => {
     next();
   };
 };
+
+// Protect business registration with a secret code
+export const protectWithRegistrationCode = (req: Request, res: Response, next: NextFunction) => {
+  const { registrationCode } = req.body;
+  const SECRET_CODE = process.env.REGISTRATION_CODE;
+
+  if (!SECRET_CODE) {
+    throw new Error('FATAL_ERROR: REGISTRATION_CODE is not defined in the .env file');
+  }
+
+  if (registrationCode && registrationCode === SECRET_CODE) {
+    next();
+  } else {
+    res.status(401).json({ message: 'Not authorized. Invalid registration code.' });
+  }
+};

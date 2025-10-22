@@ -31,6 +31,7 @@ This document outlines the development phases for the WHIZ POS v2.0 project.
 - [ ] **API Endpoints (Routes & Controllers):**
     - [x] `auth` routes (`/login/password`, `/login/pin`).
     - [x] `product` routes (CRUD operations).
+    - [x] `business` routes (protected registration).
     - [ ] `sale` routes (create, view, refund).
     - [ ] `user` routes (CRUD for user management).
     - [ ] `device` routes (linking, management).

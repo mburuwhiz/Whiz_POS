@@ -21,6 +21,7 @@ if (!uri) {
 mongoose.connect(uri);
 
 import authRoutes from './routes/auth';
+import productRoutes from './routes/product';
 
 const connection = mongoose.connection;
 connection.once('open', () => {
@@ -29,6 +30,7 @@ connection.once('open', () => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/products', productRoutes);
 
 app.listen(port, () => {
     console.log(`Server is running on port: ${port}`);

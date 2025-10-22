@@ -9,7 +9,7 @@ if (!JWT_SECRET) {
 }
 
 // Extend Express's Request interface to include the user property
-interface AuthRequest extends Request {
+export interface AuthRequest extends Request {
   user?: any;
 }
 

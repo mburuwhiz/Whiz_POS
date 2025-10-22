@@ -30,7 +30,7 @@ This document outlines the development phases for the WHIZ POS v2.0 project.
     - [x] Implement role-based access control (RBAC) middleware.
 - [ ] **API Endpoints (Routes & Controllers):**
     - [x] `auth` routes (`/login/password`, `/login/pin`).
-    - [ ] `product` routes (CRUD operations).
+    - [x] `product` routes (CRUD operations).
     - [ ] `sale` routes (create, view, refund).
     - [ ] `user` routes (CRUD for user management).
     - [ ] `device` routes (linking, management).

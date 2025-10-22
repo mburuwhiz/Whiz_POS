@@ -4,28 +4,40 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WHIZ POS v2.0 - POS Login</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700&family=Inter&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div id="api-key-container">
-        <h1>Link Device to Business</h1>
-        <form id="api-key-form">
-            <label for="api-key-input">Enter API Key:</label>
-            <input type="text" id="api-key-input" required>
-            <button type="submit">Link Device</button>
-        </form>
-    </div>
-
-    <div id="user-login-container" style="display: none;">
-        <h1>Select User</h1>
-        <select id="user-select"></select>
-
-        <div id="pin-container" style="display: none;">
-            <h2>Enter PIN</h2>
-            <form id="pin-form">
-                <input type="password" id="pin-input" required pattern="\\d{4}" title="PIN must be 4 digits" maxlength="4">
-                <button type="submit">Login</button>
+    <div class="container">
+        <div id="api-key-container">
+            <h1>Link Device</h1>
+            <form id="api-key-form">
+                <div>
+                    <label for="api-key-input">Enter API Key:</label>
+                    <input type="text" id="api-key-input" required>
+                </div>
+                <button type="submit">Link Device</button>
             </form>
         </div>
+
+        <div id="user-login-container" style="display: none;">
+            <h1>Select User</h1>
+            <select id="user-select"></select>
+
+            <div id="pin-container" style="display: none;">
+                <form id="pin-form">
+                    <div>
+                        <label for="pin-input">Enter PIN:</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="pin-input" required pattern="\d{4}" title="PIN must be 4 digits" maxlength="4">
+                            <button type="button" class="toggle-password">Show</button>
+                        </div>
+                    </div>
+                    <button type="submit">Login</button>
+                </form>
+            </div>
+        </div>
+        <a href="/login">Switch to Admin Login</a>
     </div>
 
     <script>
@@ -106,6 +118,19 @@
             if (storedApiKey) {
                 loadUsers(storedApiKey);
             }
+        });
+
+        document.querySelectorAll('.toggle-password').forEach(button => {
+            button.addEventListener('click', () => {
+                const passwordInput = button.previousElementSibling;
+                if (passwordInput.type === 'password') {
+                    passwordInput.type = 'text';
+                    button.textContent = 'Hide';
+                } else {
+                    passwordInput.type = 'password';
+                    button.textContent = 'Show';
+                }
+            });
         });
     </script>
 </body>

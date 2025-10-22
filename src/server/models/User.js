@@ -20,7 +20,8 @@ const userSchema = new mongoose.Schema({
     pin: {
         type: String,
         required: true,
-        length: 4,
+        minlength: 4,
+        maxlength: 4,
     },
     business: {
         type: mongoose.Schema.Types.ObjectId,

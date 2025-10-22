@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WHIZ POS v2.0 - POS Login</title>
+</head>
+<body>
+    <h1>Select User</h1>
+    <select id="user-select">
+        <option value="">Loading users...</option>
+    </select>
+
+    <div id="pin-container" style="display: none;">
+        <h2>Enter PIN</h2>
+        <form id="pin-form">
+            <input type="password" id="pin-input" required pattern="\\d{4}" title="PIN must be 4 digits" maxlength="4">
+            <button type="submit">Login</button>
+        </form>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const userSelect = document.getElementById('user-select');
+            const pinContainer = document.getElementById('pin-container');
+            const pinForm = document.getElementById('pin-form');
+            const pinInput = document.getElementById('pin-input');
+
+            // Fetch and populate users
+            try {
+                const response = await fetch('/api/users');
+                if (!response.ok) throw new Error('Failed to fetch users');
+                const users = await response.json();
+
+                userSelect.innerHTML = '<option value="">Select a user</option>';
+                users.forEach(user => {
+                    const option = document.createElement('option');
+                    option.value = user._id;
+                    option.textContent = user.email;
+                    userSelect.appendChild(option);
+                });
+            } catch (error) {
+                userSelect.innerHTML = '<option value="">Error loading users</option>';
+                console.error(error);
+            }
+
+            // Show PIN container when a user is selected
+            userSelect.addEventListener('change', () => {
+                if (userSelect.value) {
+                    pinContainer.style.display = 'block';
+                } else {
+                    pinContainer.style.display = 'none';
+                }
+            });
+
+            // Handle PIN form submission
+            pinForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const userId = userSelect.value;
+                const pin = pinInput.value;
+
+                try {
+                    const response = await fetch('/api/login/pin', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId, pin }),
+                    });
+
+                    if (response.ok) {
+                        const { token } = await response.json();
+                        localStorage.setItem('token', token);
+                        window.location.href = '/dashboard';
+                    } else {
+                        alert(await response.text());
+                    }
+                } catch (error) {
+                    alert('An error occurred during login.');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -50,8 +50,22 @@ app.get('/login', (req, res) => {
     res.sendFile(path.join(__dirname, 'views/login.html'));
 });
 
+app.get('/pos-login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'views/pos-login.html'));
+});
+
 app.get('/dashboard', protect, (req, res) => {
     res.sendFile(path.join(__dirname, 'views/dashboard.html'));
+});
+
+// API endpoint to get all users
+app.get('/api/users', async (req, res) => {
+    try {
+        const users = await User.find().select('email');
+        res.json(users);
+    } catch (error) {
+        res.status(500).send('Error fetching users.');
+    }
 });
 
 app.post('/login', async (req, res) => {
@@ -76,6 +90,31 @@ app.post('/login', async (req, res) => {
         res.status(200).json({ token });
     } catch (error) {
         res.status(500).send('Error logging in.');
+    }
+});
+
+app.post('/api/login/pin', async (req, res) => {
+    try {
+        const { userId, pin } = req.body;
+
+        // Find user
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(400).send('User not found.');
+        }
+
+        // Compare PIN
+        const isMatch = await user.comparePin(pin);
+        if (!isMatch) {
+            return res.status(400).send('Invalid PIN.');
+        }
+
+        // Generate JWT
+        const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+        res.status(200).json({ token });
+    } catch (error) {
+        res.status(500).send('Error logging in with PIN.');
     }
 });
 

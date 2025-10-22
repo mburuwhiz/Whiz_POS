@@ -9,7 +9,7 @@ This document outlines the development phases for the WHIZ POS v2.0 project.
 - [x] Create User model with hashed passwords & PINs (bcrypt)
 - [x] Implement admin-only user registration script
 - [x] Implement user login with JWT
-- [ ] Implement PIN-based login for POS devices
+- [x] Implement PIN-based login for POS devices
 - [ ] Create Business model
 - [ ] Implement business registration and API key generation
 - [ ] Implement device linking with API key

@@ -15,14 +15,14 @@ This document outlines the development phases for the WHIZ POS v2.0 project.
 
 ## Phase 2: Backend Development - Core API
 
-- [ ] **Database & Models:**
-    - [ ] Define Mongoose schemas for:
-        - [ ] `Business`
-        - [ ] `User` (Admin, Manager, Cashier, etc.)
-        - [ ] `Device`
-        - [ ] `Product`
-        - [ ] `Sale`
-        - [ ] `Customer`
+- [x] **Database & Models:**
+    - [x] Define Mongoose schemas for:
+        - [x] `Business`
+        - [x] `User` (Admin, Manager, Cashier, etc.)
+        - [x] `Device`
+        - [x] `Product`
+        - [x] `Sale`
+        - [x] `Customer`
 - [ ] **Authentication & Authorization:**
     - [ ] Implement user registration (admin-only).
     - [ ] Implement user login (PIN-based for POS, password-based for admin).

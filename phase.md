@@ -23,13 +23,13 @@ This document outlines the development phases for the WHIZ POS v2.0 project.
         - [x] `Product`
         - [x] `Sale`
         - [x] `Customer`
-- [ ] **Authentication & Authorization:**
-    - [ ] Implement user registration (admin-only).
-    - [ ] Implement user login (PIN-based for POS, password-based for admin).
-    - [ ] Implement JWT generation and validation.
-    - [ ] Implement role-based access control (RBAC) middleware.
+- [x] **Authentication & Authorization:**
+    - [x] Implement user registration (admin-only).
+    - [x] Implement user login (PIN-based for POS, password-based for admin).
+    - [x] Implement JWT generation and validation.
+    - [x] Implement role-based access control (RBAC) middleware.
 - [ ] **API Endpoints (Routes & Controllers):**
-    - [ ] `auth` routes (`/register`, `/login`, `/pin-login`).
+    - [x] `auth` routes (`/register`, `/login`, `/pin-login`).
     - [ ] `product` routes (CRUD operations).
     - [ ] `sale` routes (create, view, refund).
     - [ ] `user` routes (CRUD for user management).

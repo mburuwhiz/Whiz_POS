@@ -20,10 +20,15 @@ if (!uri) {
 
 mongoose.connect(uri);
 
+import authRoutes from './routes/auth';
+
 const connection = mongoose.connection;
 connection.once('open', () => {
   console.log("MongoDB database connection established successfully");
 })
+
+// Routes
+app.use('/api/auth', authRoutes);
 
 app.listen(port, () => {
     console.log(`Server is running on port: ${port}`);

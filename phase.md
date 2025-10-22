@@ -24,12 +24,12 @@ This document outlines the development phases for the WHIZ POS v2.0 project.
         - [x] `Sale`
         - [x] `Customer`
 - [x] **Authentication & Authorization:**
-    - [x] Implement user registration (admin-only).
+    - [ ] Implement user registration. *(Note: Moved to the separate Whiz Cloud Portal component, not part of this API).*
     - [x] Implement user login (PIN-based for POS, password-based for admin).
     - [x] Implement JWT generation and validation.
     - [x] Implement role-based access control (RBAC) middleware.
 - [ ] **API Endpoints (Routes & Controllers):**
-    - [x] `auth` routes (`/register`, `/login`, `/pin-login`).
+    - [x] `auth` routes (`/login/password`, `/login/pin`).
     - [ ] `product` routes (CRUD operations).
     - [ ] `sale` routes (create, view, refund).
     - [ ] `user` routes (CRUD for user management).

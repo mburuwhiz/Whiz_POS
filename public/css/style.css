@@ -65,7 +65,7 @@ select {
 }
 
 .password-wrapper input {
-    width: 100%;
+    padding-right: 40px; /* Make space for the icon */
 }
 
 .toggle-password {
@@ -74,7 +74,11 @@ select {
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 16px;
+    color: #aaa;
+}
+
+.toggle-password:hover {
     color: var(--primary-color);
 }
 

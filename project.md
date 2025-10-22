@@ -214,3 +214,4 @@ Scan below for warranty or delivery tracking.
 * **Global-Ready:** Supports localization, currency conversion, and time zones.
 
 website to aunthenticate and any other one will be added via env
+Don't use the react app since it always failed on the v1 of our system ,,, use diffrent ways please

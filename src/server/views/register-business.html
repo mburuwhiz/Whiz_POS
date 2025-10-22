@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WHIZ POS v2.0 - Register Business</title>
+</head>
+<body>
+    <h1>Register New Business</h1>
+    <form id="register-business-form">
+        <h2>Business Details</h2>
+        <div>
+            <label for="businessName">Business Name:</label>
+            <input type="text" id="businessName" name="businessName" required>
+        </div>
+
+        <h2>Admin User Details</h2>
+        <div>
+            <label for="email">Admin Email:</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+        <div>
+            <label for="password">Admin Password:</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        <div>
+            <label for="pin">Admin PIN (4 digits):</label>
+            <input type="text" id="pin" name="pin" required pattern="\\d{4}" title="PIN must be 4 digits" maxlength="4">
+        </div>
+
+        <h2>Authorization</h2>
+        <div>
+            <label for="registrationCode">Registration Code:</label>
+            <input type="password" id="registrationCode" name="registrationCode" required>
+        </div>
+
+        <button type="submit">Register Business</button>
+    </form>
+
+    <script>
+        document.getElementById('register-business-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+
+            try {
+                const response = await fetch('/api/register-business', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data),
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    alert(`Business registered successfully! API Key: ${result.apiKey}`);
+                } else {
+                    alert(await response.text());
+                }
+            } catch (error) {
+                alert('An error occurred during registration.');
+            }
+        });
+    </script>
+</body>
+</html>

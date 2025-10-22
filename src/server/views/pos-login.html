@@ -6,51 +6,74 @@
     <title>WHIZ POS v2.0 - POS Login</title>
 </head>
 <body>
-    <h1>Select User</h1>
-    <select id="user-select">
-        <option value="">Loading users...</option>
-    </select>
-
-    <div id="pin-container" style="display: none;">
-        <h2>Enter PIN</h2>
-        <form id="pin-form">
-            <input type="password" id="pin-input" required pattern="\\d{4}" title="PIN must be 4 digits" maxlength="4">
-            <button type="submit">Login</button>
+    <div id="api-key-container">
+        <h1>Link Device to Business</h1>
+        <form id="api-key-form">
+            <label for="api-key-input">Enter API Key:</label>
+            <input type="text" id="api-key-input" required>
+            <button type="submit">Link Device</button>
         </form>
     </div>
 
+    <div id="user-login-container" style="display: none;">
+        <h1>Select User</h1>
+        <select id="user-select"></select>
+
+        <div id="pin-container" style="display: none;">
+            <h2>Enter PIN</h2>
+            <form id="pin-form">
+                <input type="password" id="pin-input" required pattern="\\d{4}" title="PIN must be 4 digits" maxlength="4">
+                <button type="submit">Login</button>
+            </form>
+        </div>
+    </div>
+
     <script>
-        document.addEventListener('DOMContentLoaded', async () => {
+        document.addEventListener('DOMContentLoaded', () => {
+            const apiKeyContainer = document.getElementById('api-key-container');
+            const userLoginContainer = document.getElementById('user-login-container');
+            const apiKeyForm = document.getElementById('api-key-form');
+            const apiKeyInput = document.getElementById('api-key-input');
             const userSelect = document.getElementById('user-select');
             const pinContainer = document.getElementById('pin-container');
             const pinForm = document.getElementById('pin-form');
             const pinInput = document.getElementById('pin-input');
 
-            // Fetch and populate users
-            try {
-                const response = await fetch('/api/users');
-                if (!response.ok) throw new Error('Failed to fetch users');
-                const users = await response.json();
+            // Handle API Key submission
+            apiKeyForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const apiKey = apiKeyInput.value;
+                localStorage.setItem('apiKey', apiKey);
+                await loadUsers(apiKey);
+            });
 
-                userSelect.innerHTML = '<option value="">Select a user</option>';
-                users.forEach(user => {
-                    const option = document.createElement('option');
-                    option.value = user._id;
-                    option.textContent = user.email;
-                    userSelect.appendChild(option);
-                });
-            } catch (error) {
-                userSelect.innerHTML = '<option value="">Error loading users</option>';
-                console.error(error);
+            // Function to load users based on API key
+            async function loadUsers(apiKey) {
+                userSelect.innerHTML = '<option value="">Loading users...</option>';
+                try {
+                    const response = await fetch(`/api/users?apiKey=${apiKey}`);
+                    if (!response.ok) throw new Error('Failed to fetch users or invalid API key');
+                    const users = await response.json();
+
+                    userSelect.innerHTML = '<option value="">Select a user</option>';
+                    users.forEach(user => {
+                        const option = document.createElement('option');
+                        option.value = user._id;
+                        option.textContent = user.email;
+                        userSelect.appendChild(option);
+                    });
+
+                    apiKeyContainer.style.display = 'none';
+                    userLoginContainer.style.display = 'block';
+                } catch (error) {
+                    userSelect.innerHTML = '';
+                    alert(error.message);
+                }
             }
 
             // Show PIN container when a user is selected
             userSelect.addEventListener('change', () => {
-                if (userSelect.value) {
-                    pinContainer.style.display = 'block';
-                } else {
-                    pinContainer.style.display = 'none';
-                }
+                pinContainer.style.display = userSelect.value ? 'block' : 'none';
             });
 
             // Handle PIN form submission
@@ -77,6 +100,12 @@
                     alert('An error occurred during login.');
                 }
             });
+
+            // Check if API key is already stored
+            const storedApiKey = localStorage.getItem('apiKey');
+            if (storedApiKey) {
+                loadUsers(storedApiKey);
+            }
         });
     </script>
 </body>

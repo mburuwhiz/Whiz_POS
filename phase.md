@@ -10,8 +10,8 @@ This document outlines the development phases for the WHIZ POS v2.0 project.
 - [x] Implement admin-only user registration script
 - [x] Implement user login with JWT
 - [x] Implement PIN-based login for POS devices
-- [ ] Create Business model
-- [ ] Implement business registration and API key generation
+- [x] Create Business model
+- [x] Implement business registration and API key generation
 - [ ] Implement device linking with API key
 
 ## Phase 2: POS Application - Core Functionality

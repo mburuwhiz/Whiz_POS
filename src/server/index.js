@@ -5,6 +5,7 @@ const path = require('path');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const User = require('./models/User');
+const Business = require('./models/Business');
 
 dotenv.config();
 
@@ -54,17 +55,60 @@ app.get('/pos-login', (req, res) => {
     res.sendFile(path.join(__dirname, 'views/pos-login.html'));
 });
 
+app.get('/register-business', (req, res) => {
+    res.sendFile(path.join(__dirname, 'views/register-business.html'));
+});
+
 app.get('/dashboard', protect, (req, res) => {
     res.sendFile(path.join(__dirname, 'views/dashboard.html'));
 });
 
-// API endpoint to get all users
+// API endpoint to get users for a specific business
 app.get('/api/users', async (req, res) => {
     try {
-        const users = await User.find().select('email');
+        const { apiKey } = req.query;
+        if (!apiKey) {
+            return res.status(401).send('API key is required.');
+        }
+
+        const business = await Business.findOne({ apiKey });
+        if (!business) {
+            return res.status(404).send('Business not found.');
+        }
+
+        const users = await User.find({ business: business._id }).select('email');
         res.json(users);
     } catch (error) {
         res.status(500).send('Error fetching users.');
+    }
+});
+
+app.post('/api/register-business', async (req, res) => {
+    try {
+        const { businessName, email, password, pin, registrationCode } = req.body;
+
+        // Verify registration code
+        if (registrationCode !== process.env.REGISTRATION_CODE) {
+            return res.status(401).send('Invalid registration code.');
+        }
+
+        // Create new business
+        const business = new Business({ name: businessName });
+        await business.save();
+
+        // Create new admin user for the business
+        const user = new User({
+            email,
+            password,
+            pin,
+            role: 'Admin',
+            business: business._id,
+        });
+        await user.save();
+
+        res.status(201).json({ apiKey: business.apiKey });
+    } catch (error) {
+        res.status(500).send('Error registering business.');
     }
 });
 

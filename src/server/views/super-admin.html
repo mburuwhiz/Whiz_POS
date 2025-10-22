@@ -42,21 +42,64 @@
             </form>
         </div>
 
+        <hr>
+
+        <div id="user-creation-section">
+            <h2>Create New User for a Business</h2>
+            <form id="create-user-form">
+                <div>
+                    <label for="business-select">Select Business:</label>
+                    <select id="business-select" name="businessId" required></select>
+                </div>
+                <div>
+                    <label for="user-email">User Email:</label>
+                    <input type="email" id="user-email" name="email" required>
+                </div>
+                <div>
+                    <label for="user-password">User Password:</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="user-password" name="password" required>
+                        <button type="button" class="toggle-password"><i class="fa-solid fa-eye"></i></button>
+                    </div>
+                </div>
+                <div>
+                    <label for="user-pin">User PIN (4 digits):</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="user-pin" name="pin" required pattern="\d{4}" title="PIN must be 4 digits" maxlength="4">
+                        <button type="button" class="toggle-password"><i class="fa-solid fa-eye"></i></button>
+                    </div>
+                </div>
+                <div>
+                    <label for="user-role">Role:</label>
+                    <select id="user-role" name="role">
+                        <option value="Cashier">Cashier</option>
+                        <option value="Manager">Manager</option>
+                        <option value="Stock Clerk">Stock Clerk</option>
+                        <option value="Admin">Admin</option>
+                    </select>
+                </div>
+                <button type="submit">Create User</button>
+            </form>
+        </div>
+
         <a href="#" id="logout-button">Logout</a>
     </div>
 
     <script>
+        const token = localStorage.getItem('token');
+
+        // Logout
         document.getElementById('logout-button').addEventListener('click', (e) => {
             e.preventDefault();
             localStorage.removeItem('token');
             window.location.href = '/login';
         });
 
+        // Business Registration
         document.getElementById('register-business-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const formData = new FormData(e.target);
             const data = Object.fromEntries(formData.entries());
-            const token = localStorage.getItem('token');
 
             try {
                 const response = await fetch('/api/super-admin/register-business', {
@@ -71,7 +114,8 @@
                 if (response.ok) {
                     const result = await response.json();
                     alert(`Business registered successfully! API Key: ${result.apiKey}`);
-                    e.target.reset(); // Clear the form
+                    e.target.reset();
+                    fetchBusinesses(); // Refresh business list
                 } else {
                     alert(await response.text());
                 }
@@ -80,9 +124,56 @@
             }
         });
 
+        // User Creation
+        const businessSelect = document.getElementById('business-select');
+        document.getElementById('create-user-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+
+            try {
+                const response = await fetch('/api/super-admin/users', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(data),
+                });
+
+                if (response.ok) {
+                    alert('User created successfully!');
+                    e.target.reset();
+                } else {
+                    alert(await response.text());
+                }
+            } catch (error) {
+                alert('An error occurred during user creation.');
+            }
+        });
+
+        async function fetchBusinesses() {
+            try {
+                const response = await fetch('/api/super-admin/businesses', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const businesses = await response.json();
+                businessSelect.innerHTML = '<option value="">Select a business</option>';
+                businesses.forEach(business => {
+                    const option = document.createElement('option');
+                    option.value = business._id;
+                    option.textContent = business.name;
+                    businessSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error fetching businesses:', error);
+            }
+        }
+
+        // Password Toggles
         document.querySelectorAll('.toggle-password').forEach(button => {
             button.addEventListener('click', () => {
-                const passwordInput = button.previousElementSibling;
+                const passwordInput = button.parentElement.querySelector('input');
                 const icon = button.querySelector('i');
                 if (passwordInput.type === 'password') {
                     passwordInput.type = 'text';
@@ -95,6 +186,8 @@
                 }
             });
         });
+
+        fetchBusinesses();
     </script>
 </body>
 </html>

@@ -117,6 +117,15 @@ app.get('/api/business-admin/users', protect, isBusinessAdmin, async (req, res) 
     }
 });
 
+app.get('/api/super-admin/businesses', protect, isSuperAdmin, async (req, res) => {
+    try {
+        const businesses = await Business.find().select('name');
+        res.json(businesses);
+    } catch (error) {
+        res.status(500).send('Error fetching businesses.');
+    }
+});
+
 app.post('/api/super-admin/register-business', protect, isSuperAdmin, async (req, res) => {
     try {
         const { businessName, email, password, pin } = req.body;
@@ -138,6 +147,24 @@ app.post('/api/super-admin/register-business', protect, isSuperAdmin, async (req
         res.status(201).json({ apiKey: business.apiKey });
     } catch (error) {
         res.status(500).send('Error registering business.');
+    }
+});
+
+app.post('/api/super-admin/users', protect, isSuperAdmin, async (req, res) => {
+    try {
+        const { email, password, pin, role, businessId } = req.body;
+
+        const newUser = new User({
+            email,
+            password,
+            pin,
+            role,
+            business: businessId,
+        });
+        await newUser.save();
+        res.status(201).json(newUser);
+    } catch (error) {
+        res.status(500).send('Error creating user.');
     }
 });
 

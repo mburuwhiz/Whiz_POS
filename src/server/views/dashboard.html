@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WHIZ POS v2.0 - Dashboard</title>
+</head>
+<body>
+    <div id="dashboard-content">
+        <h1>Loading...</h1>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = '/login';
+                return;
+            }
+
+            // The 'fetch' to the dashboard itself might be a bit contrived for this simple case,
+            // but it demonstrates how to send the token for protected resources.
+            const response = await fetch('/dashboard', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            if (response.ok) {
+                // In a real SPA, you'd fetch data here. For this example,
+                // we'll just confirm we have access by updating the content.
+                document.getElementById('dashboard-content').innerHTML = `
+                    <h1>Welcome to the WHIZ POS v2.0 Dashboard</h1>
+                    <p>You are successfully logged in.</p>
+                `;
+            } else {
+                // Token is invalid or expired
+                localStorage.removeItem('token');
+                window.location.href = '/login';
+            }
+        });
+    </script>
+</body>
+</html>

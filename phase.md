@@ -5,10 +5,10 @@ This document outlines the development phases for the WHIZ POS v2.0 project.
 ## Phase 1: Core Authentication & Setup (In Progress)
 
 - [x] Initial server setup for authentication website
-- [ ] Implement database connection (MongoDB)
-- [ ] Create User model with hashed passwords (bcrypt)
-- [ ] Implement user registration with JWT
-- [ ] Implement user login with JWT
+- [x] Implement database connection (MongoDB)
+- [x] Create User model with hashed passwords (bcrypt)
+- [x] Implement user registration with JWT
+- [x] Implement user login with JWT
 - [ ] Implement PIN-based login for POS devices
 - [ ] Create Business model
 - [ ] Implement business registration and API key generation

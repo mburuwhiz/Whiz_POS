@@ -49,13 +49,21 @@
                 const { token, role } = await response.json();
                 localStorage.setItem('token', token);
 
-                if (role === 'SuperAdmin') {
-                    window.location.href = '/super-admin';
-                } else if (role === 'Admin') {
-                    window.location.href = '/business-admin';
-                } else {
-                    window.location.href = '/dashboard';
-                }
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Login Successful!',
+                    text: 'Redirecting to your dashboard...',
+                    timer: 2000,
+                    showConfirmButton: false,
+                }).then(() => {
+                    if (role === 'SuperAdmin') {
+                        window.location.href = '/super-admin';
+                    } else if (role === 'Admin') {
+                        window.location.href = '/business-admin';
+                    } else {
+                        window.location.href = '/dashboard';
+                    }
+                });
             } else {
                 Swal.fire({
                     icon: 'error',

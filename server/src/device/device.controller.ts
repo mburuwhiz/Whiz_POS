@@ -1,6 +1,6 @@
 import { Controller, Post, Body } from '@nestjs/common';
 import { DeviceService } from './device.service';
-import { LinkDeviceDto } from './dto/link-device.dto';
+import { LinkDeviceDto } from '@whiz-pos/shared';
 
 @Controller('device')
 export class DeviceController {

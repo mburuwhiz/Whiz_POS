@@ -1,6 +1,6 @@
 import { Controller, Post, Body, UseGuards, Request } from '@nestjs/common';
 import { TransactionsService } from './transactions.service';
-import { CreateTransactionDto } from './dto/create-transaction.dto';
+import { CreateTransactionDto } from '@whiz-pos/shared';
 import { DeviceAuthGuard } from '../auth/guards/device-auth.guard';
 
 @Controller('transactions')

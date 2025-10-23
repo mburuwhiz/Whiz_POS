@@ -2,8 +2,9 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { Device, DeviceDocument } from '../schemas/device.schema';
-import { LinkDeviceDto } from './dto/link-device.dto';
+import { LinkDeviceDto } from '@whiz-pos/shared';
 
 // This is a placeholder for the response from the cloud portal.
 interface CloudVerificationResponse {
@@ -19,6 +20,7 @@ export class DeviceService {
   constructor(
     @InjectModel(Device.name) private deviceModel: Model<DeviceDocument>,
     private jwtService: JwtService,
+    private configService: ConfigService,
   ) {}
 
   async linkDevice(
@@ -69,11 +71,10 @@ export class DeviceService {
   private async verifyApiKeyWithCloud(
     apiKey: string,
   ): Promise<CloudVerificationResponse | null> {
-    // For now, we'll use a hardcoded test key.
-    const TEST_API_KEY = 'WHIZ-TEST-KEY';
+    const testApiKey = this.configService.get<string>('TEST_API_KEY');
     const TEST_BUSINESS_ID = '60d5ec49c69e2c001f0b8e9a'; // Example MongoDB ObjectId
 
-    if (apiKey === TEST_API_KEY) {
+    if (apiKey === testApiKey) {
       return {
         businessId: TEST_BUSINESS_ID,
         branding: {

@@ -123,8 +123,17 @@
                     if (response.ok) {
                         const { token } = await response.json();
                         localStorage.setItem('token', token);
-                        await Swal.fire({ icon: 'success', title: 'Login Successful!', timer: 1500, showConfirmButton: false });
-                        window.location.href = '/pos-terminal';
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Login Successful!',
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+
+                        setTimeout(() => {
+                            window.location.replace('/pos-terminal');
+                        }, 1500);
                     } else {
                         throw new Error(await response.text());
                     }

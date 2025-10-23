@@ -70,19 +70,23 @@
                             icon: 'success',
                             title: 'Login Successful!',
                             text: 'Redirecting to your dashboard...',
-                            timer: 2000,
+                            timer: 1500, // Slightly shorter timer
                             showConfirmButton: false,
+                            allowOutsideClick: false, // Prevent dismissal
+                            didOpen: () => {
+                                Swal.showLoading();
+                            }
                         });
 
                         setTimeout(() => {
                             if (role === 'SuperAdmin') {
-                                window.location.href = '/super-admin';
+                                window.location.replace('/super-admin');
                             } else if (role === 'Admin') {
-                                window.location.href = '/business-admin';
+                                window.location.replace('/business-admin');
                             } else {
-                                window.location.href = '/dashboard';
+                                window.location.replace('/dashboard');
                             }
-                        }, 2000); // Match the timer to ensure redirect happens after message.
+                        }, 1500);
                     } else {
                         Swal.fire({
                             icon: 'error',

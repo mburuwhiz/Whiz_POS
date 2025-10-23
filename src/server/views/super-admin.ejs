@@ -99,15 +99,8 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                window.location.href = '/login';
-                return;
-            }
-
             const headers = {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Content-Type': 'application/json'
             };
 
             const logoutButton = document.getElementById('logout-button');
@@ -117,8 +110,7 @@
 
             logoutButton.addEventListener('click', (e) => {
                 e.preventDefault();
-                localStorage.removeItem('token');
-                window.location.href = '/login';
+                window.location.href = '/api/logout';
             });
 
             async function handleApiResponse(response) {

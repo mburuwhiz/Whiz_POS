@@ -7,6 +7,12 @@
     <link rel="stylesheet" href="/css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        // Client-side protection: redirect if no token is found
+        if (!localStorage.getItem('token')) {
+            window.location.replace('/login');
+        }
+    </script>
 </head>
 <body>
     <div class="dashboard-container">
@@ -26,28 +32,11 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                window.location.href = '/login';
-                return;
-            }
-
             const logoutButton = document.getElementById('logout-button');
 
             logoutButton.addEventListener('click', (e) => {
                 e.preventDefault();
-                localStorage.removeItem('token');
-                // Also clear the API key for POS terminals
-                localStorage.removeItem('apiKey');
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Logged Out',
-                    text: 'You have been successfully logged out.',
-                    timer: 2000,
-                    showConfirmButton: false,
-                }).then(() => {
-                    window.location.href = '/pos-login';
-                });
+                window.location.href = '/api/logout';
             });
         });
     </script>

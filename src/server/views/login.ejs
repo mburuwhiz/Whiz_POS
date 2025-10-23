@@ -63,8 +63,7 @@
                     const resultText = await response.text();
 
                     if (response.ok) {
-                        const { token, role } = JSON.parse(resultText);
-                        localStorage.setItem('token', token);
+                        const { role } = JSON.parse(resultText);
 
                         Swal.fire({
                             icon: 'success',

@@ -13,6 +13,11 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 const app = express();
 const port = process.env.PORT || 3000;
 
+// Set EJS as the view engine
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+
+
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)
 .then(() => {
@@ -24,69 +29,17 @@ mongoose.connect(process.env.MONGO_URI)
 // Serve static files from the 'public' directory
 app.use(express.static(path.join(__dirname, '../../public')));
 
+const cookieParser = require('cookie-parser');
+
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
+app.use(cookieParser());
 
-// Middleware to protect routes
-const protect = (req, res, next) => {
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.split(' ')[1];
-        jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-            if (err) {
-                return res.status(401).redirect('/login');
-            }
-            req.user = decoded;
-            next();
-        });
-    } else {
-        res.status(401).redirect('/login');
-    }
-};
-
-// Middleware to check for Super Admin
-const isSuperAdmin = async (req, res, next) => {
-    const user = await User.findById(req.user.userId);
-    if (user && user.role === 'SuperAdmin') {
-        next();
-    } else {
-        res.status(403).send('Forbidden: Not a Super Admin');
-    }
-};
-
-// Middleware to check for Business Admin
-const isBusinessAdmin = async (req, res, next) => {
-    const user = await User.findById(req.user.userId);
-    if (user && user.role === 'Admin') {
-        next();
-    } else {
-        res.status(403).send('Forbidden: Not a Business Admin');
-    }
-};
-
-app.get('/', (req, res) => {
-  res.redirect('/login');
-});
-
-app.get('/login', (req, res) => {
-    res.sendFile(path.join(__dirname, 'views/login.html'));
-});
-
-app.get('/pos-login', (req, res) => {
-    res.sendFile(path.join(__dirname, 'views/pos-login.html'));
-});
-
-app.get('/super-admin', protect, isSuperAdmin, (req, res) => {
-    res.sendFile(path.join(__dirname, 'views/super-admin.html'));
-});
-
-app.get('/business-admin', protect, isBusinessAdmin, (req, res) => {
-    res.sendFile(path.join(__dirname, 'views/business-admin.html'));
-});
-
-app.get('/pos-terminal', protect, (req, res) => {
-    res.sendFile(path.join(__dirname, 'views/pos-terminal.html'));
-});
+// Mount Routers
+const viewRoutes = require('./routes/viewRoutes');
+const authRoutes = require('./routes/authRoutes');
+app.use('/', viewRoutes);
+app.use('/api', authRoutes);
 
 // API endpoint to get users for a specific business (for POS)
 app.get('/api/users', async (req, res) => {
@@ -215,7 +168,14 @@ app.post('/login', async (req, res) => {
         // Generate JWT
         const token = jwt.sign({ userId: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-        res.status(200).json({ token, role: user.role });
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 3600000 // 1 hour
+        });
+
+        res.status(200).json({ role: user.role });
     } catch (error) {
         console.error('An unexpected error occurred during login:', error);
         res.status(500).send('Error logging in.');
@@ -241,7 +201,14 @@ app.post('/api/login/pin', async (req, res) => {
         // Generate JWT
         const token = jwt.sign({ userId: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-        res.status(200).json({ token });
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 3600000 // 1 hour
+        });
+
+        res.status(200).json({ success: true });
     } catch (error) {
         res.status(500).send('Error logging in with PIN.');
     }

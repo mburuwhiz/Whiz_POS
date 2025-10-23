@@ -100,8 +100,10 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            console.log('Client: Super Admin dashboard loaded.');
             const token = localStorage.getItem('token');
             if (!token) {
+                console.log('Client: No token found, redirecting to login.');
                 window.location.href = '/login';
                 return;
             }
@@ -118,6 +120,7 @@
 
             logoutButton.addEventListener('click', (e) => {
                 e.preventDefault();
+                console.log('Client: Logout button clicked.');
                 localStorage.removeItem('token');
                 window.location.href = '/login';
             });
@@ -125,9 +128,11 @@
             async function handleApiResponse(response) {
                 const message = await response.text();
                 if (response.ok) {
+                    console.log('Client: API request successful.', message);
                     await Swal.fire({ icon: 'success', title: 'Success!', text: message });
                     return true;
                 } else {
+                    console.error('Client: API request failed.', message);
                     await Swal.fire({ icon: 'error', title: 'Error', text: message });
                     return false;
                 }
@@ -135,6 +140,7 @@
 
             registerBusinessForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
+                console.log('Client: Register business form submitted.');
                 const formData = new FormData(e.target);
                 const data = Object.fromEntries(formData.entries());
 
@@ -152,6 +158,7 @@
 
             createUserForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
+                console.log('Client: Create user form submitted.');
                 const formData = new FormData(e.target);
                 const data = Object.fromEntries(formData.entries());
 
@@ -167,11 +174,16 @@
             });
 
             async function fetchBusinesses() {
+                console.log('Client: Fetching list of businesses.');
                 try {
                     const response = await fetch('/api/super-admin/businesses', { headers });
-                    if (!response.ok) throw new Error('Failed to fetch businesses');
+                    if (!response.ok) {
+                        console.error('Client: Failed to fetch businesses.');
+                        throw new Error('Failed to fetch businesses');
+                    }
 
                     const businesses = await response.json();
+                    console.log('Client: Businesses fetched successfully.', businesses);
                     businessSelect.innerHTML = '<option value="">Select a business</option>';
                     businesses.forEach(business => {
                         const option = document.createElement('option');

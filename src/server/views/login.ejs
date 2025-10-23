@@ -50,10 +50,13 @@
 
             loginForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
+                console.log('Client: Login form submitted.');
                 const formData = new FormData(e.target);
                 const data = Object.fromEntries(formData.entries());
+                console.log('Client: Form data compiled:', data);
 
                 try {
+                    console.log('Client: Sending login request to server...');
                     const response = await fetch('/login', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -63,8 +66,10 @@
                     const resultText = await response.text();
 
                     if (response.ok) {
+                        console.log('Client: Login request successful.');
                         const { token, role } = JSON.parse(resultText);
                         localStorage.setItem('token', token);
+                        console.log('Client: Token stored in localStorage. Role:', role);
 
                         Swal.fire({
                             icon: 'success',
@@ -74,6 +79,7 @@
                             showConfirmButton: false,
                         }).then(() => {
                             // This code runs after the SweetAlert timer finishes
+                            console.log(`Client: Redirecting to appropriate dashboard.`);
                             if (role === 'SuperAdmin') {
                                 window.location.replace('/super-admin');
                             } else if (role === 'Admin') {
@@ -84,6 +90,7 @@
                             }
                         });
                     } else {
+                        console.log('Client: Login request failed. Server response:', resultText);
                         Swal.fire({
                             icon: 'error',
                             title: 'Login Failed',
@@ -91,6 +98,7 @@
                         });
                     }
                 } catch (error) {
+                    console.error('Client: An error occurred during the login fetch process:', error);
                     Swal.fire({
                         icon: 'error',
                         title: 'Connection Error',

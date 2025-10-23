@@ -31,6 +31,12 @@ app.use(express.static(path.join(__dirname, '../../public')));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
+// Simple request logger middleware
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+    next();
+});
+
 // Use the routers
 app.use('/', viewRoutes);
 app.use('/', apiRoutes); // Using '/' as the base for API routes as they have specific prefixes

@@ -68,8 +68,10 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            console.log('Client: Business Admin dashboard loaded.');
             const token = localStorage.getItem('token');
             if (!token) {
+                console.log('Client: No token found, redirecting to login.');
                 window.location.href = '/login';
                 return;
             }
@@ -85,6 +87,7 @@
 
             logoutButton.addEventListener('click', (e) => {
                 e.preventDefault();
+                console.log('Client: Logout button clicked.');
                 localStorage.removeItem('token');
                 window.location.href = '/login';
             });
@@ -92,9 +95,11 @@
             async function handleApiResponse(response) {
                 const message = await response.text();
                 if (response.ok) {
+                    console.log('Client: API request successful.', message);
                     await Swal.fire({ icon: 'success', title: 'Success!', text: message });
                     return true;
                 } else {
+                    console.error('Client: API request failed.', message);
                     await Swal.fire({ icon: 'error', title: 'Error', text: message });
                     return false;
                 }
@@ -102,6 +107,7 @@
 
             createUserForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
+                console.log('Client: Create user form submitted.');
                 const formData = new FormData(e.target);
                 const data = Object.fromEntries(formData.entries());
 
@@ -118,11 +124,16 @@
             });
 
             async function fetchUsers() {
+                console.log('Client: Fetching list of users.');
                 try {
                     const response = await fetch('/api/business-admin/users', { headers });
-                    if (!response.ok) throw new Error('Failed to fetch users');
+                    if (!response.ok) {
+                        console.error('Client: Failed to fetch users.');
+                        throw new Error('Failed to fetch users');
+                    }
 
                     const users = await response.json();
+                    console.log('Client: Users fetched successfully.', users);
                     userList.innerHTML = ''; // Clear current list
                     if (users.length === 0) {
                         userList.innerHTML = '<li>No users found.</li>';

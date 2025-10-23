@@ -7,7 +7,8 @@ const jwt = require('jsonwebtoken');
 const User = require('./models/User');
 const Business = require('./models/Business');
 
-dotenv.config();
+// Load environment variables from the root .env file
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -46,7 +47,7 @@ const protect = (req, res, next) => {
 // Middleware to check for Super Admin
 const isSuperAdmin = async (req, res, next) => {
     const user = await User.findById(req.user.userId);
-    if (user && user.email === process.env.SUPER_ADMIN_EMAIL) {
+    if (user && user.role === 'SuperAdmin') {
         next();
     } else {
         res.status(403).send('Forbidden: Not a Super Admin');
@@ -54,8 +55,9 @@ const isSuperAdmin = async (req, res, next) => {
 };
 
 // Middleware to check for Business Admin
-const isBusinessAdmin = (req, res, next) => {
-    if (req.user.role === 'Admin') {
+const isBusinessAdmin = async (req, res, next) => {
+    const user = await User.findById(req.user.userId);
+    if (user && user.role === 'Admin') {
         next();
     } else {
         res.status(403).send('Forbidden: Not a Business Admin');
@@ -189,29 +191,33 @@ app.post('/api/business-admin/users', protect, isBusinessAdmin, async (req, res)
 });
 
 app.post('/login', async (req, res) => {
+    console.log('Login attempt received.');
     try {
         const { email, password } = req.body;
+        console.log(`Attempting to log in user: ${email}`);
 
         // Find user
         const user = await User.findOne({ email });
         if (!user) {
+            console.log(`Login failed: User with email ${email} not found.`);
             return res.status(400).send('Invalid email or password.');
         }
+        console.log(`User found: ${user.email}, Role: ${user.role}`);
 
         // Compare password
         const isMatch = await user.comparePassword(password);
         if (!isMatch) {
+            console.log(`Login failed: Password mismatch for user ${email}.`);
             return res.status(400).send('Invalid email or password.');
         }
 
-        // Check user role for redirection
-        const userRole = user.email === process.env.SUPER_ADMIN_EMAIL ? 'SuperAdmin' : user.role;
-
+        console.log(`Login successful for user: ${email}`);
         // Generate JWT
-        const token = jwt.sign({ userId: user._id, role: userRole }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        const token = jwt.sign({ userId: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-        res.status(200).json({ token, role: userRole });
+        res.status(200).json({ token, role: user.role });
     } catch (error) {
+        console.error('An unexpected error occurred during login:', error);
         res.status(500).send('Error logging in.');
     }
 });

@@ -66,7 +66,7 @@
                         const { token, role } = JSON.parse(resultText);
                         localStorage.setItem('token', token);
 
-                        await Swal.fire({
+                        Swal.fire({
                             icon: 'success',
                             title: 'Login Successful!',
                             text: 'Redirecting to your dashboard...',
@@ -74,14 +74,15 @@
                             showConfirmButton: false,
                         });
 
-                        if (role === 'SuperAdmin') {
-                            window.location.href = '/super-admin';
-                        } else if (role === 'Admin') {
-                            window.location.href = '/business-admin';
-                        } else {
-                            // Fallback for other roles if needed in the future
-                            window.location.href = '/dashboard';
-                        }
+                        setTimeout(() => {
+                            if (role === 'SuperAdmin') {
+                                window.location.href = '/super-admin';
+                            } else if (role === 'Admin') {
+                                window.location.href = '/business-admin';
+                            } else {
+                                window.location.href = '/dashboard';
+                            }
+                        }, 2000); // Match the timer to ensure redirect happens after message.
                     } else {
                         Swal.fire({
                             icon: 'error',

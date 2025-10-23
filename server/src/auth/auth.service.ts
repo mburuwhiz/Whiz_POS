@@ -1,17 +1,37 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
+import { UsersService } from '../users/users.service';
 import { PinLoginDto } from './dto/pin-login.dto';
 
 @Injectable()
 export class AuthService {
-  pinLogin(pinLoginDto: PinLoginDto) {
-    console.log('New Server - PIN Login attempt:', pinLoginDto);
-    // In a real implementation, you would validate the PIN and user here.
+  constructor(
+    private usersService: UsersService,
+    private jwtService: JwtService,
+  ) {}
+
+  async pinLogin(pinLoginDto: PinLoginDto) {
+    const user = await this.usersService.findOneById(pinLoginDto.userId);
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid user ID or PIN.');
+    }
+
+    const isPinMatching = await bcrypt.compare(pinLoginDto.pin, user.pinHash);
+
+    if (!isPinMatching) {
+      throw new UnauthorizedException('Invalid user ID or PIN.');
+    }
+
+    const payload = { sub: user._id, roles: user.roles };
+
     return {
-      token: 'sample-jwt-token-from-new-server',
+      token: this.jwtService.sign(payload),
       user: {
-        _id: pinLoginDto.userId,
-        name: 'Jane Cashier',
-        roles: ['Cashier'],
+        _id: user._id,
+        name: user.name,
+        roles: user.roles,
       },
       sessionExpires: new Date(Date.now() + 3600 * 1000).toISOString(),
     };

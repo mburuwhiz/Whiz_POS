@@ -1,0 +1,56 @@
+# WHIZ POS v2.0 - Project Progress Report
+
+This document outlines the current state of the WHIZ POS v2.0 project and the defined end goal.
+
+---
+
+## 1. Current State (As of 2025-10-23)
+
+The project is currently in a transitional phase, moving from an initial Node.js/Express prototype to a more robust, scalable architecture based on the "WHIZ POS — COMPLETE IMPLEMENTATION BLUEPRINT".
+
+The repository contains two parallel applications:
+
+### a) The Original Express.js Application (Legacy)
+
+This is the initial application where the redirect bug was discovered.
+
+*   **Location:** `src/`, `public/`
+*   **Tech Stack:** Node.js, Express, EJS, client-side JavaScript.
+*   **Status:** Partially functional. The core logic for user login and basic dashboard views exists, but it was plagued by authentication and redirect issues. It should be considered **deprecated** and will be fully replaced by the new architecture.
+*   **How to Run:**
+    1.  `npm install` (from the root directory)
+    2.  `npm start`
+    3.  The server runs on `http://localhost:3000`.
+
+### b) The New NestJS Application (Foundation)
+
+This is the foundational scaffolding for the new, blueprint-defined architecture.
+
+*   **Location:** `server/`, `shared/`
+*   **Tech Stack:** TypeScript, NestJS.
+*   **Status:** Foundational. A minimal, "Hello World" NestJS server has been manually scaffolded. It is not connected to a database and has only one sample API endpoint (`POST /auth/pin-login`) that returns mock data.
+*   **Key Progress:**
+    *   The complete monorepo directory structure (`admin-web/`, `portal/`, `server/`, `desktop/`, etc.) has been created.
+    *   The NestJS server application is set up in `/server`.
+    *   Shared TypeScript models (`Business`, `User`, `Transaction`, `Device`) have been created in `/shared/models`.
+*   **How to Run:**
+    1.  `cd server`
+    2.  `npm install`
+    3.  `npm run start:dev`
+    4.  The server runs on `http://localhost:4001`.
+
+---
+
+## 2. End Goal: Complete Implementation Blueprint
+
+The ultimate goal is to fully implement the "WHIZ POS — COMPLETE IMPLEMENTATION BLUEPRINT". This involves building out a complete, production-ready system with the following key characteristics:
+
+*   **Full Monorepo Implementation:** All directories (`admin-web`, `portal`, `server`, `desktop`, `mobile`) will contain fully functional applications.
+*   **Tech Stack:** TypeScript, SvelteKit (for web), NestJS (for servers), Electron (for desktop), and Capacitor (for mobile).
+*   **Architecture:** A hybrid cloud/local system. Each business will run its own **Business Local Server** (the NestJS app in `/server`), which will handle local POS operations and sync with the central **Whiz Cloud Services** (`/portal`).
+*   **Authentication:** A robust JWT and API key-based system.
+*   **Offline-First:** All POS applications will work seamlessly offline by communicating with the local server, which will queue and sync data to the cloud when an internet connection is available.
+*   **Database:** MongoDB for the local server, and MongoDB Atlas for the central cloud services.
+*   **Features:** The full feature set as described in the blueprint, including user management, transaction processing, device linking, printing, backups, and more.
+
+The next steps will involve progressively building out the features of the new NestJS server and the other applications in the monorepo, eventually phasing out the legacy Express.js application entirely.

@@ -1,0 +1,398 @@
+openapi: 3.0.3
+info:
+  title: Whiz POS v2.0 - Core API
+  description: |-
+    API specification for the Whiz POS system, covering both the Business Local Server and the Whiz Cloud Portal.
+    This contract defines core endpoints for authentication, device management, transactions, data synchronization, and printing.
+  version: 1.0.0
+servers:
+  - url: http://localhost:4001/api
+    description: Local Business Server
+  - url: https://portal.whizpos.cloud/api
+    description: Whiz Cloud Portal
+tags:
+  - name: Auth
+    description: Authentication and session management
+  - name: Device
+    description: Linking and managing POS devices
+  - name: Transactions
+    description: Creating and retrieving sales transactions
+  - name: Sync
+    description: Data synchronization between local server and cloud
+  - name: Print
+    description: Handling receipt printing
+paths:
+  /auth/pin-login:
+    post:
+      tags:
+        - Auth
+      summary: Log in a user with a PIN
+      description: Authenticates a user (e.g., Cashier, Manager) on a specific device using their PIN.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PinLoginRequest'
+      responses:
+        '200':
+          description: Successful login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginSuccessResponse'
+        '400':
+          description: Invalid input (e.g., missing fields)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication failed (e.g., invalid PIN)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/admin-login:
+    post:
+      tags:
+        - Auth
+      summary: Log in an administrator
+      description: Authenticates an administrator (Super Admin or Business Admin) using email and password.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminLoginRequest'
+      responses:
+        '200':
+          description: Successful login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginSuccessResponse'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /device/link:
+    post:
+      tags:
+        - Device
+      summary: Link a new device to a business
+      description: (Local Server to Cloud Portal) Links a new POS device by sending the business API key and a device fingerprint to the cloud portal.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceLinkRequest'
+      responses:
+        '200':
+          description: Device linked successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceLinkResponse'
+        '403':
+          description: Invalid or inactive API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /transactions:
+    post:
+      tags:
+        - Transactions
+      summary: Create a new transaction
+      description: Records a new sale transaction. This is an append-only operation.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Transaction'
+      responses:
+        '201':
+          description: Transaction created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionCreateResponse'
+        '400':
+          description: Invalid transaction data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /transactions/{txnId}:
+    get:
+      tags:
+        - Transactions
+      summary: Get a transaction by ID
+      description: Retrieves the details of a specific transaction.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: txnId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the transaction to retrieve.
+      responses:
+        '200':
+          description: Successful retrieval
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '404':
+          description: Transaction not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /sync/push:
+    post:
+      tags:
+        - Sync
+      summary: Push pending data to the cloud
+      description: (Local Server to Cloud Portal) Pushes a batch of pending records (e.g., transactions) from the local server to the cloud.
+      security:
+        - bearerAuth: [] # Using deviceToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                records:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Transaction'
+      responses:
+        '200':
+          description: Data pushed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  acknowledgedTxnIds:
+                    type: array
+                    items:
+                      type: string
+        '500':
+          description: Sync failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /sync/pull:
+    get:
+      tags:
+        - Sync
+      summary: Pull updates from the cloud
+      description: (Local Server from Cloud Portal) Retrieves updates (e.g., new products, users) from the cloud to the local server.
+      security:
+        - bearerAuth: [] # Using deviceToken
+      responses:
+        '200':
+          description: Updates retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object # Define the shape of pulled data
+        '304':
+          description: No new data available
+  /print/receipt:
+    post:
+      tags:
+        - Print
+      summary: Print a receipt
+      description: (POS App to Local Server) Sends a request to the local server to print a receipt for a specific transaction.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrintRequest'
+      responses:
+        '202':
+          description: Print job accepted
+        '500':
+          description: Printer error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    PinLoginRequest:
+      type: object
+      properties:
+        userId:
+          type: string
+          example: "user_123"
+        pin:
+          type: string
+          example: "4321"
+        deviceId:
+          type: string
+          example: "dev_001"
+      required:
+        - userId
+        - pin
+        - deviceId
+    AdminLoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required:
+        - email
+        - password
+    LoginSuccessResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT for session authentication.
+        user:
+          $ref: '#/components/schemas/User'
+        sessionExpires:
+          type: string
+          format: date-time
+    DeviceLinkRequest:
+      type: object
+      properties:
+        apiKey:
+          type: string
+          example: "WHIZ-XXXXXXXXXX"
+        fingerprint:
+          type: string
+          description: "SHA256 hash of device hardware identifiers."
+          example: "a1b2c3d4..."
+        deviceType:
+          type: string
+          enum: [desktop, mobile]
+          example: "desktop"
+      required:
+        - apiKey
+        - fingerprint
+        - deviceType
+    DeviceLinkResponse:
+      type: object
+      properties:
+        businessId:
+          type: string
+        deviceToken:
+          type: string
+          description: A JWT or similar token for this device to use for signed communication.
+        branding:
+          type: object
+    Transaction:
+      type: object
+      properties:
+        businessId:
+          type: string
+        deviceId:
+          type: string
+        userId:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              sku:
+                type: string
+              qty:
+                type: integer
+              unitPrice:
+                type: number
+        payments:
+          type: array
+          items:
+            type: object
+            properties:
+              method:
+                type: string
+                enum: [cash, card, mobile_money]
+              amount:
+                type: number
+        timestamp:
+          type: string
+          format: date-time
+      required:
+        - businessId
+        - deviceId
+        - userId
+        - items
+        - payments
+        - timestamp
+    TransactionCreateResponse:
+      type: object
+      properties:
+        txnId:
+          type: string
+        synced:
+          type: boolean
+          default: false
+    PrintRequest:
+      type: object
+      properties:
+        txnId:
+          type: string
+        format:
+          type: string
+          enum: [thermal, pdf]
+          default: thermal
+      required:
+        - txnId
+    User:
+      type: object
+      properties:
+        _id:
+          type: string
+        businessId:
+          type: string
+        name:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+            enum: [SuperAdmin, Admin, Manager, Cashier, Stock Clerk]
+        email:
+          type: string
+          format: email
+    ErrorResponse:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+        message:
+          type: string
+        error:
+          type: string
+      required:
+        - statusCode
+        - message

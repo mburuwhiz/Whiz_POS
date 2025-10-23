@@ -15,6 +15,10 @@ export class UsersService {
     return this.userModel.findById(id).exec();
   }
 
+  async findAll(): Promise<User[]> {
+    return this.userModel.find().exec();
+  }
+
   async createUser(user: Partial<User>): Promise<User> {
     const newUser = new this.userModel(user);
     return newUser.save();

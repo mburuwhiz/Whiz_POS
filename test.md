@@ -37,64 +37,72 @@ This will run the original server on `http://localhost:3000`.
 
 ---
 
-## 2. Testing the New NestJS Application (Foundation)
+## 2. Testing the New NestJS Application & Desktop App
 
-This will run the new, in-progress NestJS server on `http://localhost:4001`.
+This section describes how to test the new, in-progress system. This involves running the NestJS server and the Electron desktop app in parallel.
 
 ### a) Prerequisites
 
-*   No database is required for this version, as the API endpoint is mocked.
+*   A running MongoDB instance.
+*   A `.env` file in the `server/` directory with a valid `MONGO_URI`.
 
-### b) Steps to Run
+### b) Terminal 1: Running the NestJS Server
 
 1.  **Navigate to the Server Directory:**
     ```bash
     cd server
     ```
 
-2.  **Install Dependencies:**
+2.  **Install Dependencies (if first time):**
     ```bash
     npm install
     ```
 
-3.  **Start the Server in Development Mode:**
+3.  **Seed the Database (if first time or to reset):**
+    This will create a test user (PIN: 1234) and sample products.
+    ```bash
+    npm run seed
+    ```
+
+4.  **Start the Server in Development Mode:**
     ```bash
     npm run start:dev
     ```
     The server will start and listen on `http://localhost:4001`.
 
-### c) How to Test the Sample Endpoint
+### c) Terminal 2: Running the Electron Desktop App
 
-You can use a tool like `curl` or an API client (like Postman or Insomnia) to test the `POST /auth/pin-login` endpoint.
+1.  **Navigate to the Desktop Directory:**
+    ```bash
+    cd desktop
+    ```
 
-**Using `curl`:**
+2.  **Install Dependencies (if first time):**
+    ```bash
+    npm install
+    ```
 
-Open a new terminal and run the following command:
+3.  **Start the App in Development Mode:**
+    ```bash
+    npm run dev
+    ```
+    The Electron application window will open.
 
-```bash
-curl -X POST http://localhost:4001/auth/pin-login \
--H "Content-Type: application/json" \
--d '{
-  "userId": "user_123",
-  "pin": "4321",
-  "deviceId": "dev_001"
-}'
-```
+### d) Testing the End-to-End Sales Flow
 
-**Expected Response:**
+1.  **PIN Login:**
+    *   In the Electron app, select "Jane Cashier" from the dropdown.
+    *   Use the numeric keypad to enter the PIN: `1234`.
+    *   Click "Enter". You should be successfully logged in and see the main POS Terminal screen.
 
-You should receive a JSON response with mock data, similar to this:
+2.  **Create a Sale:**
+    *   The left panel should display a grid of products (Espresso, Latte, etc.).
+    *   Click on several products. They should appear in the "Current Order" panel on the right.
+    *   The Subtotal, Tax, and Total will update automatically.
 
-```json
-{
-  "token": "sample-jwt-token-from-new-server",
-  "user": {
-    "_id": "user_123",
-    "name": "Jane Cashier",
-    "roles": ["Cashier"]
-  },
-  "sessionExpires": "..."
-}
-```
+3.  **Finalize the Transaction:**
+    *   Click the "Cash" or "Card" button.
+    *   An alert should confirm "Sale complete!".
+    *   The "Current Order" panel will clear, ready for the next sale.
 
-This confirms that the new NestJS server is running correctly and the sample `auth` module is functional.
+This confirms that the desktop UI is successfully communicating with the NestJS server, fetching data, and posting new transactions to the database.

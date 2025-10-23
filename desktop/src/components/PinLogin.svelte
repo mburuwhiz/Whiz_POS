@@ -1,18 +1,32 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
+  import type { User } from '../../../shared/models/User';
 
   let pin = '';
-  let selectedUser = 'user1'; // Mock user
+  let selectedUser: string | null = null;
+  let users: User[] = [];
   let serverUrl = import.meta.env.VITE_APP_API_URL || 'http://localhost:4001';
   let connectionError = false;
   let customServerUrl = '';
 
-  const users = [
-    { id: 'user1', name: 'Jane Cashier' },
-    { id: 'user2', name: 'John Manager' },
-  ];
-
   const dispatch = createEventDispatcher();
+
+  onMount(async () => {
+    try {
+      const response = await fetch(`${serverUrl}/users`);
+      if (response.ok) {
+        users = await response.json();
+        if (users.length > 0) {
+          selectedUser = users[0]._id;
+        }
+      } else {
+        connectionError = true;
+      }
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+      connectionError = true;
+    }
+  });
 
   function handleKeyPress(key: string) {
     if (pin.length < 4) {
@@ -25,7 +39,7 @@
   }
 
   async function login() {
-    if (pin.length !== 4) return;
+    if (pin.length !== 4 || !selectedUser) return;
 
     try {
       const response = await fetch(`${serverUrl}/auth/pin-login`, {
@@ -42,7 +56,7 @@
         const data = await response.json();
         localStorage.setItem('token', data.token);
         dispatch('loginsuccess');
-        connectionError = false; // Reset error on success
+        connectionError = false;
       } else {
         alert('Login failed! Please check your PIN.');
         clearPin();
@@ -57,7 +71,8 @@
   function useCustomServer() {
     serverUrl = customServerUrl;
     connectionError = false;
-    login(); // Retry login with the new URL
+    // Retry fetching users with the new URL
+    onMount();
   }
 </script>
 
@@ -76,7 +91,7 @@
       <label for="user-select">Select User:</label>
       <select id="user-select" bind:value={selectedUser}>
         {#each users as user}
-          <option value={user.id}>{user.name}</option>
+          <option value={user._id}>{user.name}</option>
         {/each}
       </select>
     </div>
@@ -107,7 +122,7 @@
 </div>
 
 <style>
-  /* Styles are the same as before, with addition for the new form */
+  /* Styles are the same as before */
   .custom-server-form {
     display: flex;
     flex-direction: column;

@@ -28,11 +28,12 @@ This is the foundational scaffolding for the new, blueprint-defined architecture
 
 *   **Location:** `server/`, `shared/`
 *   **Tech Stack:** TypeScript, NestJS.
-*   **Status:** Foundational. A minimal, "Hello World" NestJS server has been manually scaffolded. It is not connected to a database and has only one sample API endpoint (`POST /auth/pin-login`) that returns mock data.
+*   **Status:** Functional Core. The NestJS server is now a functional application with a database connection and real authentication. The desktop app has a working UI for the core sales loop.
 *   **Key Progress:**
-    *   The complete monorepo directory structure (`admin-web/`, `portal/`, `server/`, `desktop/`, etc.) has been created.
-    *   The NestJS server application is set up in `/server`.
-    *   Shared TypeScript models (`Business`, `User`, `Transaction`, `Device`) have been created in `/shared/models`.
+    *   **Database Integration:** The NestJS server is connected to MongoDB, with modules for `Users`, `Products`, and `Transactions`.
+    *   **Real Authentication:** The `POST /auth/pin-login` endpoint now validates against the database and issues a real JWT.
+    *   **Core Sales Loop:** The desktop app now features a `PosTerminal` UI that can fetch products from the server, build a cart, and submit a final transaction to be saved in the database.
+    *   **Test Data:** A seeder script is available to populate the database with a test user and sample products.
 *   **How to Run:**
     1.  `cd server`
     2.  `npm install`

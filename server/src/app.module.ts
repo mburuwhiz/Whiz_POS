@@ -7,6 +7,8 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { ProductsModule } from './products/products.module';
 import { TransactionsModule } from './transactions/transactions.module';
+import { DevicesModule } from './devices/devices.module';
+import { DeviceLinkModule } from './device-link/device-link.module';
 
 @Module({
   imports: [
@@ -25,6 +27,8 @@ import { TransactionsModule } from './transactions/transactions.module';
     UsersModule,
     ProductsModule,
     TransactionsModule,
+    DevicesModule,
+    DeviceLinkModule,
   ],
   controllers: [AppController],
   providers: [AppService],

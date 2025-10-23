@@ -50,13 +50,10 @@
 
             loginForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                console.log('Client: Login form submitted.');
                 const formData = new FormData(e.target);
                 const data = Object.fromEntries(formData.entries());
-                console.log('Client: Form data compiled:', data);
 
                 try {
-                    console.log('Client: Sending login request to server...');
                     const response = await fetch('/login', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -66,31 +63,27 @@
                     const resultText = await response.text();
 
                     if (response.ok) {
-                        console.log('Client: Login request successful.');
                         const { token, role } = JSON.parse(resultText);
                         localStorage.setItem('token', token);
-                        console.log('Client: Token stored in localStorage. Role:', role);
 
                         Swal.fire({
                             icon: 'success',
                             title: 'Login Successful!',
                             text: 'Redirecting to your dashboard...',
-                            timer: 1500,
+                            timer: 2000,
                             showConfirmButton: false,
-                        }).then(() => {
-                            // This code runs after the SweetAlert timer finishes
-                            console.log(`Client: Redirecting to appropriate dashboard.`);
-                            if (role === 'SuperAdmin') {
-                                window.location.replace('/super-admin');
-                            } else if (role === 'Admin') {
-                                window.location.replace('/business-admin');
-                            } else {
-                                // Default redirect for other roles like Cashier, Manager, etc.
-                                window.location.replace('/pos-terminal');
-                            }
                         });
+
+                        setTimeout(() => {
+                            if (role === 'SuperAdmin') {
+                                window.location.href = '/super-admin';
+                            } else if (role === 'Admin') {
+                                window.location.href = '/business-admin';
+                            } else {
+                                window.location.href = '/dashboard';
+                            }
+                        }, 2000); // Match the timer to ensure redirect happens after message.
                     } else {
-                        console.log('Client: Login request failed. Server response:', resultText);
                         Swal.fire({
                             icon: 'error',
                             title: 'Login Failed',
@@ -98,7 +91,6 @@
                         });
                     }
                 } catch (error) {
-                    console.error('Client: An error occurred during the login fetch process:', error);
                     Swal.fire({
                         icon: 'error',
                         title: 'Connection Error',

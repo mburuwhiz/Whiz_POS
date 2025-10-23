@@ -3,37 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WHIZ POS v2.0 - Business Admin</title>
+    <title>WHIZ POS v2.0 - Super Admin</title>
     <link rel="stylesheet" href="/css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="/js/auth.js" defer></script>
 </head>
 <body>
     <div class="dashboard-container">
         <header class="dashboard-header">
-            <h1>Business Admin Dashboard</h1>
+            <h1>Super Admin Dashboard</h1>
             <a href="#" id="logout-button" class="logout-button">Logout</a>
         </header>
 
         <main class="dashboard-content">
             <div class="dashboard-card">
-                <h2>User Management</h2>
-                <h3>Existing Users</h3>
-                <ul id="user-list">
-                    <!-- User list will be populated dynamically -->
-                </ul>
-            </div>
-
-            <div class="dashboard-card">
-                <h3>Create New User</h3>
-                <form id="create-user-form">
+                <h2>Register New Business</h2>
+                <form id="register-business-form">
                     <div class="input-group">
-                        <label for="email">Email:</label>
+                        <label for="businessName">Business Name:</label>
+                        <input type="text" id="businessName" name="businessName" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="email">Admin Email:</label>
                         <input type="email" id="email" name="email" required>
                     </div>
                     <div class="input-group">
-                        <label for="password">Password:</label>
+                        <label for="password">Admin Password:</label>
                         <div class="password-wrapper">
                             <input type="password" id="password" name="password" required>
                             <button type="button" class="toggle-password">
@@ -43,7 +38,7 @@
                         </div>
                     </div>
                     <div class="input-group">
-                        <label for="pin">PIN (4 digits):</label>
+                        <label for="pin">Admin PIN (4 digits):</label>
                         <div class="password-wrapper">
                             <input type="password" id="pin" name="pin" required pattern="\\d{4}" title="PIN must be 4 digits" maxlength="4">
                             <button type="button" class="toggle-password">
@@ -52,12 +47,48 @@
                             </button>
                         </div>
                     </div>
+                    <button type="submit">Register Business</button>
+                </form>
+            </div>
+
+            <div class="dashboard-card">
+                <h2>Create New User</h2>
+                <form id="create-user-form">
                     <div class="input-group">
-                        <label for="role">Role:</label>
-                        <select id="role" name="role">
+                        <label for="business-select">Select Business:</label>
+                        <select id="business-select" name="businessId" required></select>
+                    </div>
+                    <div class="input-group">
+                        <label for="user-email">User Email:</label>
+                        <input type="email" id="user-email" name="email" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="user-password">User Password:</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="user-password" name="password" required>
+                             <button type="button" class="toggle-password">
+                                <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                <svg class="eye-slash-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label for="user-pin">User PIN (4 digits):</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="user-pin" name="pin" required pattern="\\d{4}" title="PIN must be 4 digits" maxlength="4">
+                            <button type="button" class="toggle-password">
+                                <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                <svg class="eye-slash-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label for="user-role">Role:</label>
+                        <select id="user-role" name="role">
                             <option value="Cashier">Cashier</option>
                             <option value="Manager">Manager</option>
                             <option value="Stock Clerk">Stock Clerk</option>
+                            <option value="Admin">Admin</option>
                         </select>
                     </div>
                     <button type="submit">Create User</button>
@@ -68,10 +99,8 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('Client: Business Admin dashboard loaded.');
             const token = localStorage.getItem('token');
             if (!token) {
-                console.log('Client: No token found, redirecting to login.');
                 window.location.href = '/login';
                 return;
             }
@@ -82,12 +111,12 @@
             };
 
             const logoutButton = document.getElementById('logout-button');
+            const registerBusinessForm = document.getElementById('register-business-form');
             const createUserForm = document.getElementById('create-user-form');
-            const userList = document.getElementById('user-list');
+            const businessSelect = document.getElementById('business-select');
 
             logoutButton.addEventListener('click', (e) => {
                 e.preventDefault();
-                console.log('Client: Logout button clicked.');
                 localStorage.removeItem('token');
                 window.location.href = '/login';
             });
@@ -95,23 +124,20 @@
             async function handleApiResponse(response) {
                 const message = await response.text();
                 if (response.ok) {
-                    console.log('Client: API request successful.', message);
                     await Swal.fire({ icon: 'success', title: 'Success!', text: message });
                     return true;
                 } else {
-                    console.error('Client: API request failed.', message);
                     await Swal.fire({ icon: 'error', title: 'Error', text: message });
                     return false;
                 }
             }
 
-            createUserForm.addEventListener('submit', async (e) => {
+            registerBusinessForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                console.log('Client: Create user form submitted.');
                 const formData = new FormData(e.target);
                 const data = Object.fromEntries(formData.entries());
 
-                const response = await fetch('/api/business-admin/users', {
+                const response = await fetch('/api/super-admin/register-business', {
                     method: 'POST',
                     headers: headers,
                     body: JSON.stringify(data),
@@ -119,31 +145,39 @@
 
                 if (await handleApiResponse(response)) {
                     e.target.reset();
-                    fetchUsers();
+                    fetchBusinesses();
                 }
             });
 
-            async function fetchUsers() {
-                console.log('Client: Fetching list of users.');
-                try {
-                    const response = await fetch('/api/business-admin/users', { headers });
-                    if (!response.ok) {
-                        console.error('Client: Failed to fetch users.');
-                        throw new Error('Failed to fetch users');
-                    }
+            createUserForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const data = Object.fromEntries(formData.entries());
 
-                    const users = await response.json();
-                    console.log('Client: Users fetched successfully.', users);
-                    userList.innerHTML = ''; // Clear current list
-                    if (users.length === 0) {
-                        userList.innerHTML = '<li>No users found.</li>';
-                    } else {
-                        users.forEach(user => {
-                            const li = document.createElement('li');
-                            li.textContent = `${user.email} - (${user.role})`;
-                            userList.appendChild(li);
-                        });
-                    }
+                const response = await fetch('/api/super-admin/users', {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify(data),
+                });
+
+                if (await handleApiResponse(response)) {
+                    e.target.reset();
+                }
+            });
+
+            async function fetchBusinesses() {
+                try {
+                    const response = await fetch('/api/super-admin/businesses', { headers });
+                    if (!response.ok) throw new Error('Failed to fetch businesses');
+
+                    const businesses = await response.json();
+                    businessSelect.innerHTML = '<option value="">Select a business</option>';
+                    businesses.forEach(business => {
+                        const option = document.createElement('option');
+                        option.value = business._id;
+                        option.textContent = business.name;
+                        businessSelect.appendChild(option);
+                    });
                 } catch (error) {
                     await Swal.fire({ icon: 'error', title: 'Error', text: error.message });
                 }
@@ -166,7 +200,7 @@
                 });
             });
 
-            fetchUsers();
+            fetchBusinesses();
         });
     </script>
 </body>

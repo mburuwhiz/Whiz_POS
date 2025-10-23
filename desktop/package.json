@@ -2,18 +2,38 @@
   "name": "desktop-pos",
   "private": true,
   "version": "0.0.1",
-  "main": "electron/main.ts",
+  "main": "dist-electron/main.js",
   "type": "module",
   "scripts": {
-    "dev": "vite & electron .",
-    "build": "vite build && electron-builder",
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
     "preview": "vite preview",
-    "check": "svelte-check --tsconfig ./tsconfig.json"
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "postinstall": "cd ../server && npm install && npm run build"
+  },
+  "build": {
+    "appId": "com.whizpos.desktop",
+    "productName": "Whiz POS Desktop",
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ],
+    "directories": {
+      "buildResources": "assets",
+      "output": "release"
+    },
+    "extraResources": [
+      {
+        "from": "../server/dist",
+        "to": "server"
+      }
+    ]
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^3.0.0",
     "electron": "^38.4.0",
     "electron-builder": "^26.0.12",
+    "electron-vite": "^4.0.1",
     "svelte": "^4.0.0",
     "svelte-check": "^3.4.3",
     "tslib": "^2.6.2",

@@ -1,343 +1,217 @@
-WELCOME
+
+
+# 🧠 **WHIZ POS v2.0 — Next-Gen Point of Sale Ecosystem**
+
+### 🏷️ Tagline
+
+**“Intelligence in Every Transaction”** — A unified retail platform for smart sales, analytics, and business growth.
 
 ---
 
-# 🧠 WHIZ POS — Intelligent Point of Sale Ecosystem  
-*Smart, Secure & Seamlessly Connected for Modern Businesses*
+## ⚙️ **SYSTEM OVERVIEW**
+
+| Component | Platform | Description |
+| ------------------------------------ | --------------------- | ---------------------------------------------------------------------------------------------------- |
+| **Whiz Cloud Portal** | Web (admin-only) | Centralized business registration, license control, and global monitoring dashboard for all vendors. |
+| **Whiz POS Server (Local)** | Windows 10/11 / Linux | Local bridge for device syncing, print management, and offline operation buffer. |
+| **Whiz POS Desktop App (.exe)** | Windows | Cashier and manager terminal with fast offline-first capabilities and multi-device sync. |
+| **Whiz POS Mobile App (.apk)** | Android | Portable POS terminal for field operations, cafés, and service outlets. |
+| **Whiz POS Back Office (Web)** | Web Browser | Cloud-based management and analytics console for registered businesses. |
+| **Whiz Analytics Engine (Cloud AI)** | Cloud (Optional) | AI-based data insights, sales predictions, and behavior analytics. |
 
 ---
 
-![Whiz POS Banner](docs/images/whizpos_banner.png)
+## 🏢 **1️⃣ BUSINESS REGISTRATION — WHIZ CLOUD PORTAL**
 
-<p align="center">
-  <a href="https://github.com/whizpos/whizpos/actions/workflows/build.yml">
-    <img src="https://img.shields.io/github/actions/workflow/status/whizpos/whizpos/build.yml?style=for-the-badge&label=Build&logo=github" alt="Build Status"/>
-  </a>
-  <a href="#">
-    <img src="https://img.shields.io/badge/Version-2.0.0-blue?style=for-the-badge&logo=semver" alt="Version"/>
-  </a>
-  <a href="https://nodejs.org/">
-    <img src="https://img.shields.io/badge/Node.js-18+-green?style=for-the-badge&logo=node.js" alt="Node.js"/>
-  </a>
-  <a href="./LICENSE">
-    <img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" alt="License"/>
-  </a>
-</p>
+**Purpose:**
+Acts as the global control center for your POS ecosystem.
 
----
+**URL:** `https://portal.whizpos.cloud`
 
-## 📑 Table of Contents
+**Enhanced Capabilities:**
 
-1. [🚀 Overview](#-overview)  
-2. [🧩 System Architecture](#-system-architecture)  
-3. [🗂️ Repository Structure](#️-repository-structure)  
-4. [⚙️ Technology Stack](#️-technology-stack)  
-5. [🔐 Environment Variables](#-environment-variables)  
-6. [🧠 Business Registration Flow](#-business-registration-flow-super-admin-controlled)  
-7. [🔗 Device Linking](#-device-linking-qr-or-manual)  
-8. [🧾 Core API Endpoints](#-core-api-endpoints)  
-9. [🗃️ Database Schemas](#️-database-schemas)  
-10. [🔄 Offline-First Sync Algorithm](#-offline-first-sync-algorithm)  
-11. [🖨️ Printing Pipeline](#️-printing-pipeline)  
-12. [💾 Backups & Recovery](#-backups--recovery)  
-13. [🔧 CI/CD Pipeline](#-cicd-github-actions)  
-14. [📊 Monitoring & Logging](#-monitoring--logging)  
-15. [🛡️ Security Checklist](#️-security-checklist)  
-16. [🧰 Developer Quickstart](#-developer-quickstart)  
-17. [📚 Documentation Deliverables](#-documentation-deliverables)  
-18. [🏁 Summary](#-summary)
+* **Multi-Tier Account Levels:** Super Admin (you), Regional Admin, and Business Admin.
+* **Business Verification Flow:**
+
+* Registration → Email/SMS verification → API key issuance.
+* **API Key Lifecycle Management:**
+
+* Auto-expiry reminders, renewal requests, and revocation logs.
+* **Subscription Control:** Free, Standard, and Pro tiers (plan-based limitations on users, storage, or features).
+* **License Dashboard:** Track businesses by activity, storage usage, and last sync time.
 
 ---
 
-## 🚀 Overview
+## 🔐 **2️⃣ DEVICE LINKING & INITIALIZATION**
 
-**Whiz POS** is a next-generation Point of Sale ecosystem designed for cafés, shops, and service businesses.  
-It offers a **fully modular architecture** that integrates cloud management, offline-first functionality, multi-device linking, and powerful analytics — all built with **TypeScript, SvelteKit, and NestJS** for performance and reliability.
+**Platform:** Desktop and Mobile installers.
+
+**New Enhancements:**
+
+* **QR-Based Setup:** The Cloud Portal generates a QR code containing the API key; the device scans to auto-link.
+* **Device Fingerprinting:** Each linked device stores a unique hardware signature to prevent unauthorized cloning.
+* **Auto Device Sync:** Any changes made on one device (e.g., product list update) sync instantly to others under the same API key.
+
+**Setup Flow:**
+
+1. Welcome → “Connect to Whiz Cloud”
+2. Enter or Scan API Key
+3. Cloud verifies + returns:
+
+* Business ID
+* Database URI
+* Branding Info
+* Config Settings (currency, tax rate, receipt defaults)
+4. Secure local store (`encrypted JSON`)
+5. Device activated and registered under that business’s node.
 
 ---
 
-## 🧩 System Architecture
+## 🧱 **3️⃣ DATABASE ARCHITECTURE (v2)**
 
-### 🧱 Visual Overview
+| Database | Purpose | Accessed By |
+| --------------------------------------- | ---------------------------------------------------------------------- | ---------------------- |
+| **Whiz Master Control DB** | Manages businesses, API keys, subscription plans, and device registry. | Whiz Cloud Portal |
+| **Business Databases (Dynamic)** | Individual business data (sales, inventory, staff, customers). | POS Apps + Back Office |
+| **Whiz Analytics Warehouse (Optional)** | Aggregated anonymized data for AI analytics and reporting. | Cloud AI Engine |
 
-```mermaid
-flowchart TD
-    A[🌐 Super Admin Portal (SvelteKit)] -->|Registers Businesses + Issues API Keys| B[(☁️ Whiz Cloud Services)]
-    B -->|Sync, Auth, Analytics| C[🏢 Business Local Server (NestJS)]
-    C -->|Data Sync| B
-    C --> D[💻 Desktop POS (Electron)]
-    C --> E[📱 Mobile POS (Capacitor)]
-    D -->|Prints & Sends Receipts| F[🖨️ Local Printer]
-    E -->|Sync Transactions| C
-````
+**Tech Recommendations:**
+
+* **MongoDB Atlas** (multi-tenant, encrypted, and scalable)
+* **Redis** for caching high-frequency reads (receipts, stock checks)
+* **MinIO / S3 Storage** for logos and backups
+* **Daily Backups** automated via cron or Atlas trigger.
 
 ---
 
-## 🗂️ Repository Structure
+## 👥 **4️⃣ USER & ROLE MANAGEMENT**
+
+**Enhanced Role Model:**
+
+| Role | Permissions | Default |
+| ---------------- | ----------------------------- | ------- |
+| **Admin** | Full Access | ✅ |
+| **Manager** | Approve transactions, reports | ✅ |
+| **Cashier** | Daily sales | ✅ |
+| **Stock Clerk** | Inventory only | ⬜ |
+| **Custom Roles** | Define via Back Office | ⬜ |
+
+**New Additions:**
+
+* 2FA (PIN + One-Time Code for admins)
+* Role-based dashboard layout control
+* Permission templates per industry (e.g., Café, Retail, Salon)
+
+---
+
+## 🔑 **5️⃣ USER LOGIN FLOW**
+
+| Device | Login Method | Security |
+| --------------- | ------------------------------- | -------------------- |
+| **Desktop** | Select User → Enter 4-digit PIN | Hashed + salted |
+| **Mobile** | Persistent session | Local AES encryption |
+| **Admin Panel** | Email + Password + 2FA | JWT authentication |
+
+**New Features:**
+
+* **Session Timeout Policy:** Auto-lock after 10 minutes of inactivity.
+* **PIN Reset:** Via admin only, protected by confirmation dialog + email notification.
+
+---
+
+## 🧾 **6️⃣ RECEIPT FORMAT & BRANDING**
+
+**Enhanced Capabilities:**
+
+* Dynamic QR code at footer (links to e-receipt verification portal)
+* Multi-language and multi-currency support
+* Logo + color branding applied automatically
+* Optional digital receipt (SMS/email/PDF)
+
+**Sample Add-ons:**
 
 ```
-whiz-pos/
-│
-├── admin-web/          # Super Admin Portal (SvelteKit)
-├── portal/             # Cloud microservices (NestJS)
-├── server/             # Local business server (NestJS)
-├── desktop/            # Electron + Svelte POS app
-├── mobile/             # Capacitor + Svelte POS app
-├── shared/             # Shared TypeScript models and validators
-├── infra/              # Docker, Kubernetes, Terraform
-├── docs/               # Documentation (this README + diagrams)
-└── README.md
+Thank you for choosing [Shop Name] 💙
+Scan below for warranty or delivery tracking.
+[QR_CODE]
 ```
 
----
+**Editable Sections in Back Office:**
 
-## ⚙️ Technology Stack
-
-| Layer          | Technology                    |
-| -------------- | ----------------------------- |
-| Language       | TypeScript (Node.js v18+)     |
-| Frontend       | SvelteKit                     |
-| Backend        | NestJS                        |
-| Database       | MongoDB (Local + Atlas)       |
-| Cache          | Redis                         |
-| Object Storage | MinIO / S3                    |
-| Desktop        | Electron                      |
-| Mobile         | Capacitor                     |
-| Auth           | JWT + API Keys + Optional 2FA |
-| Printing       | node-printer / escpos         |
-| CI/CD          | GitHub Actions                |
+* Header / Footer Text
+* Contact Info
+* Layout Template
+* Tax Format (VAT, GST, etc.)
+* QR & Barcode toggle
 
 ---
 
-## 🔐 Environment Variables
+## 🌐 **7️⃣ COMMUNICATION MODEL (v2)**
 
-> URLs (like local host, production, and cloud) are dynamically read from the `.env` files.
-
-Each platform uses its own `.env` file:
-
-* `/admin-web/.env`
-* `/portal/.env`
-* `/server/.env`
-* `/desktop/.env`
-* `/mobile/.env`
-
-📘 *See the full environment examples in* [`docs/env-samples.md`](docs/env-samples.md)
-
----
-
-## 🧠 Business Registration Flow (Super Admin Controlled)
-
-1. Super Admin creates a **Business record** in the Admin Portal.
-2. Registers a **Business Admin** with their credentials.
-3. System generates and stores an **inactive API key**.
-4. API key is shared securely with the registered admin (email/dashboard).
-5. The local server installation verifies the key and activates the business.
-6. Once verified, devices can register and sync data.
-
-✅ No unregistered business can operate without a valid Super Admin–issued API key.
-
----
-
-## 🔗 Device Linking (QR or Manual)
-
-| Method             | Description                                                     |
-| ------------------ | --------------------------------------------------------------- |
-| **QR**             | Scan code with `{apiKey, nonce, expiry}` for automatic linking. |
-| **Manual**         | Admin manually inputs key.                                      |
-| **Fingerprinting** | SHA-256 hardware+host hash for unique identification.           |
-| **Device Token**   | Returned from cloud to authenticate further syncs.              |
-
----
-
-## 🧾 Core API Endpoints
-
-**Authentication**
-
-```http
-POST /auth/login
-POST /auth/pin-login
-```
-
-**Business**
-
-```http
-POST /portal/business
-POST /portal/business/:id/issue-api-key
-```
-
-**Device Linking**
-
-```http
-POST /device/link
-```
-
-**Transactions**
-
-```http
-POST /transactions
-GET /transactions/:id
-```
-
-**Sync**
-
-```http
-POST /sync/push
-GET /sync/pull
-```
-
-**Printing**
-
-```http
-POST /print/receipt
-```
-
----
-
-## 🗃️ Database Schemas
-
-See [`docs/schema.md`](docs/schema.md) for full JSON structures.
-
-Example (Business Schema):
-
-```json
-{
-  "_id": "bzn_001",
-  "name": "Sunrise Café",
-  "apiKeys": [{ "key": "WHIZ-0045893176", "active": true }],
-  "adminUserId": "user_admin_01",
-  "config": { "currency": "KES", "taxRate": 16 }
-}
-```
-
----
-
-## 🔄 Offline-First Sync Algorithm
-
-1. Local server stores unsynced data.
-2. Periodically pushes updates to the cloud portal.
-3. Cloud validates, responds, and returns sync acknowledgements.
-4. Failed batches retry automatically.
-5. All syncs are **idempotent and conflict-safe**.
-
----
-
-## 🖨️ Printing Pipeline
-
-| Mode          | Description                |
-| ------------- | -------------------------- |
-| **USB**       | via `node-printer`         |
-| **Network**   | IP-based direct connection |
-| **Bluetooth** | via Capacitor or OS driver |
-
-Printing Flow:
-
-1. App sends `/print/receipt`.
-2. Server fetches transaction & template.
-3. Print driver executes job.
-4. Logs success or fallback to PDF/email.
-
----
-
-## 💾 Backups & Recovery
-
-| Tier         | Frequency                 | Storage             |
-| ------------ | ------------------------- | ------------------- |
-| Local Server | Every 6 hours             | `/var/whiz/backups` |
-| Cloud        | Weekly (30-day retention) | MongoDB Atlas       |
-| Encryption   | AES-256                   | Enabled by default  |
-
-Restore example:
-
-```bash
-openssl enc -aes-256-cbc -d -in backup.enc -out backup.tar.gz
-mongorestore --archive=backup.tar.gz
-```
-
----
-
-## 🔧 CI/CD (GitHub Actions)
-
-| Job                 | Description                        |
-| ------------------- | ---------------------------------- |
-| `build-server.yml`  | Builds and tests NestJS server     |
-| `build-desktop.yml` | Builds Electron app (.exe)         |
-| `build-mobile.yml`  | Builds Android APK                 |
-| `deploy-portal.yml` | Deploys cloud portal to Render/AWS |
-
----
-
-## 📊 Monitoring & Logging
-
-* **Logger:** Winston / Pino
-* **Crash Reports:** Sentry
-* **Metrics:** Prometheus + Grafana
-* **Alerts:** Email/Slack
-
----
-
-## 🛡️ Security Checklist
-
-* 🔒 Argon2/Bcrypt password hashing
-* 🔑 Rotating API keys
-* 🧱 HTTPS (TLS enforced)
-* 🕵️‍♂️ Device fingerprint verification
-* 🧮 Rate limits + lockout policies
-* 🧰 AES-256 data encryption
-* 🗃️ Audit logging
-
----
-
-## 🧰 Developer Quickstart
-
-```bash
-# Clone the repo
-git clone https://github.com/yourname/whiz-pos.git
-cd whiz-pos
-
-# Install dependencies
-pnpm install
-
-# Setup environment files
-cp .env.example .env
-
-# Run the local server
-cd server
-pnpm run start:dev
-```
-
----
-
-## 📚 Documentation Deliverables
-
-| File                     | Description                 |
-| ------------------------ | --------------------------- |
-| `architecture.md`        | Full structure (this file)  |
-| `api-spec.md`            | OpenAPI reference           |
-| `setup-guide.md`         | Local setup & linking guide |
-| `backup-restore.md`      | Backup/restore process      |
-| `printer-integration.md` | Supported printers          |
-| `security-runbook.md`    | Security response guide     |
-| `ci-cd.md`               | Deployment pipelines        |
-
----
-
-## 🏁 Summary
-
-**Whiz POS** delivers an **offline-first**, **secure**, and **multi-device POS ecosystem**
-built for scalability, reliability, and full business autonomy — powered by modern open-source technology.
-
-💡 *Smart, Connected, and Built for Scale.*
-
----
-
-> 🖼️ **Optional next step:**
-> Add your actual architecture image under `docs/images/whizpos_banner.png`
-> and the system diagram `docs/images/architecture.png` to replace the placeholder above.
+**Architecture Flow:**
 
 ```
+[Whiz Cloud Portal] ←→ [Whiz POS Server] ←→ [Business Databases]
+↑ ↑
+| |
+[POS Apps] [Back Office]
+```
+
+| Channel | Purpose | Transport |
+| ---------------------- | ------------------------------------- | ----------------------------- |
+| **App → Portal** | One-time linking, validation, updates | HTTPS (REST) |
+| **App ↔ Local Server** | Real-time data & printing | WebSocket / REST |
+| **Server ↔ Cloud DB** | Sync & backup | Encrypted MongoDB TLS |
+| **Notifications** | Push alerts for license, updates | Firebase / Email Microservice |
 
 ---
 
-Would you like me to generate a **matching PNG system architecture diagram** (in your preferred colors — e.g., blue, gold, and purple 💙💛💜) to place inside `docs/images/architecture.png`?  
-It’ll look like a real official dev architecture chart.
-```
+## 🧰 **8️⃣ SECURITY & COMPLIANCE MODEL**
+
+| Layer | Security Measure |
+| ---------------------- | ------------------------------------------------------------------- |
+| **Authentication** | API Key + JWT + PIN |
+| **Encryption** | AES-256 (local), TLS (network) |
+| **Access Control** | RBAC (Role-Based Access Control) |
+| **Audit Logs** | Every login, sale, edit logged with timestamp |
+| **License Revocation** | Portal can remotely disable all connected devices |
+| **Data Residency** | Region-based MongoDB clusters for compliance (e.g., EU, Africa, US) |
+
+---
+
+## 📊 **9️⃣ ANALYTICS & INSIGHT CENTER**
+
+**Optional Cloud AI Integration:**
+
+* **Sales Forecasting:** Daily/weekly prediction using ML model.
+* **Peak Hour Analysis:** Identifies busiest sales periods.
+* **Top Product Reports:** Auto-ranked by profit margin.
+* **Employee Performance Metrics:** Based on transaction speed, sales volume, etc.
+* **Expense Tracker:** Syncs with accounting APIs (e.g., QuickBooks, Zoho).
+
+---
+
+## 💡 **🔟 FUTURE MODULES**
+
+| Planned Feature | Description |
+| -------------------------------- | ------------------------------------------------------------- |
+| **Inventory Auto-Reorder** | Trigger supplier restock when item < threshold |
+| **Customer Loyalty System** | Reward points, referral codes, and SMS offers |
+| **E-Commerce Bridge** | Sync stock and sales with online shops (Shopify, WooCommerce) |
+| **Kitchen Display System (KDS)** | Tablet view for restaurants |
+| **Franchise Dashboard** | Central view for businesses with multiple branches |
+| **API Marketplace** | Allow third-party integrations securely via OAuth2 |
+
+---
+
+## 🏁 **✅ SYSTEM ADVANTAGES**
+
+* **Cloud + Local Hybrid:** Works even offline with sync-on-connect.
+* **Fully Scalable:** Add unlimited businesses, devices, and staff roles.
+* **Secure & Modular:** Each business isolated by its MongoDB instance.
+* **Multi-Platform:** Windows, Android, and web all synchronized in real time.
+* **Analytics-Driven:** Smart insights to guide business growth.
+* **Global-Ready:** Supports localization, currency conversion, and time zones.
+
+website to aunthenticate and any other one will be added via env
+Don't use the react app since it always failed on the v1 of our system ,,, use diffrent ways please

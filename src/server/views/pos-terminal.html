@@ -5,21 +5,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WHIZ POS v2.0 - POS Terminal</title>
     <link rel="stylesheet" href="/css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700&family=Inter&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
-    <div class="container">
-        <h1>POS Terminal</h1>
-        <p>Welcome, Cashier. This is the main sales interface.</p>
-        <a href="#" id="logout-button">Logout</a>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <h1>POS Terminal</h1>
+            <a href="#" id="logout-button" class="logout-button">Logout</a>
+        </header>
+
+        <main class="dashboard-content">
+            <div class="dashboard-card">
+                <h2>Welcome</h2>
+                <p>This is the main Point of Sale interface. All sales and transaction functionalities will be displayed here.</p>
+                <!-- POS functionalities will be added here in a future phase -->
+            </div>
+        </main>
     </div>
 
     <script>
-        document.getElementById('logout-button').addEventListener('click', (e) => {
-            e.preventDefault();
-            localStorage.removeItem('token');
-            localStorage.removeItem('apiKey'); // Clear the device link
-            window.location.href = '/pos-login';
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = '/login';
+                return;
+            }
+
+            const logoutButton = document.getElementById('logout-button');
+
+            logoutButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                localStorage.removeItem('token');
+                // Also clear the API key for POS terminals
+                localStorage.removeItem('apiKey');
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Logged Out',
+                    text: 'You have been successfully logged out.',
+                    timer: 2000,
+                    showConfirmButton: false,
+                }).then(() => {
+                    window.location.href = '/pos-login';
+                });
+            });
         });
     </script>
 </body>

@@ -5,132 +5,157 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WHIZ POS v2.0 - Business Admin</title>
     <link rel="stylesheet" href="/css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700&family=Inter&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
-    <div class="container">
-        <h1>Business Admin Dashboard</h1>
-        <p>Welcome, Business Admin. Manage your users and view your business details below.</p>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <h1>Business Admin Dashboard</h1>
+            <a href="#" id="logout-button" class="logout-button">Logout</a>
+        </header>
 
-        <div id="user-management-section">
-            <h2>User Management</h2>
-            <ul id="user-list"></ul>
+        <main class="dashboard-content">
+            <div class="dashboard-card">
+                <h2>User Management</h2>
+                <h3>Existing Users</h3>
+                <ul id="user-list">
+                    <!-- User list will be populated dynamically -->
+                </ul>
+            </div>
 
-            <h3>Create New User</h3>
-            <form id="create-user-form">
-                <div>
-                    <label for="email">Email:</label>
-                    <input type="email" id="email" name="email" required>
-                </div>
-                <div>
-                    <label for="password">Password:</label>
-                    <div class="password-wrapper">
-                        <input type="password" id="password" name="password" required>
-                        <button type="button" class="toggle-password">
-                            <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                            <svg class="eye-slash-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-                        </button>
+            <div class="dashboard-card">
+                <h3>Create New User</h3>
+                <form id="create-user-form">
+                    <div class="input-group">
+                        <label for="email">Email:</label>
+                        <input type="email" id="email" name="email" required>
                     </div>
-                </div>
-                <div>
-                    <label for="pin">PIN (4 digits):</label>
-                    <div class="password-wrapper">
-                        <input type="password" id="pin" name="pin" required pattern="\d{4}" title="PIN must be 4 digits" maxlength="4">
-                        <button type="button" class="toggle-password">
-                            <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                            <svg class="eye-slash-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-                        </button>
+                    <div class="input-group">
+                        <label for="password">Password:</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="password" name="password" required>
+                            <button type="button" class="toggle-password">
+                                <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                <svg class="eye-slash-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                            </button>
+                        </div>
                     </div>
-                </div>
-                <div>
-                    <label for="role">Role:</label>
-                    <select id="role" name="role">
-                        <option value="Cashier">Cashier</option>
-                        <option value="Manager">Manager</option>
-                        <option value="Stock Clerk">Stock Clerk</option>
-                    </select>
-                </div>
-                <button type="submit">Create User</button>
-            </form>
-        </div>
-
-        <a href="#" id="logout-button">Logout</a>
+                    <div class="input-group">
+                        <label for="pin">PIN (4 digits):</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="pin" name="pin" required pattern="\\d{4}" title="PIN must be 4 digits" maxlength="4">
+                            <button type="button" class="toggle-password">
+                                <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                <svg class="eye-slash-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label for="role">Role:</label>
+                        <select id="role" name="role">
+                            <option value="Cashier">Cashier</option>
+                            <option value="Manager">Manager</option>
+                            <option value="Stock Clerk">Stock Clerk</option>
+                        </select>
+                    </div>
+                    <button type="submit">Create User</button>
+                </form>
+            </div>
+        </main>
     </div>
 
     <script>
-        document.getElementById('logout-button').addEventListener('click', (e) => {
-            e.preventDefault();
-            localStorage.removeItem('token');
-            window.location.href = '/login';
-        });
-
-        const token = localStorage.getItem('token');
-        const userList = document.getElementById('user-list');
-        const createUserForm = document.getElementById('create-user-form');
-
-        async function fetchUsers() {
-            try {
-                const response = await fetch('/api/business-admin/users', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const users = await response.json();
-                userList.innerHTML = '';
-                users.forEach(user => {
-                    const li = document.createElement('li');
-                    li.textContent = `${user.email} - ${user.role}`;
-                    userList.appendChild(li);
-                });
-            } catch (error) {
-                console.error('Error fetching users:', error);
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = '/login';
+                return;
             }
-        }
 
-        createUserForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            const data = Object.fromEntries(formData.entries());
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            };
 
-            try {
+            const logoutButton = document.getElementById('logout-button');
+            const createUserForm = document.getElementById('create-user-form');
+            const userList = document.getElementById('user-list');
+
+            logoutButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                localStorage.removeItem('token');
+                window.location.href = '/login';
+            });
+
+            async function handleApiResponse(response) {
+                const message = await response.text();
+                if (response.ok) {
+                    await Swal.fire({ icon: 'success', title: 'Success!', text: message });
+                    return true;
+                } else {
+                    await Swal.fire({ icon: 'error', title: 'Error', text: message });
+                    return false;
+                }
+            }
+
+            createUserForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const data = Object.fromEntries(formData.entries());
+
                 const response = await fetch('/api/business-admin/users', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
+                    headers: headers,
                     body: JSON.stringify(data),
                 });
 
-                if (response.ok) {
-                    alert('User created successfully!');
+                if (await handleApiResponse(response)) {
                     e.target.reset();
                     fetchUsers();
-                } else {
-                    alert(await response.text());
-                }
-            } catch (error) {
-                alert('An error occurred during user creation.');
-            }
-        });
-
-        document.querySelectorAll('.toggle-password').forEach(button => {
-            button.addEventListener('click', () => {
-                const passwordInput = button.closest('.password-wrapper').querySelector('input');
-                const eyeIcon = button.querySelector('.eye-icon');
-                const eyeSlashIcon = button.querySelector('.eye-slash-icon');
-
-                if (passwordInput.type === 'password') {
-                    passwordInput.type = 'text';
-                    eyeIcon.style.display = 'none';
-                    eyeSlashIcon.style.display = 'block';
-                } else {
-                    passwordInput.type = 'password';
-                    eyeIcon.style.display = 'block';
-                    eyeSlashIcon.style.display = 'none';
                 }
             });
-        });
 
-        fetchUsers();
+            async function fetchUsers() {
+                try {
+                    const response = await fetch('/api/business-admin/users', { headers });
+                    if (!response.ok) throw new Error('Failed to fetch users');
+
+                    const users = await response.json();
+                    userList.innerHTML = ''; // Clear current list
+                    if (users.length === 0) {
+                        userList.innerHTML = '<li>No users found.</li>';
+                    } else {
+                        users.forEach(user => {
+                            const li = document.createElement('li');
+                            li.textContent = `${user.email} - (${user.role})`;
+                            userList.appendChild(li);
+                        });
+                    }
+                } catch (error) {
+                    await Swal.fire({ icon: 'error', title: 'Error', text: error.message });
+                }
+            }
+
+            document.querySelectorAll('.toggle-password').forEach(button => {
+                button.addEventListener('click', () => {
+                    const passwordInput = button.closest('.password-wrapper').querySelector('input');
+                    const eyeIcon = button.querySelector('.eye-icon');
+                    const eyeSlashIcon = button.querySelector('.eye-slash-icon');
+                    if (passwordInput.type === 'password') {
+                        passwordInput.type = 'text';
+                        eyeIcon.style.display = 'none';
+                        eyeSlashIcon.style.display = 'block';
+                    } else {
+                        passwordInput.type = 'password';
+                        eyeIcon.style.display = 'block';
+                        eyeSlashIcon.style.display = 'none';
+                    }
+                });
+            });
+
+            fetchUsers();
+        });
     </script>
 </body>
 </html>

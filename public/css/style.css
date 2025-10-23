@@ -71,9 +71,9 @@ select {
 .toggle-password {
     position: absolute;
     top: 50%;
-    right: 10px;
+    right: 15px; /* Adjusted for better spacing */
     transform: translateY(-50%);
-    background: none;
+    background-color: transparent; /* Explicitly set background to transparent */
     border: none;
     cursor: pointer;
     padding: 0;
@@ -81,6 +81,8 @@ select {
     align-items: center;
     justify-content: center;
     color: #aaa;
+    -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+    outline: none; /* Remove outline on focus */
 }
 
 .toggle-password svg {

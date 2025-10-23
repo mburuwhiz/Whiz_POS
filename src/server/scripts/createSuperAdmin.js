@@ -4,7 +4,7 @@ const path = require('path');
 const User = require('../models/User');
 
 // Load environment variables from the root .env file
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config();
 
 const createSuperAdmin = async () => {
     try {

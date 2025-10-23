@@ -34,13 +34,15 @@ const protect = (req, res, next) => {
         const token = authHeader.split(' ')[1];
         jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
             if (err) {
-                return res.status(401).redirect('/login');
+                // Token is invalid or expired
+                return res.status(401).json({ message: 'Your session has expired. Please log in again.' });
             }
             req.user = decoded;
             next();
         });
     } else {
-        res.status(401).redirect('/login');
+        // No token provided
+        res.status(401).json({ message: 'Not authorized. Please log in.' });
     }
 };
 
@@ -76,15 +78,15 @@ app.get('/pos-login', (req, res) => {
     res.sendFile(path.join(__dirname, 'views/pos-login.html'));
 });
 
-app.get('/super-admin', protect, isSuperAdmin, (req, res) => {
+app.get('/super-admin', (req, res) => {
     res.sendFile(path.join(__dirname, 'views/super-admin.html'));
 });
 
-app.get('/business-admin', protect, isBusinessAdmin, (req, res) => {
+app.get('/business-admin', (req, res) => {
     res.sendFile(path.join(__dirname, 'views/business-admin.html'));
 });
 
-app.get('/pos-terminal', protect, (req, res) => {
+app.get('/pos-terminal', (req, res) => {
     res.sendFile(path.join(__dirname, 'views/pos-terminal.html'));
 });
 

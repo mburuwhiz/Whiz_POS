@@ -29,20 +29,30 @@ app.use(bodyParser.json());
 
 // Middleware to protect routes
 const protect = (req, res, next) => {
+    const handleUnauthorized = () => {
+        // Check the 'Accept' header to determine the response type
+        const acceptsHtml = req.headers.accept && req.headers.accept.includes('text/html');
+        if (acceptsHtml) {
+            // It's a browser page request, so redirect
+            return res.redirect('/login');
+        } else {
+            // It's an API request, so send a JSON error
+            return res.status(401).json({ message: 'Your session has expired or is invalid. Please log in again.' });
+        }
+    };
+
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.split(' ')[1];
         jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
             if (err) {
-                // Token is invalid or expired
-                return res.status(401).json({ message: 'Your session has expired. Please log in again.' });
+                return handleUnauthorized();
             }
             req.user = decoded;
             next();
         });
     } else {
-        // No token provided
-        res.status(401).json({ message: 'Not authorized. Please log in.' });
+        handleUnauthorized();
     }
 };
 
@@ -78,15 +88,15 @@ app.get('/pos-login', (req, res) => {
     res.sendFile(path.join(__dirname, 'views/pos-login.html'));
 });
 
-app.get('/super-admin', (req, res) => {
+app.get('/super-admin', protect, isSuperAdmin, (req, res) => {
     res.sendFile(path.join(__dirname, 'views/super-admin.html'));
 });
 
-app.get('/business-admin', (req, res) => {
+app.get('/business-admin', protect, isBusinessAdmin, (req, res) => {
     res.sendFile(path.join(__dirname, 'views/business-admin.html'));
 });
 
-app.get('/pos-terminal', (req, res) => {
+app.get('/pos-terminal', protect, (req, res) => {
     res.sendFile(path.join(__dirname, 'views/pos-terminal.html'));
 });
 

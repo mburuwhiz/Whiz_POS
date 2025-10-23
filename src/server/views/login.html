@@ -70,19 +70,19 @@
                             icon: 'success',
                             title: 'Login Successful!',
                             text: 'Redirecting to your dashboard...',
-                            timer: 2000,
+                            timer: 1500,
                             showConfirmButton: false,
-                        });
-
-                        setTimeout(() => {
+                        }).then(() => {
+                            // This code runs after the SweetAlert timer finishes
                             if (role === 'SuperAdmin') {
-                                window.location.href = '/super-admin';
+                                window.location.replace('/super-admin');
                             } else if (role === 'Admin') {
-                                window.location.href = '/business-admin';
+                                window.location.replace('/business-admin');
                             } else {
-                                window.location.href = '/dashboard';
+                                // Default redirect for other roles like Cashier, Manager, etc.
+                                window.location.replace('/pos-terminal');
                             }
-                        }, 2000); // Match the timer to ensure redirect happens after message.
+                        });
                     } else {
                         Swal.fire({
                             icon: 'error',

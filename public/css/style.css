@@ -2,10 +2,11 @@
     --primary-color: #0047FF; /* Deep Royal Blue */
     --accent-color: #FFD700; /* Gold */
     --text-color: #333;
+    --light-text-color: #fff;
     --bg-color: #f4f7f6;
     --container-bg: #ffffff;
-    --border-radius: 8px;
-    --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --border-radius: 12px;
+    --box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
 }
 
 body {
@@ -13,47 +14,90 @@ body {
     background-color: var(--bg-color);
     color: var(--text-color);
     margin: 0;
-    padding: 20px;
+    height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
 }
 
-h1, h2 {
-    font-family: 'Poppins Bold', sans-serif;
-    color: var(--primary-color);
-    text-align: center;
-}
-
-.container {
+.login-container {
+    display: grid;
+    grid-template-columns: 1fr 1.25fr;
+    width: 100%;
+    max-width: 1000px;
+    height: 600px;
     background-color: var(--container-bg);
-    padding: 40px;
     border-radius: var(--border-radius);
     box-shadow: var(--box-shadow);
-    width: 100%;
-    max-width: 400px;
+    overflow: hidden;
 }
 
-form {
+/* --- Branding Column --- */
+.login-branding {
+    background-color: var(--primary-color);
+    color: var(--light-text-color);
     display: flex;
-    flex-direction: column;
-    gap: 20px;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 40px;
 }
 
-label {
-    font-weight: bold;
-    margin-bottom: 5px;
+.branding-content h1 {
+    font-family: 'Poppins Bold', sans-serif;
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    color: var(--light-text-color);
 }
 
-input[type="text"],
-input[type="email"],
-input[type="password"],
-select {
+.branding-content .tagline {
+    font-size: 1.1rem;
+    margin-bottom: 30px;
+    opacity: 0.9;
+}
+
+.branding-content .support-info {
+    font-size: 0.9rem;
+    color: var(--accent-color);
+    font-weight: 600;
+}
+
+/* --- Form Column --- */
+.login-form-area {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+}
+
+.form-wrapper {
+    width: 100%;
+    max-width: 350px;
+}
+
+.form-wrapper h2 {
+    font-family: 'Poppins Bold', sans-serif;
+    color: var(--primary-color);
+    font-size: 2rem;
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.input-group {
+    margin-bottom: 20px;
+}
+
+.input-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.input-group input {
     width: 100%;
     padding: 12px;
     border: 1px solid #ccc;
-    border-radius: 4px;
+    border-radius: 8px;
     box-sizing: border-box;
     font-size: 16px;
 }
@@ -65,53 +109,46 @@ select {
 }
 
 .password-wrapper input {
-    padding-right: 40px; /* Make space for the icon */
+    padding-right: 45px; /* Make space for the icon */
 }
 
 .toggle-password {
     position: absolute;
     top: 50%;
-    right: 15px; /* Adjusted for better spacing */
+    right: 15px;
     transform: translateY(-50%);
-    background-color: transparent; /* Explicitly set background to transparent */
+    background: transparent;
     border: none;
     cursor: pointer;
     padding: 0;
     display: flex;
-    align-items: center;
-    justify-content: center;
     color: #aaa;
-    -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
-    outline: none; /* Remove outline on focus */
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
 }
 
-.toggle-password svg {
-    stroke: currentColor;
-}
-
-.toggle-password:hover {
+.toggle-password:hover, .toggle-password:focus {
     color: var(--primary-color);
 }
 
-button {
+button[type="submit"] {
     background-color: var(--primary-color);
     color: white;
     padding: 14px 20px;
-    margin: 8px 0;
     border: none;
     cursor: pointer;
     width: 100%;
-    border-radius: 4px;
+    border-radius: 8px;
     font-size: 16px;
     font-weight: bold;
     transition: background-color 0.3s;
 }
 
-button:hover {
+button[type="submit"]:hover {
     background-color: #0036cc;
 }
 
-a {
+.switch-link {
     color: var(--primary-color);
     text-decoration: none;
     text-align: center;
@@ -119,6 +156,6 @@ a {
     margin-top: 20px;
 }
 
-a:hover {
+.switch-link:hover {
     text-decoration: underline;
 }

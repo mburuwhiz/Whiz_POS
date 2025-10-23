@@ -5,89 +5,115 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WHIZ POS v2.0 - Admin Login</title>
     <link rel="stylesheet" href="/css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700&family=Inter&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
-    <div class="container">
-        <h1>Admin Login</h1>
-        <form id="login-form">
-            <div>
-                <label for="email">Email:</label>
-                <input type="email" id="email" name="email" required>
+    <div class="login-container">
+        <div class="login-branding">
+            <div class="branding-content">
+                <h1>WHIZ POS v2.0</h1>
+                <p class="tagline">Intelligence in Every Transaction</p>
+                <p class="support-info">
+                    Support: whizlite.pos@gmail.com | 0740 841 168
+                </p>
             </div>
-            <div>
-                <label for="password">Password:</label>
-                <div class="password-wrapper">
-                    <input type="password" id="password" name="password" required>
-                    <button type="button" class="toggle-password">
-                        <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                        <svg class="eye-slash-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-                    </button>
-                </div>
+        </div>
+        <div class="login-form-area">
+            <div class="form-wrapper">
+                <h2>Admin Login</h2>
+                <form id="login-form">
+                    <div class="input-group">
+                        <label for="email">Email:</label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="password">Password:</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="password" name="password" required>
+                            <button type="button" class="toggle-password">
+                                <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                <svg class="eye-slash-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <button type="submit">Login</button>
+                </form>
+                <a href="/pos-login" class="switch-link">Switch to POS Login</a>
             </div>
-            <button type="submit">Login</button>
-        </form>
-        <a href="/pos-login">Switch to POS Login</a>
+        </div>
     </div>
 
     <script>
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            const data = Object.fromEntries(formData.entries());
+        document.addEventListener('DOMContentLoaded', () => {
+            const loginForm = document.getElementById('login-form');
 
-            const response = await fetch('/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data),
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const data = Object.fromEntries(formData.entries());
+
+                try {
+                    const response = await fetch('/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data),
+                    });
+
+                    const resultText = await response.text();
+
+                    if (response.ok) {
+                        const { token, role } = JSON.parse(resultText);
+                        localStorage.setItem('token', token);
+
+                        await Swal.fire({
+                            icon: 'success',
+                            title: 'Login Successful!',
+                            text: 'Redirecting to your dashboard...',
+                            timer: 2000,
+                            showConfirmButton: false,
+                        });
+
+                        if (role === 'SuperAdmin') {
+                            window.location.href = '/super-admin';
+                        } else if (role === 'Admin') {
+                            window.location.href = '/business-admin';
+                        } else {
+                            // Fallback for other roles if needed in the future
+                            window.location.href = '/dashboard';
+                        }
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Login Failed',
+                            text: resultText || 'An unknown error occurred.',
+                        });
+                    }
+                } catch (error) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Connection Error',
+                        text: 'Could not connect to the server. Please try again later.',
+                    });
+                }
             });
 
-            if (response.ok) {
-                const { token, role } = await response.json();
-                localStorage.setItem('token', token);
+            document.querySelectorAll('.toggle-password').forEach(button => {
+                button.addEventListener('click', () => {
+                    const passwordInput = button.closest('.password-wrapper').querySelector('input');
+                    const eyeIcon = button.querySelector('.eye-icon');
+                    const eyeSlashIcon = button.querySelector('.eye-slash-icon');
 
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Login Successful!',
-                    text: 'Redirecting to your dashboard...',
-                    timer: 2000,
-                    showConfirmButton: false,
-                }).then(() => {
-                    if (role === 'SuperAdmin') {
-                        window.location.href = '/super-admin';
-                    } else if (role === 'Admin') {
-                        window.location.href = '/business-admin';
+                    if (passwordInput.type === 'password') {
+                        passwordInput.type = 'text';
+                        eyeIcon.style.display = 'none';
+                        eyeSlashIcon.style.display = 'block';
                     } else {
-                        window.location.href = '/dashboard';
+                        passwordInput.type = 'password';
+                        eyeIcon.style.display = 'block';
+                        eyeSlashIcon.style.display = 'none';
                     }
                 });
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Login Failed',
-                    text: await response.text(),
-                });
-            }
-        });
-
-        document.querySelectorAll('.toggle-password').forEach(button => {
-            button.addEventListener('click', () => {
-                const passwordInput = button.closest('.password-wrapper').querySelector('input');
-                const eyeIcon = button.querySelector('.eye-icon');
-                const eyeSlashIcon = button.querySelector('.eye-slash-icon');
-
-                if (passwordInput.type === 'password') {
-                    passwordInput.type = 'text';
-                    eyeIcon.style.display = 'none';
-                    eyeSlashIcon.style.display = 'block';
-                } else {
-                    passwordInput.type = 'password';
-                    eyeIcon.style.display = 'block';
-                    eyeSlashIcon.style.display = 'none';
-                }
             });
         });
     </script>

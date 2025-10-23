@@ -5,42 +5,56 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WHIZ POS v2.0 - POS Login</title>
     <link rel="stylesheet" href="/css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700&family=Inter&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
-    <div class="container">
-        <div id="api-key-container">
-            <h1>Link Device</h1>
-            <form id="api-key-form">
-                <div>
-                    <label for="api-key-input">Enter API Key:</label>
-                    <input type="text" id="api-key-input" required>
-                </div>
-                <button type="submit">Link Device</button>
-            </form>
-        </div>
-
-        <div id="user-login-container" style="display: none;">
-            <h1>Select User</h1>
-            <select id="user-select"></select>
-
-            <div id="pin-container" style="display: none;">
-                <form id="pin-form">
-                    <div>
-                        <label for="pin-input">Enter PIN:</label>
-                        <div class="password-wrapper">
-                            <input type="password" id="pin-input" required pattern="\d{4}" title="PIN must be 4 digits" maxlength="4">
-                            <button type="button" class="toggle-password">
-                                <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                                <svg class="eye-slash-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-                            </button>
-                        </div>
-                    </div>
-                    <button type="submit">Login</button>
-                </form>
+    <div class="login-container">
+        <div class="login-branding">
+            <div class="branding-content">
+                <h1>WHIZ POS v2.0</h1>
+                <p class="tagline">Point of Sale Terminal</p>
+                <p class="support-info">
+                    Support: whizlite.pos@gmail.com | 0740 841 168
+                </p>
             </div>
         </div>
-        <a href="/login">Switch to Admin Login</a>
+        <div class="login-form-area">
+            <div class="form-wrapper">
+                <div id="api-key-container">
+                    <h2>Link Device</h2>
+                    <form id="api-key-form">
+                        <div class="input-group">
+                            <label for="api-key-input">Enter API Key:</label>
+                            <input type="text" id="api-key-input" required>
+                        </div>
+                        <button type="submit">Link Device</button>
+                    </form>
+                </div>
+
+                <div id="user-login-container" style="display: none;">
+                    <h2>POS Login</h2>
+                    <div class="input-group">
+                        <label for="user-select">Select User:</label>
+                        <select id="user-select"></select>
+                    </div>
+                    <form id="pin-form" style="display: none;">
+                        <div class="input-group">
+                            <label for="pin-input">Enter PIN:</label>
+                            <div class="password-wrapper">
+                                <input type="password" id="pin-input" required pattern="\\d{4}" title="PIN must be 4 digits" maxlength="4">
+                                <button type="button" class="toggle-password">
+                                    <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                    <svg class="eye-slash-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <button type="submit">Login</button>
+                    </form>
+                </div>
+                <a href="/login" class="switch-link">Switch to Admin Login</a>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -50,24 +64,29 @@
             const apiKeyForm = document.getElementById('api-key-form');
             const apiKeyInput = document.getElementById('api-key-input');
             const userSelect = document.getElementById('user-select');
-            const pinContainer = document.getElementById('pin-container');
             const pinForm = document.getElementById('pin-form');
             const pinInput = document.getElementById('pin-input');
 
-            // Handle API Key submission
+            async function handleApiError(message) {
+                await Swal.fire({ icon: 'error', title: 'Error', text: message });
+            }
+
             apiKeyForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const apiKey = apiKeyInput.value;
-                localStorage.setItem('apiKey', apiKey);
-                await loadUsers(apiKey);
+                const apiKey = apiKeyInput.value.trim();
+                if (apiKey) {
+                    localStorage.setItem('apiKey', apiKey);
+                    await loadUsers(apiKey);
+                }
             });
 
-            // Function to load users based on API key
             async function loadUsers(apiKey) {
-                userSelect.innerHTML = '<option value="">Loading users...</option>';
                 try {
                     const response = await fetch(`/api/users?apiKey=${apiKey}`);
-                    if (!response.ok) throw new Error('Failed to fetch users or invalid API key');
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(errorText || 'Failed to fetch users. Check API Key.');
+                    }
                     const users = await response.json();
 
                     userSelect.innerHTML = '<option value="">Select a user</option>';
@@ -81,17 +100,14 @@
                     apiKeyContainer.style.display = 'none';
                     userLoginContainer.style.display = 'block';
                 } catch (error) {
-                    userSelect.innerHTML = '';
-                    alert(error.message);
+                    await handleApiError(error.message);
                 }
             }
 
-            // Show PIN container when a user is selected
             userSelect.addEventListener('change', () => {
-                pinContainer.style.display = userSelect.value ? 'block' : 'none';
+                pinForm.style.display = userSelect.value ? 'block' : 'none';
             });
 
-            // Handle PIN form submission
             pinForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const userId = userSelect.value;
@@ -107,38 +123,37 @@
                     if (response.ok) {
                         const { token } = await response.json();
                         localStorage.setItem('token', token);
+                        await Swal.fire({ icon: 'success', title: 'Login Successful!', timer: 1500, showConfirmButton: false });
                         window.location.href = '/pos-terminal';
                     } else {
-                        alert(await response.text());
+                        throw new Error(await response.text());
                     }
                 } catch (error) {
-                    alert('An error occurred during login.');
+                    await handleApiError(error.message || 'An error occurred during login.');
                 }
             });
 
-            // Check if API key is already stored
+            document.querySelectorAll('.toggle-password').forEach(button => {
+                button.addEventListener('click', () => {
+                    const passwordInput = button.closest('.password-wrapper').querySelector('input');
+                    const eyeIcon = button.querySelector('.eye-icon');
+                    const eyeSlashIcon = button.querySelector('.eye-slash-icon');
+                    if (passwordInput.type === 'password') {
+                        passwordInput.type = 'text';
+                        eyeIcon.style.display = 'none';
+                        eyeSlashIcon.style.display = 'block';
+                    } else {
+                        passwordInput.type = 'password';
+                        eyeIcon.style.display = 'block';
+                        eyeSlashIcon.style.display = 'none';
+                    }
+                });
+            });
+
             const storedApiKey = localStorage.getItem('apiKey');
             if (storedApiKey) {
                 loadUsers(storedApiKey);
             }
-        });
-
-        document.querySelectorAll('.toggle-password').forEach(button => {
-            button.addEventListener('click', () => {
-                const passwordInput = button.closest('.password-wrapper').querySelector('input');
-                const eyeIcon = button.querySelector('.eye-icon');
-                const eyeSlashIcon = button.querySelector('.eye-slash-icon');
-
-                if (passwordInput.type === 'password') {
-                    passwordInput.type = 'text';
-                    eyeIcon.style.display = 'none';
-                    eyeSlashIcon.style.display = 'block';
-                } else {
-                    passwordInput.type = 'password';
-                    eyeIcon.style.display = 'block';
-                    eyeSlashIcon.style.display = 'none';
-                }
-            });
         });
     </script>
 </body>

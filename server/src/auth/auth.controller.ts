@@ -16,8 +16,6 @@ export class AuthController {
 
   @Post('pin-login')
   async pinLogin(@Body() loginDto: any) {
-    // Note: The PIN validation logic in AuthService is a placeholder.
-    // This endpoint will not be fully functional until that is implemented.
     const user = await this.authService.validatePin(loginDto.userId, loginDto.pin);
     if (!user) {
       throw new UnauthorizedException();

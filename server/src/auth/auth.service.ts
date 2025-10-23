@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
@@ -37,8 +37,14 @@ export class AuthService {
 
   async login(user: Omit<User, 'passwordHash' | 'pinHash'>) {
     const payload = { sub: user._id.toString(), roles: user.roles };
+    const token = this.jwtService.sign(payload);
+    const sessionExpires = new Date();
+    sessionExpires.setDate(sessionExpires.getDate() + 60); // Match 60d expiry
+
     return {
-      access_token: this.jwtService.sign(payload),
+      token: token,
+      user: user,
+      sessionExpires: sessionExpires.toISOString(),
     };
   }
 }

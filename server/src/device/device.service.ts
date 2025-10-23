@@ -23,7 +23,7 @@ export class DeviceService {
 
   async linkDevice(
     linkDeviceDto: LinkDeviceDto,
-  ): Promise<{ deviceToken: string; branding: any }> {
+  ): Promise<{ deviceToken: string; branding: any; businessId: string }> {
     // 1. Simulate a call to the cloud portal to verify the API key.
     const cloudResponse = await this.verifyApiKeyWithCloud(linkDeviceDto.apiKey);
 
@@ -54,6 +54,7 @@ export class DeviceService {
     const deviceToken = this.jwtService.sign(payload);
 
     return {
+      businessId: cloudResponse.businessId,
       deviceToken,
       branding: cloudResponse.branding,
     };

@@ -1,8 +1,10 @@
 # WHIZ POS v2.0 - Testing Strategy
 
-This document outlines the testing strategy for the Business Local Server. It covers the current state of testing and the plan for future test implementation.
+This document outlines the testing strategy for the **WHIZ POS v2.0** system, including both the **Business Local Server** and the **Desktop POS Application**.
 
-## Current Testing State (As of 2025-10-23)
+## Business Local Server Testing
+
+### Current Testing State (As of 2025-10-23)
 
 The project is in its initial phase, with the foundational structure, API specification, and database models in place. At this stage, automated tests have not yet been implemented. However, we can perform the following manual verification steps to ensure the current progress is solid.
 
@@ -56,3 +58,31 @@ As we move forward and implement business logic, we will introduce a comprehensi
 *   **Tools:** The NestJS E2E testing framework, which uses `supertest` to make live HTTP requests to the running application.
 
 This multi-layered approach will ensure that the Business Local Server is reliable, robust, and correct as we build it out.
+
+## Desktop POS Application Testing
+
+### Current Testing State (As of 2025-10-23)
+
+The desktop application has been successfully scaffolded. The immediate testing goal is to ensure the application starts correctly and the basic UI renders.
+
+*   **Action:**
+    1.  Navigate to the `desktop/` directory.
+    2.  Run `npm install` to ensure all dependencies are present.
+    3.  Run `npm run dev`.
+*   **Expected Outcome:** An Electron window should appear on the screen, displaying a "Hello World" message rendered by Svelte. This confirms that the Electron main process, the Vite development server, and the Svelte renderer are all configured and working together correctly.
+
+### Future Testing Strategy
+
+As we build the UI components and integrate them with the server, we will implement the following testing strategies:
+
+### 1. Component Tests
+
+*   **Scope:** Test individual Svelte components in isolation.
+*   **Goal:** Verify that each component renders correctly and that its internal logic (methods, event handlers) works as expected.
+*   **Tools:** We will use a testing library like **Vitest** with **Testing Library** to mount components, interact with them, and assert on their output.
+
+### 2. End-to-End (E2E) Tests
+
+*   **Scope:** Test the full application workflow from the user's perspective.
+*   **Goal:** Simulate real user interactions to ensure the application behaves correctly as a whole. This includes testing the UI's interaction with the live local server.
+*   **Tools:** We will use a framework like **Playwright** or **Spectron** to drive the Electron application, click buttons, enter text, and verify that the UI updates and communicates with the backend as expected. This is the most critical layer of testing for ensuring the reliability of the complete POS system.

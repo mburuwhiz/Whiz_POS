@@ -19,4 +19,9 @@ export class BusinessesController {
   issueApiKey(@Param('id') id: string) {
     return this.businessesService.issueApiKey(id);
   }
+
+  @Patch(':id/activate-key')
+  activateApiKey(@Param('id') id: string, @Body('key') key: string) {
+    return this.businessesService.activateApiKey(id, key);
+  }
 }

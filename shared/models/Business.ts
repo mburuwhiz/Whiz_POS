@@ -1,6 +1,8 @@
+export type ApiKeyStatus = 'Inactive' | 'Active';
+
 export interface ApiKey {
   key: string;
-  active: boolean;
+  status: ApiKeyStatus;
   issuedAt: Date;
 }
 

@@ -21,6 +21,6 @@ export class ProductsService {
   }
 
   async remove(id: string): Promise<any> {
-    return this.productModel.findByIdAndRemove(id).exec();
+    return this.productModel.findByIdAndDelete(id).exec();
   }
 }

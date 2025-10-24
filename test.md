@@ -88,14 +88,22 @@ This section describes how to test the new, in-progress system. This involves ru
     ```
     The Electron application window will open.
 
-### d) Testing the End-to-End Sales Flow
+### d) Testing the Full Application Flow
 
-1.  **PIN Login:**
-    *   In the Electron app, select "Jane Cashier" from the dropdown.
+1.  **First-Time Device Setup:**
+    *   Before the first run, ensure there is no `deviceToken` in the application's `localStorage`. You can clear this in the Electron DevTools (`Application > Local Storage`).
+    *   On launch, you should see the "Device Setup" screen.
+    *   Enter the test API Key: `WHIZ-XXXXX` and click "Link Device".
+    *   You should be redirected to the PIN Login screen. A `deviceToken` will now be stored in `localStorage`.
+    *   On subsequent launches, the app will skip this step.
+
+2.  **PIN Login:**
+    *   The user dropdown should now be populated with "Jane Cashier". Select her.
     *   Use the numeric keypad to enter the PIN: `1234`.
-    *   Click "Enter". You should be successfully logged in and see the main POS Terminal screen.
+    *   You can press and hold the "eye" icon to the right of the PIN dots to temporarily see the digits you have entered.
+    *   Click "Enter". You should be successfully logged in and see the main POS Terminal screen with a professional header.
 
-2.  **Create a Sale:**
+3.  **Create a Sale:**
     *   The left panel should display a grid of products (Espresso, Latte, etc.).
     *   Click on several products. They should appear in the "Current Order" panel on the right.
     *   The Subtotal, Tax, and Total will update automatically.

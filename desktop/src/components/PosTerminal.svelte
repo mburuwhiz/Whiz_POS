@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import Swal from 'sweetalert2';
   import type { Product } from '../../../shared/models/Product';
 
   let products: Product[] = [];
@@ -68,14 +69,28 @@
       });
 
       if (response.ok) {
-        alert('Sale complete!');
+        Swal.fire({
+          title: 'Success!',
+          text: 'Sale completed successfully.',
+          icon: 'success',
+          timer: 1500,
+          showConfirmButton: false,
+        });
         clearCart();
       } else {
-        alert('Failed to save transaction.');
+        Swal.fire({
+          title: 'Error',
+          text: 'Failed to save the transaction.',
+          icon: 'error',
+        });
       }
     } catch (error) {
       console.error('Error creating transaction:', error);
-      alert('Could not connect to the server.');
+      Swal.fire({
+        title: 'Connection Error',
+        text: 'Could not connect to the server.',
+        icon: 'error',
+      });
     }
   }
 </script>

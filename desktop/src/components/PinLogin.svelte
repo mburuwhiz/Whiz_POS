@@ -1,10 +1,12 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
+  import Swal from 'sweetalert2';
   import type { User } from '../../../shared/models/User';
 
   let pin = '';
   let selectedUser: string | null = null;
   let users: User[] = [];
+  let showPin = false;
   let serverUrl = import.meta.env.VITE_APP_API_URL || 'http://localhost:4001';
   let connectionError = false;
   let customServerUrl = '';
@@ -55,16 +57,24 @@
       if (response.ok) {
         const data = await response.json();
         localStorage.setItem('token', data.token);
-        dispatch('loginsuccess');
+        dispatch('loginsuccess', { user: data.user });
         connectionError = false;
       } else {
-        alert('Login failed! Please check your PIN.');
+        Swal.fire({
+          title: 'Login Failed',
+          text: 'Please check your PIN and try again.',
+          icon: 'error',
+        });
         clearPin();
       }
     } catch (error) {
       console.error('Login error:', error);
       connectionError = true;
-      alert('Could not connect to the server. Please check the server address.');
+      Swal.fire({
+        title: 'Connection Error',
+        text: 'Could not connect to the server. Please check the server address.',
+        icon: 'error',
+      });
     }
   }
 
@@ -96,11 +106,20 @@
       </select>
     </div>
 
+  <div class="pin-display-wrapper">
     <div class="pin-display">
-      <div class="pin-dot" class:filled={pin.length >= 1}></div>
-      <div class="pin-dot" class:filled={pin.length >= 2}></div>
-      <div class="pin-dot" class:filled={pin.length >= 3}></div>
-      <div class="pin-dot" class:filled={pin.length >= 4}></div>
+      {#if showPin}
+        <span class="pin-text">{pin}</span>
+      {:else}
+        <div class="pin-dot" class:filled={pin.length >= 1}></div>
+        <div class="pin-dot" class:filled={pin.length >= 2}></div>
+        <div class="pin-dot" class:filled={pin.length >= 3}></div>
+        <div class="pin-dot" class:filled={pin.length >= 4}></div>
+      {/if}
+    </div>
+    <button class="toggle-pin-visibility" on:mousedown={() => showPin = true} on:mouseup={() => showPin = false} on:mouseleave={() => showPin = false}>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+    </button>
     </div>
 
     <div class="keypad">
@@ -152,10 +171,28 @@
     padding: 0.5rem;
     border-radius: 4px;
   }
+  .pin-display-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
   .pin-display {
     display: flex;
     gap: 1rem;
-    margin-bottom: 1.5rem;
+    min-width: 128px; /* 4 dots * 20px + 3 gaps * 1rem */
+    justify-content: center;
+  }
+  .pin-text {
+    font-size: 2rem;
+    letter-spacing: 0.5rem;
+  }
+  .toggle-pin-visibility {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    color: white;
   }
   .pin-dot {
     width: 20px;

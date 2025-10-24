@@ -3,8 +3,11 @@
   import PinLogin from './components/PinLogin.svelte';
   import PosTerminal from './components/PosTerminal.svelte';
   import DeviceSetup from './components/DeviceSetup.svelte';
+  import Header from './components/Header.svelte';
+  import type { User } from '../../shared/models/User';
 
   let appState: 'setup' | 'login' | 'pos' = 'setup';
+  let currentUser: User | null = null;
 
   onMount(() => {
     const deviceToken = localStorage.getItem('deviceToken');
@@ -19,44 +22,42 @@
     appState = 'login';
   }
 
-  function handleLoginSuccess() {
+  function handleLoginSuccess(event) {
+    currentUser = event.detail.user;
     appState = 'pos';
   }
 
   function handleLogout() {
     localStorage.removeItem('token');
+    currentUser = null;
     appState = 'login';
   }
 </script>
 
-<main>
-  {#if appState === 'setup'}
-    <DeviceSetup on:linksuccess={handleLinkSuccess} />
-  {:else if appState === 'login'}
-    <PinLogin on:loginsuccess={handleLoginSuccess} />
-  {:else if appState === 'pos'}
+{#if appState === 'pos'}
+  <Header loggedInUser={currentUser} on:logout={handleLogout} />
+  <main class="pos-view">
     <PosTerminal />
-    <!-- A proper logout button should be part of a persistent layout -->
-    <button class="logout-btn" on:click={handleLogout}>Logout</button>
-  {/if}
-</main>
+  </main>
+{:else}
+  <main class="centered-view">
+    {#if appState === 'setup'}
+      <DeviceSetup on:linksuccess={handleLinkSuccess} />
+    {:else if appState === 'login'}
+      <PinLogin on:loginsuccess={handleLoginSuccess} />
+    {/if}
+  </main>
+{/if}
 
 <style>
-  main {
+  .centered-view {
     height: 100vh;
     box-sizing: border-box;
     display: flex;
     justify-content: center;
     align-items: center;
-    position: relative;
   }
-  .logout-btn {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    padding: 0.5rem 1rem;
-    background-color: #dc3545;
-    border-radius: 4px;
-    cursor: pointer;
+  .pos-view {
+    height: calc(100vh - 60px); /* Full height minus header */
   }
 </style>

@@ -47,9 +47,13 @@ export class TransactionsService {
     for (const transaction of todaysTransactions) {
       summary.totalSales += transaction.total;
       for (const payment of transaction.payments) {
-        if (payment.method !== 'credit') {
-          summary[payment.method] += payment.amount;
-        } else {
+        if (payment.method === 'cash') {
+          summary.cash += payment.amount;
+        } else if (payment.method === 'card') {
+          summary.card += payment.amount;
+        } else if (payment.method === 'mpesa') {
+          summary.mpesa += payment.amount;
+        } else if (payment.method === 'credit') {
           summary.credit.total += payment.amount;
           if (transaction.isPaid) {
             summary.credit.paid += payment.amount;

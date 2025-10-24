@@ -1,9 +1,7 @@
 <script lang="ts">
-  import { onMount, createEventDispatcher } from 'svelte';
+  import { onMount } from 'svelte';
   import Swal from 'sweetalert2';
   import type { Product } from '../../../shared/models/Product';
-
-  const dispatch = createEventDispatcher();
 
   let products: Product[] = [];
   let cart = [];
@@ -72,7 +70,22 @@
 
       if (response.ok) {
         const newTransaction = await response.json();
-        dispatch('transactionComplete', { transaction: newTransaction });
+        await fetch(`${apiBaseUrl}/print/receipt`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify(newTransaction),
+        });
+
+        Swal.fire({
+          title: 'Success!',
+          text: 'Sale Complete! Printing receipt...',
+          icon: 'success',
+          timer: 1500,
+          showConfirmButton: false,
+        });
         clearCart();
       } else {
         Swal.fire({

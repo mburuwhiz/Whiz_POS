@@ -10,6 +10,8 @@ import { TransactionsModule } from './transactions/transactions.module';
 import { DevicesModule } from './devices/devices.module';
 import { DeviceLinkModule } from './device-link/device-link.module';
 import { BusinessesModule } from './businesses/businesses.module';
+import { MpesaModule } from './mpesa/mpesa.module';
+import { PrintModule } from './print/print.module';
 
 @Module({
   imports: [
@@ -31,6 +33,8 @@ import { BusinessesModule } from './businesses/businesses.module';
     DevicesModule,
     DeviceLinkModule,
     BusinessesModule,
+    MpesaModule,
+    PrintModule,
   ],
   controllers: [AppController],
   providers: [AppService],

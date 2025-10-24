@@ -5,19 +5,15 @@ import electron from 'vite-plugin-electron'
 export default defineConfig({
   plugins: [
     svelte(),
-    electron([
-      {
-        // Main-Process entry file of the Electron App.
+    electron({
+      main: {
         entry: 'electron/main.ts',
       },
-      {
-        entry: 'electron/preload.ts',
-        onstart(options) {
-          // Notify the Renderer-Process to reload the page when the Preload-Scripts build is complete,
-          // instead of restarting the entire Electron App.
-          options.reload()
-        },
+      preload: {
+        input: 'electron/preload.ts',
       },
-    ]),
+      // Optional: Use this if you want to use the same transpiler for the renderer process
+      renderer: {},
+    }),
   ],
 })

@@ -12,9 +12,8 @@
   import type { User } from '../../shared/models/User';
   import type { Transaction } from '../../shared/models/Transaction';
 
-  let appState: 'setup' | 'login' | 'pos' | 'superadmin' | 'creditSettlement' | 'endOfDaySummary' | 'productManagement' | 'receipt' = 'setup';
+  let appState: 'setup' | 'login' | 'pos' | 'superadmin' | 'creditSettlement' | 'endOfDaySummary' | 'productManagement' = 'setup';
   let currentUser: User | null = null;
-  let currentTransaction: Transaction | null = null;
 
   onMount(() => {
     const deviceToken = localStorage.getItem('deviceToken');
@@ -43,18 +42,13 @@
   function handleNavigate(event) {
     appState = event.detail;
   }
-
-  function handleTransactionComplete(event) {
-    currentTransaction = event.detail.transaction;
-    appState = 'receipt';
-  }
 </script>
 
-{#if appState === 'pos' || appState === 'superadmin' || appState === 'creditSettlement' || appState === 'endOfDaySummary' || appState === 'productManagement' || appState === 'receipt'}
+{#if appState === 'pos' || appState === 'superadmin' || appState === 'creditSettlement' || appState === 'endOfDaySummary' || appState === 'productManagement'}
   <Header loggedInUser={currentUser} on:logout={handleLogout} on:navigate={handleNavigate} />
   <main class="pos-view">
     {#if appState === 'pos'}
-      <PosTerminal on:transactionComplete={handleTransactionComplete} />
+      <PosTerminal />
     {:else if appState === 'superadmin'}
       <SuperAdmin />
       <button class="nav-btn-back" on:click={() => appState = 'pos'}>Back to POS</button>
@@ -67,9 +61,6 @@
     {:else if appState === 'productManagement'}
       <ProductManagement />
       <button class="nav-btn-back" on:click={() => appState = 'pos'}>Back to POS</button>
-    {:else if appState === 'receipt'}
-      <Receipt transaction={currentTransaction} />
-      <button class="nav-btn-back" on:click={() => appState = 'pos'}>New Sale</button>
     {/if}
   </main>
 {:else}

@@ -1,7 +1,9 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, createEventDispatcher } from 'svelte';
   import Swal from 'sweetalert2';
   import type { Product } from '../../../shared/models/Product';
+
+  const dispatch = createEventDispatcher();
 
   let products: Product[] = [];
   let cart = [];
@@ -69,13 +71,8 @@
       });
 
       if (response.ok) {
-        Swal.fire({
-          title: 'Success!',
-          text: 'Sale completed successfully.',
-          icon: 'success',
-          timer: 1500,
-          showConfirmButton: false,
-        });
+        const newTransaction = await response.json();
+        dispatch('transactionComplete', { transaction: newTransaction });
         clearCart();
       } else {
         Swal.fire({

@@ -7,10 +7,14 @@
   import SuperAdmin from './components/SuperAdmin.svelte';
   import CreditSettlement from './components/CreditSettlement.svelte';
   import EndOfDaySummary from './components/EndOfDaySummary.svelte';
+  import ProductManagement from './components/ProductManagement.svelte';
+  import Receipt from './components/Receipt.svelte';
   import type { User } from '../../shared/models/User';
+  import type { Transaction } from '../../shared/models/Transaction';
 
-  let appState: 'setup' | 'login' | 'pos' | 'superadmin' | 'creditSettlement' | 'endOfDaySummary' = 'setup';
+  let appState: 'setup' | 'login' | 'pos' | 'superadmin' | 'creditSettlement' | 'endOfDaySummary' | 'productManagement' | 'receipt' = 'setup';
   let currentUser: User | null = null;
+  let currentTransaction: Transaction | null = null;
 
   onMount(() => {
     const deviceToken = localStorage.getItem('deviceToken');
@@ -39,13 +43,18 @@
   function handleNavigate(event) {
     appState = event.detail;
   }
+
+  function handleTransactionComplete(event) {
+    currentTransaction = event.detail.transaction;
+    appState = 'receipt';
+  }
 </script>
 
-{#if appState === 'pos' || appState === 'superadmin'}
+{#if appState === 'pos' || appState === 'superadmin' || appState === 'creditSettlement' || appState === 'endOfDaySummary' || appState === 'productManagement' || appState === 'receipt'}
   <Header loggedInUser={currentUser} on:logout={handleLogout} on:navigate={handleNavigate} />
   <main class="pos-view">
     {#if appState === 'pos'}
-      <PosTerminal />
+      <PosTerminal on:transactionComplete={handleTransactionComplete} />
     {:else if appState === 'superadmin'}
       <SuperAdmin />
       <button class="nav-btn-back" on:click={() => appState = 'pos'}>Back to POS</button>
@@ -55,6 +64,12 @@
     {:else if appState === 'endOfDaySummary'}
       <EndOfDaySummary />
       <button class="nav-btn-back" on:click={() => appState = 'pos'}>Back to POS</button>
+    {:else if appState === 'productManagement'}
+      <ProductManagement />
+      <button class="nav-btn-back" on:click={() => appState = 'pos'}>Back to POS</button>
+    {:else if appState === 'receipt'}
+      <Receipt transaction={currentTransaction} />
+      <button class="nav-btn-back" on:click={() => appState = 'pos'}>New Sale</button>
     {/if}
   </main>
 {:else}

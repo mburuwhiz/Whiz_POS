@@ -15,4 +15,12 @@ export class ProductsService {
     const newProduct = new this.productModel(product);
     return newProduct.save();
   }
+
+  async update(id: string, product: Partial<Product>): Promise<Product> {
+    return this.productModel.findByIdAndUpdate(id, product, { new: true }).exec();
+  }
+
+  async remove(id: string): Promise<any> {
+    return this.productModel.findByIdAndRemove(id).exec();
+  }
 }

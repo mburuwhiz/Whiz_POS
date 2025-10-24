@@ -1,41 +1,44 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
+import Store from 'electron-store';
 
-// This function creates the main application window.
+// Initialize electron-store
+const store = new Store();
+
 function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
     webPreferences: {
-      preload: path.join(__dirname, '../preload/main.js'), // We will create this file later
+      preload: path.join(__dirname, '../preload/main.js'),
       sandbox: false,
     },
   });
 
-  // Load the Svelte UI.
-  // In development, this will be a URL provided by Vite.
-  // In production, it will be a local HTML file.
   if (process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
-    // Open the DevTools in development.
     mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
   }
 }
 
-// This method is called when Electron has finished initialization.
 app.whenReady().then(() => {
+  // Set up IPC listeners
+  ipcMain.on('store-token', (event, token: string) => {
+    store.set('deviceToken', token);
+  });
+  ipcMain.handle('get-token', (event) => {
+    return store.get('deviceToken');
+  });
+
   createWindow();
 
-  // On macOS, it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
 
-// Quit when all windows are closed, except on macOS.
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();

@@ -1,22 +1,34 @@
 <script lang="ts">
-  let message: string = "Hello World from Svelte!";
+  import { onMount } from 'svelte';
+  import DeviceSetup from './lib/DeviceSetup.svelte';
+
+  let isDeviceLinked = false;
+  const electron = (window as any).electron;
+
+  onMount(async () => {
+    // Check if a token is already stored.
+    const token = await electron.getToken?.();
+    if (token) {
+      isDeviceLinked = true;
+    }
+  });
 </script>
 
 <main>
-  <h1>{message}</h1>
+  {#if isDeviceLinked}
+    <!-- If the device is linked, we will show the login screen. -->
+    <!-- For now, we'll just show a message. -->
+    <h1>Device is already linked.</h1>
+    <p>Ready to proceed to login.</p>
+  {:else}
+    <!-- If not linked, show the setup component. -->
+    <DeviceSetup />
+  {/if}
 </main>
 
 <style>
   main {
     text-align: center;
     padding: 1em;
-    max-width: 240px;
-    margin: 0 auto;
-  }
-  h1 {
-    color: #ff3e00;
-    text-transform: uppercase;
-    font-size: 4em;
-    font-weight: 100;
   }
 </style>

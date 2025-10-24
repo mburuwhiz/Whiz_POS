@@ -108,9 +108,15 @@ This section describes how to test the new, in-progress system. This involves ru
     *   Click on several products. They should appear in the "Current Order" panel on the right.
     *   The Subtotal, Tax, and Total will update automatically.
 
-3.  **Finalize the Transaction:**
+4.  **Finalize the Transaction:**
     *   Click the "Cash" or "Card" button.
-    *   An alert should confirm "Sale complete!".
+    *   A SweetAlert2 notification will confirm "Sale complete!".
     *   The "Current Order" panel will clear, ready for the next sale.
+
+5.  **Test Super Admin Functionality (Temporary UI):**
+    *   From the main POS view, click the "Super Admin" button in the header.
+    *   Use the form to create a new business and its first administrator.
+    *   The new business will appear in the "Existing Businesses" list.
+    *   Click the "Issue New API Key" button for the new business. A SweetAlert2 popup will display the newly generated, inactive API key.
 
 This confirms that the desktop UI is successfully communicating with the NestJS server, fetching data, and posting new transactions to the database.

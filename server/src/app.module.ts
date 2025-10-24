@@ -9,6 +9,7 @@ import { ProductsModule } from './products/products.module';
 import { TransactionsModule } from './transactions/transactions.module';
 import { DevicesModule } from './devices/devices.module';
 import { DeviceLinkModule } from './device-link/device-link.module';
+import { BusinessesModule } from './businesses/businesses.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { DeviceLinkModule } from './device-link/device-link.module';
     TransactionsModule,
     DevicesModule,
     DeviceLinkModule,
+    BusinessesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

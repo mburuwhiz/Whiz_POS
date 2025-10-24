@@ -16,6 +16,7 @@
     {#if loggedInUser}
       <span>Welcome, {loggedInUser.name}</span>
     {/if}
+    <button class="nav-btn" on:click={() => dispatch('navigate', 'superadmin')}>Super Admin</button>
     <button on:click={handleLogout}>Logout</button>
   </div>
 </header>
@@ -46,5 +47,10 @@
     background-color: #dc3545;
     border-radius: 4px;
     cursor: pointer;
+    border: none;
+    color: white;
+  }
+  .nav-btn {
+    background-color: #007bff;
   }
 </style>

@@ -36,6 +36,7 @@ This is the foundational scaffolding for the new, blueprint-defined architecture
     *   **Test Data:** A seeder script is available to populate the database with a test user and sample products.
     *   **Device Linking:** The desktop app now has a first-time setup screen to link the device to a business using an API key. The server has a mock endpoint to handle this.
     *   **UI/UX Enhancements:** The desktop app now features a professional persistent layout for the POS view, a "Show/Hide" toggle for the PIN entry, and uses SweetAlert2 for improved user feedback.
+    *   **Super Admin Foundation:** A temporary Super Admin UI has been added to the desktop app to allow for the creation of new businesses and the issuing of API keys, as specified in the blueprint. The corresponding server endpoints have been implemented.
 *   **How to Run:**
     1.  `cd server`
     2.  `npm install`

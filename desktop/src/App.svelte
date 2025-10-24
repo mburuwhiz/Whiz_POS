@@ -4,9 +4,10 @@
   import PosTerminal from './components/PosTerminal.svelte';
   import DeviceSetup from './components/DeviceSetup.svelte';
   import Header from './components/Header.svelte';
+  import SuperAdmin from './components/SuperAdmin.svelte';
   import type { User } from '../../shared/models/User';
 
-  let appState: 'setup' | 'login' | 'pos' = 'setup';
+  let appState: 'setup' | 'login' | 'pos' | 'superadmin' = 'setup';
   let currentUser: User | null = null;
 
   onMount(() => {
@@ -32,12 +33,21 @@
     currentUser = null;
     appState = 'login';
   }
+
+  function handleNavigate(event) {
+    appState = event.detail;
+  }
 </script>
 
-{#if appState === 'pos'}
-  <Header loggedInUser={currentUser} on:logout={handleLogout} />
+{#if appState === 'pos' || appState === 'superadmin'}
+  <Header loggedInUser={currentUser} on:logout={handleLogout} on:navigate={handleNavigate} />
   <main class="pos-view">
-    <PosTerminal />
+    {#if appState === 'pos'}
+      <PosTerminal />
+    {:else if appState === 'superadmin'}
+      <SuperAdmin />
+      <button class="nav-btn-back" on:click={() => appState = 'pos'}>Back to POS</button>
+    {/if}
   </main>
 {:else}
   <main class="centered-view">

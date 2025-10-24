@@ -5,9 +5,11 @@
   import DeviceSetup from './components/DeviceSetup.svelte';
   import Header from './components/Header.svelte';
   import SuperAdmin from './components/SuperAdmin.svelte';
+  import CreditSettlement from './components/CreditSettlement.svelte';
+  import EndOfDaySummary from './components/EndOfDaySummary.svelte';
   import type { User } from '../../shared/models/User';
 
-  let appState: 'setup' | 'login' | 'pos' | 'superadmin' = 'setup';
+  let appState: 'setup' | 'login' | 'pos' | 'superadmin' | 'creditSettlement' | 'endOfDaySummary' = 'setup';
   let currentUser: User | null = null;
 
   onMount(() => {
@@ -46,6 +48,12 @@
       <PosTerminal />
     {:else if appState === 'superadmin'}
       <SuperAdmin />
+      <button class="nav-btn-back" on:click={() => appState = 'pos'}>Back to POS</button>
+    {:else if appState === 'creditSettlement'}
+      <CreditSettlement />
+      <button class="nav-btn-back" on:click={() => appState = 'pos'}>Back to POS</button>
+    {:else if appState === 'endOfDaySummary'}
+      <EndOfDaySummary />
       <button class="nav-btn-back" on:click={() => appState = 'pos'}>Back to POS</button>
     {/if}
   </main>

@@ -120,3 +120,38 @@ This section describes how to test the new, in-progress system. This involves ru
     *   Click the "Issue New API Key" button for the new business. A SweetAlert2 popup will display the newly generated, inactive API key.
 
 This confirms that the desktop UI is successfully communicating with the NestJS server, fetching data, and posting new transactions to the database.
+
+---
+
+## 3. Testing New Payment Features (Phase 2)
+
+### a) Testing Credit Payments
+
+1.  **Create a Credit Sale:**
+    *   Follow the steps to create a sale.
+    *   Instead of "Cash" or "Card", click the "Credit" button.
+    *   The sale should be recorded with a payment method of "Credit" and an `isPaid` status of `false`.
+
+2.  **End-of-Day Credit Settlement:**
+    *   Navigate to the end-of-day credit management screen.
+    *   A list of all unpaid credit transactions should be displayed.
+    *   Select one or more transactions and mark them as "Paid".
+    *   The `isPaid` status for these transactions should be updated to `true` in the database.
+
+3.  **End-of-Day Summary:**
+    *   Generate the end-of-day summary report.
+    *   The report should accurately reflect the total sales, with a breakdown of cash, card, and credit payments.
+    *   The credit section should show the total amount of credit extended, the amount that has been paid, and the outstanding balance.
+
+### b) Testing M-Pesa Integration
+
+1.  **Create an M-Pesa Sale:**
+    *   Follow the steps to create a sale.
+    *   Click the "M-Pesa" button.
+    *   The system should prompt for the customer's phone number and initiate the M-Pesa transaction.
+
+2.  **Successful Payment:**
+    *   Upon successful payment, the sale should be recorded with a payment method of "M-Pesa".
+
+3.  **Failed Payment:**
+    *   If the M-Pesa payment fails, the sale should not be recorded, and an appropriate error message should be displayed.

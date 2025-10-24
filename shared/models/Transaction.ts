@@ -6,7 +6,7 @@ export interface TransactionItem {
 }
 
 export interface Payment {
-  method: 'cash' | 'card' | 'mobile_money';
+  method: 'cash' | 'card' | 'mpesa' | 'credit';
   amount: number;
 }
 
@@ -20,5 +20,6 @@ export interface Transaction {
   total: number;
   payments: Payment[];
   status: TransactionStatus;
+  isPaid?: boolean;
   createdAt: Date;
 }

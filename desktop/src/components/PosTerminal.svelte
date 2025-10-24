@@ -46,7 +46,7 @@
     calculateTotals();
   }
 
-  async function createTransaction(paymentMethod: 'cash' | 'card') {
+  async function createTransaction(paymentMethod: 'cash' | 'card' | 'credit' | 'mpesa') {
     if (cart.length === 0) return;
 
     const transactionData = {
@@ -93,6 +93,79 @@
       });
     }
   }
+
+  async function initiateMpesaPayment() {
+    if (cart.length === 0) return;
+
+    const { value: phoneNumber } = await Swal.fire({
+      title: 'Enter Phone Number',
+      input: 'text',
+      inputLabel: 'Phone Number',
+      inputPlaceholder: 'Enter phone number...',
+      showCancelButton: true,
+    });
+
+    if (phoneNumber) {
+      try {
+        const response = await fetch(`${apiBaseUrl}/mpesa/stk-push`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({ amount: total, phoneNumber }),
+        });
+
+        if (response.ok) {
+          const responseData = await response.json();
+          const checkoutRequestID = responseData.CheckoutRequestID;
+
+          Swal.fire({
+            title: 'Processing M-Pesa Payment...',
+            text: 'Please check your phone to complete the payment.',
+            allowOutsideClick: false,
+            didOpen: () => {
+              Swal.showLoading();
+            },
+          });
+
+          // Poll for payment status
+          const interval = setInterval(async () => {
+            const statusResponse = await fetch(`${apiBaseUrl}/mpesa/status/${checkoutRequestID}`);
+            if (statusResponse.ok) {
+              const statusData = await statusResponse.json();
+              if (statusData.ResultCode === '0') {
+                clearInterval(interval);
+                Swal.close();
+                await createTransaction('mpesa');
+              } else if (statusData.ResultCode !== '0' && statusData.ResultDesc !== 'The transaction is being processed') {
+                clearInterval(interval);
+                Swal.fire({
+                  title: 'Error',
+                  text: statusData.ResultDesc,
+                  icon: 'error',
+                });
+              }
+            }
+          }, 2000);
+
+        } else {
+          Swal.fire({
+            title: 'Error',
+            text: 'Failed to initiate STK push.',
+            icon: 'error',
+          });
+        }
+      } catch (error) {
+        console.error('Error initiating M-Pesa payment:', error);
+        Swal.fire({
+          title: 'Connection Error',
+          text: 'Could not connect to the server.',
+          icon: 'error',
+        });
+      }
+    }
+  }
 </script>
 
 <div class="pos-terminal-container">
@@ -125,6 +198,8 @@
   <div class="action-panel">
     <button class="action-btn cash" on:click={() => createTransaction('cash')}>Cash</button>
     <button class="action-btn card" on:click={() => createTransaction('card')}>Card</button>
+    <button class="action-btn credit" on:click={() => createTransaction('credit')}>Credit</button>
+    <button class="action-btn mpesa" on:click={initiateMpesaPayment}>M-Pesa</button>
     <button class="action-btn void" on:click={clearCart}>Void</button>
   </div>
 </div>
@@ -192,7 +267,7 @@
   }
   .action-panel {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 1rem;
   }
   .action-btn {
@@ -203,5 +278,7 @@
   }
   .cash { background-color: #28a745; }
   .card { background-color: #007bff; }
+  .credit { background-color: #ffc107; }
+  .mpesa { background-color: #42b883; }
   .void { background-color: #dc3545; }
 </style>

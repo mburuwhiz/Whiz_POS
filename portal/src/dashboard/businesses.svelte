@@ -60,6 +60,48 @@
       console.error('Error creating business:', error);
     }
   }
+
+  async function issueApiKey(businessId: string) {
+    const token = localStorage.getItem('portal_token');
+    try {
+      const response = await fetch(`${apiBaseUrl}/businesses/${businessId}/issue-api-key`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+      });
+
+      if (response.ok) {
+        await onMount(); // Refresh the list
+      } else {
+        console.error('Failed to issue API key');
+      }
+    } catch (error) {
+      console.error('Error issuing API key:', error);
+    }
+  }
+
+  async function activateApiKey(businessId: string, key: string) {
+    const token = localStorage.getItem('portal_token');
+    try {
+      const response = await fetch(`${apiBaseUrl}/businesses/${businessId}/activate-key`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ key }),
+      });
+
+      if (response.ok) {
+        await onMount(); // Refresh the list
+      } else {
+        console.error('Failed to activate API key');
+      }
+    } catch (error) {
+      console.error('Error activating API key:', error);
+    }
+  }
 </script>
 
 <style>
@@ -107,7 +149,8 @@
     <tr>
       <th>Name</th>
       <th>Region</th>
-      <th>Admin User ID</th>
+      <th>API Keys</th>
+      <th>Actions</th>
     </tr>
   </thead>
   <tbody>
@@ -115,7 +158,26 @@
       <tr>
         <td>{business.name}</td>
         <td>{business.region}</td>
-        <td>{business.adminUserId}</td>
+        <td>
+          {#if business.apiKeys.length > 0}
+            {#each business.apiKeys as apiKey}
+              <div>{apiKey.key} ({apiKey.status})</div>
+            {/each}
+          {:else}
+            No keys issued
+          {/if}
+        </td>
+        <td>
+          {#if business.apiKeys.length === 0}
+            <button on:click={() => issueApiKey(business._id)}>Issue Key</button>
+          {:else}
+            {#each business.apiKeys as apiKey}
+              {#if apiKey.status === 'Inactive'}
+                <button on:click={() => activateApiKey(business._id, apiKey.key)}>Activate Key</button>
+              {/if}
+            {/each}
+          {/if}
+        </td>
       </tr>
     {/each}
   </tbody>

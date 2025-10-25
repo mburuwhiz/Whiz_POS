@@ -1,157 +1,137 @@
-# WHIZ POS v2.0 - Testing Guide
+# WHIZ POS v2.0 - Modern Testing Guide
 
-This document provides instructions on how to run and test the two parallel applications currently in the repository.
-
----
-
-## 1. Testing the Original Express.js Application (Legacy)
-
-This will run the original server on `http://localhost:3000`.
-
-### a) Prerequisites
-
-*   A running MongoDB instance.
-*   A `.env` file in the root directory with a valid `MONGO_URI`. You can copy `.env.example` to get started.
-
-### b) Steps to Run
-
-1.  **Install Dependencies:**
-    ```bash
-    npm install
-    ```
-
-2.  **Run the Super Admin Seeder (if first time):**
-    This script creates the initial Super Admin user based on the credentials in your `.env` file.
-    ```bash
-    node src/server/scripts/createSuperAdmin.js
-    ```
-
-3.  **Start the Server:**
-    ```bash
-    npm start
-    ```
-
-4.  **Access the Application:**
-    *   Open your web browser and navigate to `http://localhost:3000/login`.
-    *   You can log in with the Super Admin credentials to access the dashboard.
+This document provides a comprehensive guide for setting up and testing the full WHIZ POS v2.0 application stack, including the NestJS server, the Electron desktop app, and the SvelteKit portal.
 
 ---
 
-## 2. Testing the New NestJS Application & Desktop App
-
-This section describes how to test the new, in-progress system. This involves running the NestJS server and the Electron desktop app in parallel.
-
-### a) Prerequisites
+## 1. Prerequisites
 
 *   A running MongoDB instance.
-*   A `.env` file in the `server/` directory with a valid `MONGO_URI`.
+*   Node.js and npm installed.
 
-### b) Terminal 1: Running the NestJS Server
+---
+
+## 2. Setup and Configuration
+
+### a) Server (`.env`)
+
+1.  Navigate to the `server/` directory.
+2.  Create a `.env` file by copying the `.env.example`.
+3.  Fill in the required values:
+    *   `MONGO_URI`: Your MongoDB connection string.
+    *   `JWT_SECRET` & `DEVICE_SECRET`: Any long, random strings for security.
+    *   **M-Pesa Credentials**: If testing M-Pesa, fill in your sandbox credentials from the Safaricom Developer Portal.
+
+### b) Desktop App (`.env`)
+
+1.  Navigate to the `desktop/` directory.
+2.  Create a `.env` file.
+3.  Add the following line, pointing to your running server:
+    ```
+    VITE_APP_API_URL=http://localhost:4001
+    ```
+
+### c) Portal App (`.env`)
+
+1.  Navigate to the `portal/` directory.
+2.  Create a `.env` file.
+3.  Add the following line, pointing to your running server:
+    ```
+    VITE_APP_API_URL=http://localhost:4001
+    ```
+
+---
+
+## 3. Running the Full Stack
+
+You will need three separate terminals to run the entire application.
+
+### a) Terminal 1: Start the NestJS Server
 
 1.  **Navigate to the Server Directory:**
     ```bash
     cd server
     ```
-
 2.  **Install Dependencies (if first time):**
     ```bash
     npm install
     ```
-
-3.  **Seed the Database (if first time or to reset):**
-    This will create a test user (PIN: 1234) and sample products.
+3.  **Seed the Database (Recommended):**
+    This creates a test Super Admin, a regular user, and sample products.
     ```bash
     npm run seed
     ```
-
-4.  **Start the Server in Development Mode:**
+4.  **Start the Server:**
     ```bash
     npm run start:dev
     ```
-    The server will start and listen on `http://localhost:4001`.
+    The server will run on `http://localhost:4001`.
 
-### c) Terminal 2: Running the Electron Desktop App
+### b) Terminal 2: Start the Electron Desktop App
 
 1.  **Navigate to the Desktop Directory:**
     ```bash
     cd desktop
     ```
-
 2.  **Install Dependencies (if first time):**
     ```bash
     npm install
     ```
-
-3.  **Start the App in Development Mode:**
+3.  **Start the App:**
     ```bash
     npm run dev
     ```
-    The Electron application window will open.
+    The POS application window will open.
 
-### d) Testing the Full Application Flow
+### c) Terminal 3: Start the SvelteKit Portal App
 
-1.  **First-Time Device Setup:**
-    *   Before the first run, ensure there is no `deviceToken` in the application's `localStorage`. You can clear this in the Electron DevTools (`Application > Local Storage`).
-    *   On launch, you should see the "Device Setup" screen.
-    *   Enter the test API Key: `WHIZ-XXXXX` and click "Link Device".
-    *   You should be redirected to the PIN Login screen. A `deviceToken` will now be stored in `localStorage`.
-    *   On subsequent launches, the app will skip this step.
-
-2.  **PIN Login:**
-    *   The user dropdown should now be populated with "Jane Cashier". Select her.
-    *   Use the numeric keypad to enter the PIN: `1234`.
-    *   You can press and hold the "eye" icon to the right of the PIN dots to temporarily see the digits you have entered.
-    *   Click "Enter". You should be successfully logged in and see the main POS Terminal screen with a professional header.
-
-3.  **Create a Sale:**
-    *   The left panel should display a grid of products (Espresso, Latte, etc.).
-    *   Click on several products. They should appear in the "Current Order" panel on the right.
-    *   The Subtotal, Tax, and Total will update automatically.
-
-4.  **Finalize the Transaction:**
-    *   Click the "Cash" or "Card" button.
-    *   A SweetAlert2 notification will confirm "Sale complete!".
-    *   The "Current Order" panel will clear, ready for the next sale.
-
-5.  **Test Super Admin Functionality (Temporary UI):**
-    *   From the main POS view, click the "Super Admin" button in the header.
-    *   Use the form to create a new business and its first administrator.
-    *   The new business will appear in the "Existing Businesses" list.
-    *   Click the "Issue New API Key" button for the new business. A SweetAlert2 popup will display the newly generated, inactive API key.
-
-This confirms that the desktop UI is successfully communicating with the NestJS server, fetching data, and posting new transactions to the database.
+1.  **Navigate to the Portal Directory:**
+    ```bash
+    cd portal
+    ```
+2.  **Install Dependencies (if first time):**
+    ```bash
+    npm install
+    ```
+3.  **Start the App:**
+    ```bash
+    npm run dev
+    ```
+    The portal will be available at `http://localhost:5173`.
 
 ---
 
-## 3. Testing New Payment Features (Phase 2)
+## 4. Testing Procedures
 
-### a) Testing Credit Payments
+### a) Whiz Cloud Portal (Super Admin)
 
-1.  **Create a Credit Sale:**
-    *   Follow the steps to create a sale.
-    *   Instead of "Cash" or "Card", click the "Credit" button.
-    *   The sale should be recorded with a payment method of "Credit" and an `isPaid` status of `false`.
+1.  **Login:**
+    *   Open `http://localhost:5173` in your browser.
+    *   Log in with the Super Admin credentials (from the seeder or your `.env` file).
+2.  **Business Management:**
+    *   You should be redirected to the `/dashboard/businesses` page.
+    *   Verify that you can see a list of businesses.
+    *   Click "Add New Business", fill out the form, and confirm that the new business appears in the list.
+3.  **API Key Lifecycle:**
+    *   For a new business with no keys, click "Issue Key". Verify that a new, 'Inactive' key appears.
+    *   Click the "Activate Key" button next to the inactive key. Verify that its status changes to 'Active'.
 
-2.  **End-of-Day Credit Settlement:**
-    *   Navigate to the end-of-day credit management screen.
-    *   A list of all unpaid credit transactions should be displayed.
-    *   Select one or more transactions and mark them as "Paid".
-    *   The `isPaid` status for these transactions should be updated to `true` in the database.
+### b) Desktop POS App (Cashier)
 
-3.  **End-of-Day Summary:**
-    *   Generate the end-of-day summary report.
-    *   The report should accurately reflect the total sales, with a breakdown of cash, card, and credit payments.
-    *   The credit section should show the total amount of credit extended, the amount that has been paid, and the outstanding balance.
-
-### b) Testing M-Pesa Integration
-
-1.  **Create an M-Pesa Sale:**
-    *   Follow the steps to create a sale.
-    *   Click the "M-Pesa" button.
-    *   The system should prompt for the customer's phone number and initiate the M-Pesa transaction.
-
-2.  **Successful Payment:**
-    *   Upon successful payment, the sale should be recorded with a payment method of "M-Pesa".
-
-3.  **Failed Payment:**
-    *   If the M-Pesa payment fails, the sale should not be recorded, and an appropriate error message should be displayed.
+1.  **First-Time Device Linking:**
+    *   Clear `localStorage` in the Electron DevTools.
+    *   On launch, enter the 'Active' API Key you created in the portal.
+    *   Confirm you are redirected to the PIN login screen.
+2.  **Login & Sales:**
+    *   Log in with a cashier's PIN (e.g., `1234` for the seeded user).
+    *   Add items to the cart.
+    *   Test each payment method: **Cash**, **Card**, **Credit**, and **M-Pesa**.
+    *   Confirm that after each sale, a success message is shown and a receipt file is generated in the `server/receipts` directory.
+3.  **Credit Settlement & Summary:**
+    *   After making a few **Credit** sales, click "Credit Settlement" in the header.
+    *   Verify you can see the list of unpaid transactions.
+    *   Mark a few as "Paid" and confirm they disappear from the list.
+    *   Click "End of Day Summary" and verify that the sales totals are correct and broken down by payment type, including paid/unpaid credit.
+4.  **Product Management:**
+    *   Click "Product Management" in the header.
+    *   Verify you can create, update, and delete products. Changes should be reflected in the main POS terminal view.

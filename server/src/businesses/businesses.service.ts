@@ -39,12 +39,8 @@ export class BusinessesService {
     return this.businessModel.find().exec();
   }
 
-  async findBusinessById(id: string): Promise<Business> {
-    return this.businessModel.findById(id).exec();
-  }
-
   async issueApiKey(businessId: string): Promise<Business> {
-    const business = await this.findBusinessById(businessId);
+    const business = await this.businessModel.findById(businessId);
     if (!business) {
       throw new Error('Business not found');
     }
@@ -52,27 +48,11 @@ export class BusinessesService {
     const apiKey = `WHIZ-${Math.random().toString(36).substr(2, 10).toUpperCase()}`;
     business.apiKeys.push({
       key: apiKey,
-      status: 'Inactive',
+      active: false, // Inactive by default as per blueprint
       issuedAt: new Date(),
     });
 
-    await (business as any).save();
-    return business;
-  }
-
-  async activateApiKey(businessId: string, key: string): Promise<Business> {
-    const business = await this.findBusinessById(businessId);
-    if (!business) {
-      throw new Error('Business not found');
-    }
-
-    const apiKey = business.apiKeys.find(k => k.key === key);
-    if (!apiKey) {
-      throw new Error('API Key not found');
-    }
-
-    apiKey.status = 'Active';
-    await (business as any).save();
+    await business.save();
     return business;
   }
 }

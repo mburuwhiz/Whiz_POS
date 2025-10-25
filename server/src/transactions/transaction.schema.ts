@@ -19,6 +19,5 @@ export const TransactionSchema = new mongoose.Schema({
     },
   ],
   status: { type: String, required: true, default: 'COMPLETED' },
-  isPaid: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now },
 });

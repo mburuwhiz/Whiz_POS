@@ -16,9 +16,6 @@
     {#if loggedInUser}
       <span>Welcome, {loggedInUser.name}</span>
     {/if}
-    <button class="nav-btn" on:click={() => dispatch('navigate', 'productManagement')}>Product Management</button>
-    <button class="nav-btn" on:click={() => dispatch('navigate', 'creditSettlement')}>Credit Settlement</button>
-    <button class="nav-btn" on:click={() => dispatch('navigate', 'endOfDaySummary')}>End of Day Summary</button>
     <button class="nav-btn" on:click={() => dispatch('navigate', 'superadmin')}>Super Admin</button>
     <button on:click={handleLogout}>Logout</button>
   </div>

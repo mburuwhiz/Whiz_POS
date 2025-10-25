@@ -6,7 +6,7 @@ export const BusinessSchema = new mongoose.Schema({
   apiKeys: [
     {
       key: { type: String, required: true, unique: true },
-      status: { type: String, default: 'Inactive' },
+      active: { type: Boolean, default: false },
       issuedAt: { type: Date, default: Date.now },
     },
   ],

@@ -5,14 +5,9 @@
   import DeviceSetup from './components/DeviceSetup.svelte';
   import Header from './components/Header.svelte';
   import SuperAdmin from './components/SuperAdmin.svelte';
-  import CreditSettlement from './components/CreditSettlement.svelte';
-  import EndOfDaySummary from './components/EndOfDaySummary.svelte';
-  import ProductManagement from './components/ProductManagement.svelte';
-  import Receipt from './components/Receipt.svelte';
   import type { User } from '../../shared/models/User';
-  import type { Transaction } from '../../shared/models/Transaction';
 
-  let appState: 'setup' | 'login' | 'pos' | 'superadmin' | 'creditSettlement' | 'endOfDaySummary' | 'productManagement' = 'setup';
+  let appState: 'setup' | 'login' | 'pos' | 'superadmin' = 'setup';
   let currentUser: User | null = null;
 
   onMount(() => {
@@ -44,22 +39,13 @@
   }
 </script>
 
-{#if appState === 'pos' || appState === 'superadmin' || appState === 'creditSettlement' || appState === 'endOfDaySummary' || appState === 'productManagement'}
+{#if appState === 'pos' || appState === 'superadmin'}
   <Header loggedInUser={currentUser} on:logout={handleLogout} on:navigate={handleNavigate} />
   <main class="pos-view">
     {#if appState === 'pos'}
       <PosTerminal />
     {:else if appState === 'superadmin'}
       <SuperAdmin />
-      <button class="nav-btn-back" on:click={() => appState = 'pos'}>Back to POS</button>
-    {:else if appState === 'creditSettlement'}
-      <CreditSettlement />
-      <button class="nav-btn-back" on:click={() => appState = 'pos'}>Back to POS</button>
-    {:else if appState === 'endOfDaySummary'}
-      <EndOfDaySummary />
-      <button class="nav-btn-back" on:click={() => appState = 'pos'}>Back to POS</button>
-    {:else if appState === 'productManagement'}
-      <ProductManagement />
       <button class="nav-btn-back" on:click={() => appState = 'pos'}>Back to POS</button>
     {/if}
   </main>

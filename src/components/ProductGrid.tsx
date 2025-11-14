@@ -32,9 +32,15 @@ export default function ProductGrid() {
             <div>
               <div className="aspect-square bg-gray-200 rounded-md mb-3 flex items-center justify-center overflow-hidden">
                 <img
-                  src={product.image}
+                  src={product.image || product.localImage || './assets/cart.png'}
                   alt={product.name}
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    if (target.src !== './assets/cart.png') {
+                      target.src = './assets/cart.png';
+                    }
+                  }}
                 />
               </div>
               <h3 className="font-medium text-gray-800 text-sm mb-1">{product.name}</h3>

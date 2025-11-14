@@ -44,6 +44,7 @@ export interface Product {
   price: number;
   category: string;
   image: string;
+  localImage?: string;
   available: boolean;
   stock?: number;
   minStock?: number;
@@ -117,10 +118,13 @@ export interface BusinessSetup {
   printerType: 'thermal' | 'standard';
   selectedPrinter?: string;
   showPrintPreview?: boolean;
-  onScreenKeyboard?: boolean;
   isSetup: boolean;
   isLoggedIn: boolean; // Added for login state
   createdAt: string;
+  servedByLabel?: string;
+  mpesaPaybill?: string;
+  mpesaTill?: string;
+  mpesaAccountNumber?: string;
 }
 
 export interface CreditTransaction {
@@ -165,8 +169,7 @@ interface PosState {
   isSetupWizardOpen: boolean;
   isLoginOpen: boolean;
   isKeyboardOpen: boolean;
-  keyboardTarget: EventTarget | null;
-  onKeyboardValueChange: ((value: string) => void) | null;
+  activeInput: HTMLInputElement | HTMLTextAreaElement | null;
   currentPage: 'pos' | 'reports' | 'customers' | 'settings' | 'closing' | 'dashboard' | 'inventory' | 'loyalty' | 'scanner' | 'sync' | 'register' | 'backoffice';
   // Settings
   isOnline: boolean;
@@ -195,7 +198,7 @@ interface PosState {
   closeSetupWizard: () => void;
   openLogin: () => void;
   closeLogin: () => void;
-  openKeyboard: (target: EventTarget, onValueChange: (value: string) => void) => void;
+  openKeyboard: (inputElement: HTMLInputElement | HTMLTextAreaElement) => void;
   closeKeyboard: () => void;
   updateKeyboardTargetValue: (value: string) => void;
   setCurrentPage: (page: PosState['currentPage']) => void;
@@ -253,7 +256,7 @@ export const usePosStore = create<PosState>()(
       isSetupWizardOpen: true,
       isLoginOpen: true,
       isKeyboardOpen: false,
-      keyboardTarget: null,
+      activeInput: null,
       currentPage: 'pos',
       isOnline: navigator.onLine,
       syncQueue: [],
@@ -327,20 +330,27 @@ export const usePosStore = create<PosState>()(
       closeSetupWizard: () => set({ isSetupWizardOpen: false }),
       openLogin: () => set({ isLoginOpen: true }),
       closeLogin: () => set({ isLoginOpen: false }),
-      openKeyboard: (target, onValueChange) => set({ isKeyboardOpen: true, keyboardTarget: target, onKeyboardValueChange: onValueChange }),
-      closeKeyboard: () => set({ isKeyboardOpen: false, keyboardTarget: null, onKeyboardValueChange: null }),
+      openKeyboard: (inputElement) => set({ isKeyboardOpen: true, activeInput: inputElement }),
+      closeKeyboard: () => set({ isKeyboardOpen: false, activeInput: null }),
       updateKeyboardTargetValue: (value) => {
-        const { onKeyboardValueChange, keyboardTarget } = get();
-        if (onKeyboardValueChange && keyboardTarget) {
-          const target = keyboardTarget as HTMLInputElement;
-          let currentValue = target.value;
+        const { activeInput } = get();
+        if (activeInput) {
+          const currentValue = activeInput.value;
+          let newValue;
 
           if (value === 'backspace') {
-            currentValue = currentValue.slice(0, -1);
+            newValue = currentValue.slice(0, -1);
           } else {
-            currentValue += value;
+            newValue = currentValue + value;
           }
-          onKeyboardValueChange(currentValue);
+
+          const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+            window.HTMLInputElement.prototype,
+            'value'
+          )?.set;
+          nativeInputValueSetter?.call(activeInput, newValue);
+          const event = new Event('input', { bubbles: true });
+          activeInput.dispatchEvent(event);
         }
       },
       setCurrentPage: (page) => set({ currentPage: page }),
@@ -682,12 +692,19 @@ export const usePosStore = create<PosState>()(
         const state = get();
         if (product.image && !product.image.startsWith('http')) {
           try {
-            const { imageUrl } = await window.electron.uploadImage(product.image, state.businessSetup.apiUrl, state.businessSetup.apiKey);
-            product.image = imageUrl;
+            const { path: localPath } = await window.electron.saveImage(product.image);
+            product.localImage = localPath;
+
+            if (state.isOnline) {
+              const { imageUrl } = await window.electron.uploadImage(product.image, state.businessSetup.apiUrl, state.businessSetup.apiKey);
+              product.image = imageUrl;
+            } else {
+              product.image = '';
+              state.addToSyncQueue({ type: 'upload-image', data: { productId: product.id, path: product.image } });
+            }
           } catch (error) {
-            console.error('Image upload failed:', error);
-            // Decide how to handle this - maybe save with a placeholder?
-            product.image = ''; // Or a placeholder URL
+            console.error('Image handling failed:', error);
+            product.image = '';
           }
         }
 
@@ -703,11 +720,19 @@ export const usePosStore = create<PosState>()(
         const state = get();
         if (updates.image && !updates.image.startsWith('http')) {
           try {
-            const { imageUrl } = await window.electron.uploadImage(updates.image, state.businessSetup.apiUrl, state.businessSetup.apiKey);
-            updates.image = imageUrl;
+            const { path: localPath } = await window.electron.saveImage(updates.image);
+            updates.localImage = localPath;
+
+            if (state.isOnline) {
+              const { imageUrl } = await window.electron.uploadImage(updates.image, state.businessSetup.apiUrl, state.businessSetup.apiKey);
+              updates.image = imageUrl;
+            } else {
+              updates.image = '';
+              state.addToSyncQueue({ type: 'upload-image', data: { productId: id, path: updates.image } });
+            }
           } catch (error) {
-            console.error('Image upload failed:', error);
-            updates.image = ''; // Or a placeholder URL
+            console.error('Image handling failed:', error);
+            updates.image = '';
           }
         }
 
@@ -761,11 +786,38 @@ export const usePosStore = create<PosState>()(
           'business-setup.json': 'businessSetup'
         };
 
+        let isSetup = false;
         for (const fileName of fileNames) {
           const { data } = await readDataFromFile(fileName);
           if (data) {
             set({ [dataMap[fileName]]: data });
+            if (fileName === 'business-setup.json' && data.isSetup) {
+              isSetup = true;
+            }
           }
+        }
+
+        if (!isSetup && process.env.NODE_ENV === 'development') {
+          // Create dummy data for testing
+          const dummyBusinessSetup = {
+            businessName: 'Test Business',
+            address: '123 Test Street',
+            phone: '123-456-7890',
+            email: 'test@test.com',
+            isSetup: true,
+            isLoggedIn: false,
+            isTest: true,
+          };
+          const dummyUser = {
+            id: 'USR-TEST',
+            name: 'Test User',
+            pin: '1234',
+            role: 'admin',
+          };
+          set({
+            businessSetup: dummyBusinessSetup,
+            users: [dummyUser],
+          });
         }
         set({ isDataLoaded: true });
       },

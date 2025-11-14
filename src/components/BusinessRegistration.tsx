@@ -11,6 +11,10 @@ export default function BusinessRegistration() {
     phone: '',
     address: '',
     pin: '1234', // Default PIN for the admin user
+    servedByLabel: 'Cashier',
+    mpesaPaybill: '',
+    mpesaTill: '',
+    mpesaAccountNumber: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState('');
@@ -25,6 +29,10 @@ export default function BusinessRegistration() {
       address: formData.address,
       phone: formData.phone,
       email: formData.email,
+      servedByLabel: formData.servedByLabel,
+      mpesaPaybill: formData.mpesaPaybill,
+      mpesaTill: formData.mpesaTill,
+      mpesaAccountNumber: formData.mpesaAccountNumber,
       isSetup: true,
       isLoggedIn: false, // Ensure login is required after setup
     };
@@ -140,6 +148,62 @@ export default function BusinessRegistration() {
                 onChange={handleInputChange('address')}
                 className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="123 Business Street, City, Country"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  "Served By" Label
+                </label>
+                <input
+                  type="text"
+                  value={formData.servedByLabel}
+                  onChange={handleInputChange('servedByLabel')}
+                  className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="e.g., Cashier, Server"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  M-Pesa Paybill
+                </label>
+                <input
+                  type="text"
+                  value={formData.mpesaPaybill}
+                  onChange={handleInputChange('mpesaPaybill')}
+                  className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter Paybill number"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  M-Pesa Till
+                </label>
+                <input
+                  type="text"
+                  value={formData.mpesaTill}
+                  onChange={handleInputChange('mpesaTill')}
+                  className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter Till number"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                M-Pesa Account Number
+              </label>
+              <input
+                type="text"
+                value={formData.mpesaAccountNumber}
+                onChange={handleInputChange('mpesaAccountNumber')}
+                className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter Account number"
               />
             </div>
 

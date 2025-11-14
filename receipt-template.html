@@ -2,69 +2,60 @@
 <html>
 <head>
     <style>
-        body { font-family: 'monospace'; width: 80mm; margin: 0; padding: 10px; box-sizing: border-box; }
-        .center { text-align: center; }
-        .bold { font-weight: bold; }
-        .header { font-size: 24px; }
-        .table { width: 100%; border-collapse: collapse; }
-        .table th, .table td { padding: 5px; }
-        .table .item { text-align: left; }
-        .table .qty { text-align: center; }
-        .table .price { text-align: right; }
-        .totals { margin-top: 10px; }
-        .totals .row .label { text-align: left; }
-        .totals .row .value { text-align: right; }
-        .qr-code { margin: 10px auto; }
+        body { font-family: 'monospace'; font-size: 10px; }
+        .header { text-align: center; margin-bottom: 10px; }
+        .item-row { display: flex; justify-content: space-between; }
+        .totals-row { display: flex; justify-content: space-between; font-weight: bold; }
+        hr { border-top: 1px dashed black; }
     </style>
 </head>
 <body>
-    <div class="center">
-        <h1 class="header bold">{{businessName}}</h1>
-        <p>KAGWE TOWN</p>
-        <p>{{businessAddress}}</p>
-        <p>Tel: {{businessPhone}}</p>
+    <div class="header">
+        <h2>{{businessName}}</h2>
+        <p>{{address}}</p>
+        <p>Phone: {{phone}}</p>
     </div>
     <hr>
-    {{reprintHeader}}
-    <p>Receipt No: {{receiptId}}</p>
-    <p>Date: {{date}}</p>
-    <p>Payment Method: {{paymentMethod}}</p>
-    <hr>
-    <table class="table">
-        <thead>
-            <tr>
-                <th class="item">Item</th>
-                <th class="qty">Qty</th>
-                <th class="price">Amount</th>
-            </tr>
-        </thead>
-        <tbody>
-            {{items}}
-        </tbody>
-    </table>
-    <hr>
-    <div class="totals">
-        <div class="row">
-            <span class="label">Subtotal</span>
-            <span class="value">{{subtotal}}</span>
-        </div>
-        <div class="row">
-            <span class="label">Tax</span>
-            <span class="value">{{tax}}</span>
-        </div>
-        <hr>
-        <div class="row bold">
-            <span class="label">TOTAL</span>
-            <span class="value">{{total}}</span>
-        </div>
-        <hr>
+    <div>
+        <p>Receipt: {{receiptId}}</p>
+        <p>Date: {{date}}</p>
+        <p>Served By: {{servedBy}}</p>
     </div>
-    <p>Cashier: {{cashier}}</p>
-    <div class="center">
-        <p>Thank You For Choosing us!</p>
-        {{qrCode}}
-        <p>System Designed and serviced by Whiz tech</p>
-        <p>Tell: 0740 841 168</p>
+    <hr>
+    <div>
+        {{#items}}
+        <div class="item-row">
+            <span>{{name}}</span>
+            <span>{{quantity}} x {{price}}</span>
+            <span>{{total}}</span>
+        </div>
+        {{/items}}
+    </div>
+    <hr>
+    <div>
+        <div class="totals-row">
+            <span>Subtotal:</span>
+            <span>{{subtotal}}</span>
+        </div>
+        <div class="totals-row">
+            <span>Tax:</span>
+            <span>{{tax}}</span>
+        </div>
+        <div class="totals-row">
+            <span>Total:</span>
+            <span>{{total}}</span>
+        </div>
+    </div>
+    <hr>
+    <div>
+        <p>Payment Method: {{paymentMethod}}</p>
+        {{#if mpesaPaybill}}
+        <p>Paybill: {{mpesaPaybill}} | A/C No: {{mpesaAccountNumber}}</p>
+        {{/if}}
+    </div>
+    <hr>
+    <div class="header">
+        <p>{{receiptFooter}}</p>
     </div>
 </body>
 </html>

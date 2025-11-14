@@ -44,6 +44,7 @@ export interface Product {
   price: number;
   category: string;
   image: string;
+  localImage?: string;
   available: boolean;
   stock?: number;
   minStock?: number;
@@ -78,7 +79,10 @@ export interface CreditCustomer {
   id: string;
   name: string;
   phone: string;
-  creditSales: CreditSale[];
+  totalCredit: number;
+  paidAmount: number;
+  balance: number;
+  transactions: string[]; // Store transaction IDs
   createdAt: string;
   lastUpdated: string;
 }
@@ -121,6 +125,12 @@ export interface BusinessSetup {
   isSetup: boolean;
   isLoggedIn: boolean; // Added for login state
   createdAt: string;
+  servedByLabel: string;
+  mpesaPaybill: string;
+  mpesaTill: string;
+  mpesaAccountNumber: string;
+  tax: number;
+  subtotal: number;
 }
 
 export interface CreditTransaction {
@@ -165,8 +175,7 @@ interface PosState {
   isSetupWizardOpen: boolean;
   isLoginOpen: boolean;
   isKeyboardOpen: boolean;
-  keyboardTarget: EventTarget | null;
-  onKeyboardValueChange: ((value: string) => void) | null;
+  activeInput: HTMLInputElement | HTMLTextAreaElement | null;
   currentPage: 'pos' | 'reports' | 'customers' | 'settings' | 'closing' | 'dashboard' | 'inventory' | 'loyalty' | 'scanner' | 'sync' | 'register' | 'backoffice';
   // Settings
   isOnline: boolean;
@@ -195,7 +204,7 @@ interface PosState {
   closeSetupWizard: () => void;
   openLogin: () => void;
   closeLogin: () => void;
-  openKeyboard: (target: EventTarget, onValueChange: (value: string) => void) => void;
+  openKeyboard: (inputElement: HTMLInputElement | HTMLTextAreaElement) => void;
   closeKeyboard: () => void;
   updateKeyboardTargetValue: (value: string) => void;
   setCurrentPage: (page: PosState['currentPage']) => void;
@@ -253,7 +262,7 @@ export const usePosStore = create<PosState>()(
       isSetupWizardOpen: true,
       isLoginOpen: true,
       isKeyboardOpen: false,
-      keyboardTarget: null,
+      activeInput: null,
       currentPage: 'pos',
       isOnline: navigator.onLine,
       syncQueue: [],
@@ -327,20 +336,27 @@ export const usePosStore = create<PosState>()(
       closeSetupWizard: () => set({ isSetupWizardOpen: false }),
       openLogin: () => set({ isLoginOpen: true }),
       closeLogin: () => set({ isLoginOpen: false }),
-      openKeyboard: (target, onValueChange) => set({ isKeyboardOpen: true, keyboardTarget: target, onKeyboardValueChange: onValueChange }),
-      closeKeyboard: () => set({ isKeyboardOpen: false, keyboardTarget: null, onKeyboardValueChange: null }),
+      openKeyboard: (inputElement) => set({ isKeyboardOpen: true, activeInput: inputElement }),
+      closeKeyboard: () => set({ isKeyboardOpen: false, activeInput: null }),
       updateKeyboardTargetValue: (value) => {
-        const { onKeyboardValueChange, keyboardTarget } = get();
-        if (onKeyboardValueChange && keyboardTarget) {
-          const target = keyboardTarget as HTMLInputElement;
-          let currentValue = target.value;
+        const { activeInput } = get();
+        if (activeInput) {
+          const currentValue = activeInput.value;
+          let newValue;
 
           if (value === 'backspace') {
-            currentValue = currentValue.slice(0, -1);
+            newValue = currentValue.slice(0, -1);
           } else {
-            currentValue += value;
+            newValue = currentValue + value;
           }
-          onKeyboardValueChange(currentValue);
+
+          const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+            window.HTMLInputElement.prototype,
+            'value'
+          )?.set;
+          nativeInputValueSetter?.call(activeInput, newValue);
+          const event = new Event('input', { bubbles: true });
+          activeInput.dispatchEvent(event);
         }
       },
       setCurrentPage: (page) => set({ currentPage: page }),
@@ -351,7 +367,7 @@ export const usePosStore = create<PosState>()(
         if (!state.currentCashier) return;
 
         const subtotal = state.cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-        const tax = 0;
+        const tax = 0; // Assuming tax is handled elsewhere or is 0
         const total = subtotal + tax;
 
         const transaction: Transaction = {
@@ -372,36 +388,38 @@ export const usePosStore = create<PosState>()(
 
         // Handle credit customer
         if (paymentMethod === 'credit' && creditCustomerName) {
-          const newCreditSale: CreditSale = {
-            transactionId: transaction.id,
-            amount: total,
-            paidAmount: 0,
-            status: 'unpaid',
-          };
+            const existingCustomer = state.creditCustomers.find(c => c.name === creditCustomerName);
 
-          const existingCustomer = state.creditCustomers.find(c => c.name === creditCustomerName);
-          if (existingCustomer) {
-            state.updateCreditCustomer(existingCustomer.id, {
-              creditSales: [...existingCustomer.creditSales, newCreditSale],
-              lastUpdated: new Date().toISOString()
-            });
-          } else {
-            const newCustomer: CreditCustomer = {
-              id: `CUST${Date.now()}`,
-              name: creditCustomerName,
-              phone: '',
-              creditSales: [newCreditSale],
-              createdAt: new Date().toISOString(),
-              lastUpdated: new Date().toISOString()
-            };
-            state.saveCreditCustomer(newCustomer);
-          }
+            if (existingCustomer) {
+                const updatedCustomer: Partial<CreditCustomer> = {
+                    totalCredit: (existingCustomer.totalCredit || 0) + total,
+                    balance: (existingCustomer.balance || 0) + total,
+                    transactions: [...(existingCustomer.transactions || []), transaction.id],
+                    lastUpdated: new Date().toISOString(),
+                };
+                state.updateCreditCustomer(existingCustomer.id, updatedCustomer);
+            } else {
+                // If the customer does not exist, this function should ideally not be called.
+                // A new customer should be created through a separate UI flow first.
+                // However, to prevent data loss, we can create a new one.
+                const newCustomer: CreditCustomer = {
+                    id: `CUST${Date.now()}`,
+                    name: creditCustomerName,
+                    phone: '', // Phone should be added via an "Add Customer" form
+                    totalCredit: total,
+                    paidAmount: 0,
+                    balance: total,
+                    transactions: [transaction.id],
+                    createdAt: new Date().toISOString(),
+                    lastUpdated: new Date().toISOString()
+                };
+                state.saveCreditCustomer(newCustomer);
+            }
         }
 
         state.clearCart();
         state.closeCheckout();
 
-        // Trigger printing
         if (window.electron && state.businessSetup) {
           window.electron.printReceipt(transaction, state.businessSetup, false);
         }
@@ -433,11 +451,25 @@ export const usePosStore = create<PosState>()(
 
       updateCreditCustomer: (id, updates) => {
         set((state) => {
-          const updatedCustomers = state.creditCustomers.map(customer =>
-            customer.id === id ? { ...customer, ...updates } : customer
-          );
-          saveDataToFile('credit-customers.json', updatedCustomers);
-          return { creditCustomers: updatedCustomers };
+            const updatedCustomers = state.creditCustomers.map(customer =>
+                customer.id === id ? { ...customer, ...updates, lastUpdated: new Date().toISOString() } : customer
+            );
+            saveDataToFile('credit-customers.json', updatedCustomers);
+            return { creditCustomers: updatedCustomers };
+        });
+      },
+
+      addCreditPayment: (customerId: string, amount: number) => {
+        const state = get();
+        const customer = state.creditCustomers.find(c => c.id === customerId);
+        if (!customer) return;
+
+        const newPaidAmount = (customer.paidAmount || 0) + amount;
+        const newBalance = (customer.balance || 0) - amount;
+
+        state.updateCreditCustomer(customerId, {
+            paidAmount: newPaidAmount,
+            balance: Math.max(0, newBalance), // Ensure balance doesn't go negative
         });
       },
 
@@ -682,12 +714,19 @@ export const usePosStore = create<PosState>()(
         const state = get();
         if (product.image && !product.image.startsWith('http')) {
           try {
-            const { imageUrl } = await window.electron.uploadImage(product.image, state.businessSetup.apiUrl, state.businessSetup.apiKey);
-            product.image = imageUrl;
+            const { path: localPath } = await window.electron.saveImage(product.image);
+            product.localImage = localPath;
+
+            if (state.isOnline) {
+              const { imageUrl } = await window.electron.uploadImage(product.image, state.businessSetup.apiUrl, state.businessSetup.apiKey);
+              product.image = imageUrl;
+            } else {
+              product.image = '';
+              state.addToSyncQueue({ type: 'upload-image', data: { productId: product.id, path: product.image } });
+            }
           } catch (error) {
-            console.error('Image upload failed:', error);
-            // Decide how to handle this - maybe save with a placeholder?
-            product.image = ''; // Or a placeholder URL
+            console.error('Image handling failed:', error);
+            product.image = '';
           }
         }
 
@@ -703,11 +742,19 @@ export const usePosStore = create<PosState>()(
         const state = get();
         if (updates.image && !updates.image.startsWith('http')) {
           try {
-            const { imageUrl } = await window.electron.uploadImage(updates.image, state.businessSetup.apiUrl, state.businessSetup.apiKey);
-            updates.image = imageUrl;
+            const { path: localPath } = await window.electron.saveImage(updates.image);
+            updates.localImage = localPath;
+
+            if (state.isOnline) {
+              const { imageUrl } = await window.electron.uploadImage(updates.image, state.businessSetup.apiUrl, state.businessSetup.apiKey);
+              updates.image = imageUrl;
+            } else {
+              updates.image = '';
+              state.addToSyncQueue({ type: 'upload-image', data: { productId: id, path: updates.image } });
+            }
           } catch (error) {
-            console.error('Image upload failed:', error);
-            updates.image = ''; // Or a placeholder URL
+            console.error('Image handling failed:', error);
+            updates.image = '';
           }
         }
 
@@ -751,23 +798,37 @@ export const usePosStore = create<PosState>()(
       },
 
       loadInitialData: async () => {
-        const fileNames = ['products.json', 'users.json', 'transactions.json', 'credit-customers.json', 'expenses.json', 'business-setup.json'];
-        const dataMap = {
-          'products.json': 'products',
-          'users.json': 'users',
-          'transactions.json': 'transactions',
-          'credit-customers.json': 'creditCustomers',
-          'expenses.json': 'expenses',
-          'business-setup.json': 'businessSetup'
-        };
-
-        for (const fileName of fileNames) {
-          const { data } = await readDataFromFile(fileName);
-          if (data) {
-            set({ [dataMap[fileName]]: data });
+        try {
+          // Prioritize loading business setup first.
+          const { data: businessSetupData } = await readDataFromFile('business-setup.json');
+          let isSetup = false;
+          if (businessSetupData && businessSetupData.isSetup) {
+            set({ businessSetup: businessSetupData });
+            isSetup = true;
           }
+
+          const fileNames = ['products.json', 'users.json', 'transactions.json', 'credit-customers.json', 'expenses.json'];
+          const dataMap = {
+            'products.json': 'products',
+            'users.json': 'users',
+            'transactions.json': 'transactions',
+            'credit-customers.json': 'creditCustomers',
+            'expenses.json': 'expenses'
+          };
+
+          for (const fileName of fileNames) {
+            const { data } = await readDataFromFile(fileName);
+            if (data) {
+              set({ [dataMap[fileName]]: data });
+            }
+          }
+
+        } catch (error) {
+          console.error("Failed to load initial data:", error);
+          // Handle error appropriately, maybe set an error state
+        } finally {
+          set({ isDataLoaded: true });
         }
-        set({ isDataLoaded: true });
       },
 
       autoPrintClosingReport: () => {
@@ -827,9 +888,9 @@ export const usePosStore = create<PosState>()(
     }),
     {
       name: 'pos-storage',
-      onRehydrateStorage: (state) => {
-        if (state && state.businessSetup) {
-          state.businessSetup.isLoggedIn = false;
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.businessSetup = { ...state.businessSetup, isLoggedIn: false };
         }
       },
       partialize: (state) => ({

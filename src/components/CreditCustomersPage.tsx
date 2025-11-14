@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { usePosStore } from '../store/posStore';
-import { CreditCustomer } from '../types';
+import { CreditCustomer } from '../store/posStore'; // Import from store directly
 import { Users, Phone, DollarSign, CheckCircle, Clock, Search, Plus, Edit, Trash2 } from 'lucide-react';
 
 export default function CreditCustomersPage() {
@@ -11,7 +11,8 @@ export default function CreditCustomersPage() {
     saveCreditCustomer, 
     updateCreditCustomer,
     deleteCreditCustomer,
-    getUnpaidCredits 
+    getUnpaidCredits,
+    addCreditPayment
   } = usePosStore();
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -79,17 +80,8 @@ export default function CreditCustomersPage() {
   };
 
   const handlePayment = (customerId: string, amount: number) => {
-    const customer = creditCustomers.find(c => c.id === customerId);
-    if (!customer) return;
-
-    const newPaidAmount = (customer.paidAmount || 0) + amount;
-    const newBalance = (customer.balance || 0) - amount;
-
-    updateCreditCustomer(customerId, {
-      paidAmount: newPaidAmount,
-      balance: Math.max(0, newBalance),
-      lastUpdated: new Date().toISOString(),
-    });
+    if (amount <= 0) return;
+    addCreditPayment(customerId, amount);
   };
 
   const handleDeleteCustomer = (customerId: string) => {

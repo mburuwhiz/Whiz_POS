@@ -26,6 +26,7 @@
     "@capacitor/cli": "^5.0.0",
     "@capacitor/core": "^5.0.0",
     "@headlessui/react": "^1.7.18",
+    "@playwright/test": "^1.56.1",
     "ai": "^4.3.16",
     "cannon-es": "^0.20.0",
     "clsx": "^2.1.0",

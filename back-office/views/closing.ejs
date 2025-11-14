@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WHIZ POS Back Office - Closing</title>
+  <style>
+    body { font-family: sans-serif; margin: 0; background-color: #f4f4f4; }
+    .container { max-width: 1200px; margin: auto; padding: 20px; }
+    nav { background-color: #333; color: white; padding: 1rem; }
+    nav a { color: white; text-decoration: none; margin-right: 1rem; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="/">Dashboard</a>
+    <a href="/users">Manage Users</a>
+    <a href="/products">Manage Products</a>
+    <a href="/expenses">Manage Expenses</a>
+    <a href="/credit-customers">Credit Customers</a>
+    <a href="/business-details">Business Details</a>
+    <a href="/reports">View Reports</a>
+    <a href="/logout" style="float: right;">Logout</a>
+  </nav>
+  <div class="container">
+    <h1>End of Day Process</h1>
+    <p>This will archive the day's sales and reset the daily totals.</p>
+    <form action="/closing" method="POST">
+      <button type="submit">Close Day</button>
+    </form>
+  </div>
+</body>
+</html>

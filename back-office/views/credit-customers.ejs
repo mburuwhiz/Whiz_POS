@@ -1,0 +1,67 @@
+<%- include('partials/header') %>
+
+<style>
+  .table-container {
+    background-color: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 12px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    color: var(--text-main);
+  }
+  th, td {
+    padding: 1rem 0.5rem;
+    text-align: left;
+    border-bottom: 1px solid #4b5563;
+  }
+  th {
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+  .btn-link {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background-color: var(--accent-color);
+    color: #fff;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+  .btn-link:hover {
+    opacity: 0.9;
+  }
+</style>
+
+<div class="page-header">
+  <h2>Credit Customers</h2>
+</div>
+
+<div class="table-container">
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Phone</th>
+        <th>Outstanding Balance</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% customers.forEach(customer => { %>
+        <tr>
+          <td><%= customer.name %></td>
+          <td><%= customer.phone || 'N/A' %></td>
+          <td>Ksh. <%= customer.creditSales.reduce((total, sale) => total + (sale.amount - sale.paidAmount), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
+          <td>
+            <a href="/credit-customers/<%= customer.id %>" class="btn-link">View Details</a>
+          </td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+</div>
+
+<%- include('partials/footer') %>

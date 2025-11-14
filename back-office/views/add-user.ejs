@@ -1,0 +1,84 @@
+<%- include('partials/header') %>
+
+<style>
+  .form-container {
+    background-color: var(--card-bg);
+    padding: 2rem;
+    border-radius: 12px;
+    max-width: 600px;
+    margin: auto;
+  }
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+  label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+  input, select {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    border-radius: 8px;
+    border: 1px solid #4b5563;
+    background-color: var(--sidebar-bg);
+    color: var(--text-main);
+    font-size: 1rem;
+  }
+  input:focus, select:focus {
+    outline: none;
+    border-color: var(--accent-color);
+  }
+  .btn {
+    display: inline-block;
+    padding: 0.8rem 1.5rem;
+    background-color: var(--accent-color);
+    color: #fff;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .btn:hover {
+    opacity: 0.9;
+  }
+</style>
+
+<div class="page-header">
+  <h2>Add New User</h2>
+</div>
+
+<div class="form-container">
+  <form action="/users/add" method="POST">
+    <div class="form-group">
+      <label for="name">Full Name</label>
+      <input type="text" id="name" name="name" required>
+    </div>
+    <div class="form-group">
+      <label for="email">Email (for back-office login)</label>
+      <input type="email" id="email" name="email" required>
+    </div>
+    <div class="form-group">
+      <label for="password">Password (for back-office login)</label>
+      <input type="password" id="password" name="password" required>
+    </div>
+    <div class="form-group">
+      <label for="pin">PIN (for POS login)</label>
+      <input type="password" id="pin" name="pin" required maxlength="4">
+    </div>
+    <div class="form-group">
+      <label for="role">Role</label>
+      <select id="role" name="role">
+        <option value="cashier">Cashier</option>
+        <option value="manager">Manager</option>
+        <option value="admin">Admin</option>
+      </select>
+    </div>
+    <button type="submit" class="btn">Save User</button>
+  </form>
+</div>
+
+<%- include('partials/footer') %>

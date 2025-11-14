@@ -1,0 +1,97 @@
+<%- include('partials/header') %>
+
+<style>
+  .table-container {
+    background-color: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 12px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    color: var(--text-main);
+  }
+  th, td {
+    padding: 1rem 0.5rem;
+    text-align: left;
+    border-bottom: 1px solid #4b5563;
+  }
+  th {
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+  .actions a, .actions button {
+    color: var(--accent-color);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    margin-right: 1rem;
+    transition: all 0.2s ease;
+  }
+  .actions a:hover, .actions button:hover {
+    opacity: 0.8;
+  }
+  .btn {
+    display: inline-block;
+    padding: 0.6rem 1.2rem;
+    background-color: var(--accent-color);
+    color: #fff;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+  .btn:hover {
+    opacity: 0.9;
+  }
+  .product-image {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 4px;
+  }
+</style>
+
+<div class="page-header">
+  <h2>Manage Products</h2>
+  <a href="/products/add" class="btn">Add Product</a>
+</div>
+
+<div class="table-container">
+  <table>
+    <thead>
+      <tr>
+        <th></th>
+        <th>Name</th>
+        <th>Price</th>
+        <th>Category</th>
+        <th>Stock</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% products.forEach(product => { %>
+        <tr>
+          <td>
+            <% if (product.image) { %>
+              <img src="<%= product.image %>" alt="<%= product.name %>" class="product-image">
+            <% } %>
+          </td>
+          <td><%= product.name %></td>
+          <td>Ksh. <%= product.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
+          <td><%= product.category %></td>
+          <td><%= product.stock %></td>
+          <td class="actions">
+            <a href="/products/edit/<%= product.id %>"><i data-feather="edit-2"></i></a>
+            <form action="/products/delete/<%= product.id %>" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this product?');">
+              <button type="submit" style="color: #ef4444;"><i data-feather="trash-2"></i></button>
+            </form>
+          </td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+</div>
+
+<%- include('partials/footer') %>

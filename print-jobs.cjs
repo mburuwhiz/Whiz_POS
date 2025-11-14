@@ -28,6 +28,7 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
     template = template.replace('{{receiptId}}', transaction.id);
     template = template.replace('{{date}}', formatDate(transaction.timestamp));
     template = template.replace('{{paymentMethod}}', transaction.paymentMethod.toUpperCase());
+    template = template.replace('{{servedByLabel}}', businessSetup?.servedByLabel || 'Cashier');
     template = template.replace('{{cashier}}', transaction.cashier);
     template = template.replace('{{subtotal}}', `Ksh ${transaction.subtotal.toFixed(2)}`);
     template = template.replace('{{tax}}', `Ksh ${transaction.tax.toFixed(2)}`);
@@ -42,15 +43,28 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
     `).join('');
     template = template.replace('{{items}}', itemsHtml);
 
-    const qrData = JSON.stringify({
-        receiptId: transaction.id,
-        total: transaction.total,
-        date: transaction.timestamp,
-    });
+    let mpesaDetailsHtml = '';
+    if (businessSetup?.mpesaPaybill || businessSetup?.mpesaTill) {
+        if (businessSetup.mpesaPaybill) {
+            mpesaDetailsHtml += `<p>Paybill: ${businessSetup.mpesaPaybill}</p>`;
+            if (businessSetup.mpesaAccountNumber) {
+                mpesaDetailsHtml += `<p>Account: ${businessSetup.mpesaAccountNumber}</p>`;
+            }
+        }
+        if (businessSetup.mpesaTill) {
+            mpesaDetailsHtml += `<p>Till No: ${businessSetup.mpesaTill}</p>`;
+        }
+    } else {
+        const qrData = JSON.stringify({
+            receiptId: transaction.id,
+            total: transaction.total,
+            date: transaction.timestamp,
+        });
+        const qrCodeImage = await qrcode.toDataURL(qrData);
+        mpesaDetailsHtml = `<img src="${qrCodeImage}" alt="QR Code" style="display: block; margin: 0 auto; width: 80px; height: 80px;">`;
+    }
 
-    const qrCodeImage = await qrcode.toDataURL(qrData);
-
-    template = template.replace('{{qrCode}}', `<img src="${qrCodeImage}" alt="QR Code" style="display: block; margin: 0 auto; width: 80px; height: 80px;">`);
+    template = template.replace('{{mpesaDetails}}', mpesaDetailsHtml);
 
     return template;
 }

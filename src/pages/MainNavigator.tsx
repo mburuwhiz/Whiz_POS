@@ -6,7 +6,7 @@ import OrderArea from '../components/OrderArea';
 import ReportsPage from '../components/ReportsPage';
 import CreditCustomersPage from '../components/CreditCustomersPage';
 import DailyClosingScreen from '../components/DailyClosingScreen';
-import SettingsPage from '../components/SettingsPage';
+import SettingsPage from './SettingsPage';
 import ExpenseTracker from '../components/ExpenseTracker';
 import SyncEngine from '../components/SyncEngine';
 import Dashboard from '../components/Dashboard';

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { usePosStore } from '../store/posStore';
-import { X, CornerDownLeft, Backspace as DeleteKey, ChevronUp } from 'lucide-react';
+import { X, CornerDownLeft, Delete as DeleteKey, ChevronUp } from 'lucide-react';
 import Draggable from 'react-draggable';
 
 const OnScreenKeyboard = () => {

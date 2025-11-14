@@ -43,7 +43,11 @@ export default function SettingsPage() {
     email: '',
     receiptFooter: '',
     apiUrl: '',
-    apiKey: ''
+    apiKey: '',
+    servedByLabel: '',
+    mpesaPaybill: '',
+    mpesaTill: '',
+    mpesaAccountNumber: ''
   });
 
   const [userData, setUserData] = useState({
@@ -63,7 +67,11 @@ export default function SettingsPage() {
         email: businessSetup.email || '',
         receiptFooter: businessSetup.receiptFooter || '',
         apiUrl: businessSetup.apiUrl || '',
-        apiKey: businessSetup.apiKey || ''
+        apiKey: businessSetup.apiKey || '',
+        servedByLabel: businessSetup.servedByLabel || '',
+        mpesaPaybill: businessSetup.mpesaPaybill || '',
+        mpesaTill: businessSetup.mpesaTill || '',
+        mpesaAccountNumber: businessSetup.mpesaAccountNumber || ''
       });
     }
   }, [businessSetup]);
@@ -233,6 +241,22 @@ export default function SettingsPage() {
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700">Receipt Footer</label>
                 <textarea name="receiptFooter" value={businessData.receiptFooter} onChange={handleBusinessDataChange} disabled={!editingBusiness} className="w-full p-3 border rounded-lg bg-gray-50 disabled:bg-gray-200" rows={3}></textarea>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">"Served By" Label</label>
+                <input type="text" name="servedByLabel" value={businessData.servedByLabel} onChange={handleBusinessDataChange} disabled={!editingBusiness} className="w-full p-3 border rounded-lg bg-gray-50 disabled:bg-gray-200" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">M-Pesa Paybill</label>
+                <input type="text" name="mpesaPaybill" value={businessData.mpesaPaybill} onChange={handleBusinessDataChange} disabled={!editingBusiness} className="w-full p-3 border rounded-lg bg-gray-50 disabled:bg-gray-200" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">M-Pesa Till</label>
+                <input type="text" name="mpesaTill" value={businessData.mpesaTill} onChange={handleBusinessDataChange} disabled={!editingBusiness} className="w-full p-3 border rounded-lg bg-gray-50 disabled:bg-gray-200" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">M-Pesa Account Number</label>
+                <input type="text" name="mpesaAccountNumber" value={businessData.mpesaAccountNumber} onChange={handleBusinessDataChange} disabled={!editingBusiness} className="w-full p-3 border rounded-lg bg-gray-50 disabled:bg-gray-200" />
               </div>
             </div>
           </div>

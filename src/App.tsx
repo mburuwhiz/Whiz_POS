@@ -22,18 +22,10 @@ function App() {
   useEffect(() => {
     const handleFocus = (event: FocusEvent) => {
       if (businessSetup?.onScreenKeyboard && (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement)) {
-        const target = event.target;
-        const onValueChange = (value: string) => {
-          // This is a bit of a hack to get around React's controlled components
-          const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-            window.HTMLInputElement.prototype,
-            'value'
-          )?.set;
-          nativeInputValueSetter?.call(target, value);
-          const inputEvent = new Event('input', { bubbles: true });
-          target.dispatchEvent(inputEvent);
-        };
-        openKeyboard(target, onValueChange);
+        if ((event.target as HTMLInputElement).type === 'file') {
+          return;
+        }
+        openKeyboard(event.target);
       }
     };
 

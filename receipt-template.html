@@ -1,70 +1,158 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receipt</title>
     <style>
-        body { font-family: 'monospace'; width: 80mm; margin: 0; padding: 10px; box-sizing: border-box; }
-        .center { text-align: center; }
-        .bold { font-weight: bold; }
-        .header { font-size: 24px; }
-        .table { width: 100%; border-collapse: collapse; }
-        .table th, .table td { padding: 5px; }
-        .table .item { text-align: left; }
-        .table .qty { text-align: center; }
-        .table .price { text-align: right; }
-        .totals { margin-top: 10px; }
-        .totals .row .label { text-align: left; }
-        .totals .row .value { text-align: right; }
-        .qr-code { margin: 10px auto; }
+        body {
+            font-family: 'monospace', sans-serif;
+            font-size: 12px;
+            color: #333;
+            margin: 0;
+            padding: 10px;
+            width: 300px; /* Standard receipt width */
+        }
+        .container {
+            width: 100%;
+        }
+        .header, .footer {
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 18px;
+            margin: 0;
+            font-weight: bold;
+        }
+        .header p {
+            margin: 2px 0;
+        }
+        .meta-info, .payment-details {
+            margin-top: 10px;
+        }
+        .meta-info p, .payment-details p {
+            margin: 3px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 4px 0;
+        }
+        th {
+            text-align: left;
+            border-bottom: 1px dashed #333;
+        }
+        .item-row td:nth-child(2) {
+            text-align: right;
+        }
+        .item-row td:nth-child(3) {
+            text-align: right;
+            white-space: nowrap;
+        }
+        .totals-table {
+            margin-top: 10px;
+        }
+        .totals-table td {
+            padding: 3px 0;
+        }
+        .totals-table td:first-child {
+            text-align: right;
+            font-weight: bold;
+            padding-right: 15px;
+        }
+        .totals-table td:last-child {
+            text-align: right;
+            font-weight: bold;
+        }
+        hr.dashed {
+            border: 0;
+            border-top: 1px dashed #333;
+            margin: 10px 0;
+        }
+        .qr-code {
+            text-align: center;
+            margin-top: 10px;
+        }
+        .qr-code img {
+            width: 80px;
+            height: 80px;
+        }
     </style>
 </head>
 <body>
-    <div class="center">
-        <h1 class="header bold">{{businessName}}</h1>
-        <p>KAGWE TOWN</p>
-        <p>{{businessAddress}}</p>
-        <p>Tel: {{businessPhone}}</p>
-    </div>
-    <hr>
-    {{reprintHeader}}
-    <p>Receipt No: {{receiptId}}</p>
-    <p>Date: {{date}}</p>
-    <p>Payment Method: {{paymentMethod}}</p>
-    <hr>
-    <table class="table">
-        <thead>
-            <tr>
-                <th class="item">Item</th>
-                <th class="qty">Qty</th>
-                <th class="price">Amount</th>
-            </tr>
-        </thead>
-        <tbody>
-            {{items}}
-        </tbody>
-    </table>
-    <hr>
-    <div class="totals">
-        <div class="row">
-            <span class="label">Subtotal</span>
-            <span class="value">{{subtotal}}</span>
+    <div class="container">
+        <div class="header">
+            <h1>{{businessName}}</h1>
+            <p>{{address}}</p>
+            <p>Phone: {{phone}}</p>
         </div>
-        <div class="row">
-            <span class="label">Tax</span>
-            <span class="value">{{tax}}</span>
+
+        <hr class="dashed">
+
+        <div class="meta-info">
+            <p>Receipt: {{receiptId}}</p>
+            <p>Date: {{date}}</p>
+            <p>{{servedByLabel}}: {{servedBy}}</p>
         </div>
-        <hr>
-        <div class="row bold">
-            <span class="label">TOTAL</span>
-            <span class="value">{{total}}</span>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Qty</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#items}}
+                <tr class="item-row">
+                    <td>{{name}}</td>
+                    <td>{{quantity}}x{{price}}</td>
+                    <td>{{total}}</td>
+                </tr>
+                {{/items}}
+            </tbody>
+        </table>
+
+        <hr class="dashed">
+
+        <table class="totals-table">
+            <tbody>
+                <tr>
+                    <td>Subtotal:</td>
+                    <td>{{subtotal}}</td>
+                </tr>
+                <tr>
+                    <td>Tax:</td>
+                    <td>{{tax}}</td>
+                </tr>
+                <tr>
+                    <td>Total:</td>
+                    <td>{{total}}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <hr class="dashed">
+
+        <div class="payment-details">
+            <p>Payment Method: {{paymentMethod}}</p>
+            {{#if mpesaPaybill}}
+            <p>Paybill: {{mpesaPaybill}} | A/C: {{mpesaAccountNumber}}</p>
+            {{/if}}
         </div>
-        <hr>
-    </div>
-    <p>Cashier: {{cashier}}</p>
-    <div class="center">
-        <p>Thank You For Choosing us!</p>
-        {{qrCode}}
-        <p>System Designed and serviced by Whiz tech</p>
-        <p>Tell: 0740 841 168</p>
+
+        <div class="footer">
+            <p>Thank you for your business!</p>
+            <p style="font-size: 9px;">{{receiptFooter}}</p>
+        </div>
+
+        <div class="qr-code">
+            <!-- QR Code will be injected here if available -->
+        </div>
     </div>
 </body>
 </html>

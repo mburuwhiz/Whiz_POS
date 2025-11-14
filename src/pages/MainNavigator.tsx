@@ -17,13 +17,12 @@ import OfflineSyncStatus from '../components/OfflineSyncStatus';
 import BusinessRegistrationPage from './BusinessRegistrationPage';
 import BackOfficePage from './BackOfficePage';
 import LoginScreen from '../components/LoginScreen';
-import BusinessRegistration from "../components/BusinessRegistration";
 import AppLayout from '../components/AppLayout';
 import PreviousReceiptsPage from '../components/PreviousReceiptsPage';
 import ManagePage from './ManagePage';
 
 const MainNavigator = () => {
-  const { businessSetup } = usePosStore();
+  const { businessSetup, users } = usePosStore();
 
   if (!businessSetup) {
     return (
@@ -36,10 +35,10 @@ const MainNavigator = () => {
     );
   }
 
-  if (!businessSetup.isSetup) {
+  if (!businessSetup.isSetup || users.length === 0) {
     return (
       <Routes>
-        <Route path="/setup" element={<BusinessRegistration />} />
+        <Route path="/setup" element={<BusinessRegistrationPage />} />
         <Route path="*" element={<Navigate to="/setup" />} />
       </Routes>
     );

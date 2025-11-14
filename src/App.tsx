@@ -6,10 +6,17 @@ import MainNavigator from './pages/MainNavigator';
 import BusinessRegistrationPage from './pages/BusinessRegistrationPage';
 import LoginScreen from './components/LoginScreen';
 import OnScreenKeyboard from './components/OnScreenKeyboard';
+import ErrorBoundary from './components/ErrorBoundary';
 import { useEffect } from 'react';
 
 function App() {
-  const { businessSetup, openKeyboard, loadInitialData, autoPrintClosingReport, isDataLoaded } = usePosStore();
+  const { businessSetup, openKeyboard, loadInitialData, autoPrintClosingReport, isDataLoaded } = usePosStore(state => ({
+    businessSetup: state.businessSetup,
+    openKeyboard: state.openKeyboard,
+    loadInitialData: state.loadInitialData,
+    autoPrintClosingReport: state.autoPrintClosingReport,
+    isDataLoaded: state.isDataLoaded,
+  }));
 
   useEffect(() => {
     const init = async () => {
@@ -22,18 +29,10 @@ function App() {
   useEffect(() => {
     const handleFocus = (event: FocusEvent) => {
       if (businessSetup?.onScreenKeyboard && (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement)) {
-        const target = event.target;
-        const onValueChange = (value: string) => {
-          // This is a bit of a hack to get around React's controlled components
-          const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-            window.HTMLInputElement.prototype,
-            'value'
-          )?.set;
-          nativeInputValueSetter?.call(target, value);
-          const inputEvent = new Event('input', { bubbles: true });
-          target.dispatchEvent(inputEvent);
-        };
-        openKeyboard(target, onValueChange);
+        if ((event.target as HTMLInputElement).type === 'file') {
+          return;
+        }
+        openKeyboard(event.target);
       }
     };
 
@@ -50,15 +49,17 @@ function App() {
   }
 
   return (
-    <Router>
-      <div className="min-h-screen bg-gray-100">
-        {!businessSetup.isLoggedIn ? <LoginScreen /> : <MainNavigator />}
+    <ErrorBoundary>
+      <Router>
+        <div className="min-h-screen bg-gray-100">
+          {!businessSetup.isLoggedIn ? <LoginScreen /> : <MainNavigator />}
 
-        {/* Global Modals */}
-        <CheckoutModal />
-        <OnScreenKeyboard />
-      </div>
-    </Router>
+          {/* Global Modals */}
+          <CheckoutModal />
+          <OnScreenKeyboard />
+        </div>
+      </Router>
+    </ErrorBoundary>
   );
 }
 

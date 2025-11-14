@@ -22,35 +22,27 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
     let template = await fs.readFile(templatePath, 'utf-8');
 
     template = template.replace('{{businessName}}', businessSetup?.businessName || '');
-    template = template.replace('{{businessAddress}}', businessSetup?.address || '');
-    template = template.replace('{{businessPhone}}', businessSetup?.phone || '');
-    template = template.replace('{{reprintHeader}}', isReprint ? '<p class="center bold">*** RE-PRINTED RECEIPT ***</p>' : '');
+    template = template.replace('{{address}}', businessSetup?.address || '');
+    template = template.replace('{{phone}}', businessSetup?.phone || '');
     template = template.replace('{{receiptId}}', transaction.id);
     template = template.replace('{{date}}', formatDate(transaction.timestamp));
-    template = template.replace('{{paymentMethod}}', transaction.paymentMethod.toUpperCase());
-    template = template.replace('{{cashier}}', transaction.cashier);
+    template = template.replace('{{servedBy}}', transaction.cashier);
     template = template.replace('{{subtotal}}', `Ksh ${transaction.subtotal.toFixed(2)}`);
     template = template.replace('{{tax}}', `Ksh ${transaction.tax.toFixed(2)}`);
     template = template.replace('{{total}}', `Ksh ${transaction.total.toFixed(2)}`);
+    template = template.replace('{{paymentMethod}}', transaction.paymentMethod.toUpperCase());
+    template = template.replace('{{mpesaPaybill}}', businessSetup?.mpesaPaybill || '');
+    template = template.replace('{{mpesaAccountNumber}}', businessSetup?.mpesaAccountNumber || '');
+    template = template.replace('{{receiptFooter}}', businessSetup?.receiptFooter || '');
 
     const itemsHtml = transaction.items.map(item => `
-        <tr>
-            <td class="item">${item.product.name}</td>
-            <td class="qty">${item.quantity}</td>
-            <td class="price">Ksh ${item.product.price.toFixed(2)}</td>
-        </tr>
+        <div class="item-row">
+            <span>${item.product.name}</span>
+            <span>${item.quantity} x ${item.product.price.toFixed(2)}</span>
+            <span>${(item.quantity * item.product.price).toFixed(2)}</span>
+        </div>
     `).join('');
-    template = template.replace('{{items}}', itemsHtml);
-
-    const qrData = JSON.stringify({
-        receiptId: transaction.id,
-        total: transaction.total,
-        date: transaction.timestamp,
-    });
-
-    const qrCodeImage = await qrcode.toDataURL(qrData);
-
-    template = template.replace('{{qrCode}}', `<img src="${qrCodeImage}" alt="QR Code" style="display: block; margin: 0 auto; width: 80px; height: 80px;">`);
+    template = template.replace('{{#items}}...{{/items}}', itemsHtml);
 
     return template;
 }

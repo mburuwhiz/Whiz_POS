@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: 'monospace'; width: 80mm; margin: 0; padding: 10px; box-sizing: border-box; }
+        .center { text-align: center; }
+        .bold { font-weight: bold; }
+        .header { font-size: 24px; }
+        .table { width: 100%; border-collapse: collapse; }
+        .table th, .table td { padding: 5px; }
+        .table .item { text-align: left; }
+        .table .qty { text-align: center; }
+        .table .price { text-align: right; }
+        .totals { margin-top: 10px; }
+        .totals .row .label { text-align: left; }
+        .totals .row .value { text-align: right; }
+        .qr-code { margin: 10px auto; }
+    </style>
+</head>
+<body>
+    <div class="center">
+        <h1 class="header bold">{{businessName}}</h1>
+        <p>KAGWE TOWN</p>
+        <p>{{businessAddress}}</p>
+        <p>Tel: {{businessPhone}}</p>
+    </div>
+    <hr>
+    {{reprintHeader}}
+    <p>Receipt No: {{receiptId}}</p>
+    <p>Date: {{date}}</p>
+    <p>Payment Method: {{paymentMethod}}</p>
+    <hr>
+    <table class="table">
+        <thead>
+            <tr>
+                <th class="item">Item</th>
+                <th class="qty">Qty</th>
+                <th class="price">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{items}}
+        </tbody>
+    </table>
+    <hr>
+    <div class="totals">
+        <div class="row">
+            <span class="label">Subtotal</span>
+            <span class="value">{{subtotal}}</span>
+        </div>
+        <div class="row">
+            <span class="label">Tax</span>
+            <span class="value">{{tax}}</span>
+        </div>
+        <hr>
+        <div class="row bold">
+            <span class="label">TOTAL</span>
+            <span class="value">{{total}}</span>
+        </div>
+        <hr>
+    </div>
+    <p>Cashier: {{cashier}}</p>
+    <div class="center">
+        <p>Thank You For Choosing us!</p>
+        {{qrCode}}
+        <p>System Designed and serviced by Whiz tech</p>
+        <p>Tell: 0740 841 168</p>
+    </div>
+</body>
+</html>

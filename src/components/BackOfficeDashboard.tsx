@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import InventoryManagement from './InventoryManagement';
-import SettingsPage from './SettingsPage';
+import SettingsPage from '../pages/SettingsPage';
 import ReportsPage from './ReportsPage';
 import { usePosStore } from '../store/posStore';
 import { Navigate } from 'react-router-dom';

@@ -11,7 +11,7 @@
             color: #333;
             margin: 0;
             padding: 10px;
-            width: 300px; /* Standard receipt width */
+            width: 280px; /* Adjusted for 80mm thermal printers */
         }
         .container {
             width: 100%;
@@ -39,14 +39,21 @@
             margin-top: 10px;
         }
         th, td {
-            padding: 4px 0;
+            padding: 4px 2px;
         }
         th {
             text-align: left;
             border-bottom: 1px dashed #333;
         }
+        .item-row td {
+            border-bottom: 1px solid #eee;
+        }
+        .item-row td:first-child {
+             white-space: normal; /* Allow item names to wrap */
+        }
         .item-row td:nth-child(2) {
             text-align: right;
+            white-space: nowrap;
         }
         .item-row td:nth-child(3) {
             text-align: right;
@@ -139,10 +146,10 @@
 
         <div class="payment-details">
             <p>Payment Method: {{paymentMethod}}</p>
+            <p>{{servedByLabel}}: {{servedBy}}</p>
             {{#if mpesaPaybill}}
             <p>Paybill: {{mpesaPaybill}} | A/C: {{mpesaAccountNumber}}</p>
             {{/if}}
-            <p>{{servedByLabel}}: {{servedBy}}</p>
         </div>
 
         <div class="footer">

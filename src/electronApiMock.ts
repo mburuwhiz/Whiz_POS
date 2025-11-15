@@ -2,32 +2,24 @@
 
 /**
  * Mocks the Electron `window.electron` API for browser-based testing (Playwright).
- * This allows the Zustand store to "load" data from the public folder by fetching it,
- * mimicking the behavior of the Electron main process reading files from disk.
+ * This mock is configured to simulate a clean-slate environment where no data files exist.
+ * It immediately returns `undefined` data to allow the app to proceed to the registration screen.
  */
 export const setupElectronMock = () => {
   if (process.env.NODE_ENV === 'development' && !window.electron) {
-    console.log('Setting up mock Electron API for browser environment.');
+    console.log('Setting up mock Electron API for a clean-slate browser environment.');
 
     window.electron = {
       saveData: async (fileName, data) => {
         console.log(`[Mock] saveData(${fileName}):`, data);
         return { success: true };
       },
+      // This is the key change: always return undefined data to simulate no files found.
       readData: async (fileName) => {
-        try {
-          const response = await fetch(`/data/${fileName}`);
-          if (!response.ok) {
-            throw new Error(`Failed to fetch mock data: ${fileName}`);
-          }
-          const data = await response.json();
-          console.log(`[Mock] readData(${fileName}):`, data);
-          return { success: true, data };
-        } catch (error) {
-          console.error(`[Mock] Error reading data ${fileName}:`, error);
-          // Return success:true with undefined data to mimic file-not-found scenario without breaking the app
-          return { success: true, data: undefined };
-        }
+        console.log(`[Mock] readData(${fileName}): Simulating file not found.`);
+        // Add a small delay to prevent race conditions in the test environment.
+        await new Promise(resolve => setTimeout(resolve, 100));
+        return { success: true, data: undefined };
       },
       printReceipt: (transaction, businessSetup, isReprint) => {
         console.log('[Mock] printReceipt:', { transaction, businessSetup, isReprint });
@@ -52,7 +44,6 @@ export const setupElectronMock = () => {
       },
       uploadImage: async (filePath, apiUrl, apiKey) => {
         console.log('[Mock] uploadImage:', { filePath, apiUrl, apiKey });
-        // Return a placeholder image URL for browser-based testing
         return { imageUrl: 'https://via.placeholder.com/150' };
       },
     };

@@ -1,15 +1,48 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { usePosStore } from '../store/posStore';
 import { X, CornerDownLeft, Delete as DeleteKey, ChevronUp } from 'lucide-react';
 import Draggable from 'react-draggable';
 
 const OnScreenKeyboard = () => {
-  const { isKeyboardOpen, closeKeyboard, updateKeyboardTargetValue } = usePosStore();
+  const { isKeyboardOpen, closeKeyboard, updateKeyboardTargetValue, activeInput } = usePosStore();
   const [capsLock, setCapsLock] = useState(false);
+  const keyboardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Enter') {
+        closeKeyboard();
+      }
+    };
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (keyboardRef.current && !keyboardRef.current.contains(event.target as Node)) {
+        // Also check if the click is outside the active input
+        if (activeInput && !activeInput.contains(event.target as Node)) {
+          closeKeyboard();
+        }
+      }
+    };
+
+    if (isKeyboardOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isKeyboardOpen, closeKeyboard, activeInput]);
+
 
   if (!isKeyboardOpen) return null;
 
   const handleKeyPress = (key: string) => {
+    if (key === 'enter') {
+      closeKeyboard();
+      return;
+    }
     const keyToPress = capsLock && key.length === 1 ? key.toUpperCase() : key;
     updateKeyboardTargetValue(keyToPress);
   };
@@ -33,7 +66,7 @@ const OnScreenKeyboard = () => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
         <Draggable handle=".keyboard-handle">
-            <div className="w-full max-w-3xl cursor-move rounded-lg bg-gray-300 p-3 shadow-2xl">
+            <div ref={keyboardRef} className="w-full max-w-3xl cursor-move rounded-lg bg-gray-300 p-3 shadow-2xl">
                 <div className="keyboard-handle mb-2 flex justify-end">
                     <button onClick={closeKeyboard} className="text-gray-500 hover:text-gray-800">
                         <X size={24} />

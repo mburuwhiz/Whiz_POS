@@ -95,7 +95,6 @@
         <div class="meta-info">
             <p>Receipt: {{receiptId}}</p>
             <p>Date: {{date}}</p>
-            <p>{{servedByLabel}}: {{servedBy}}</p>
         </div>
 
         <table>
@@ -107,13 +106,13 @@
                 </tr>
             </thead>
             <tbody>
-                {{#items}}
+                {{#each items}}
                 <tr class="item-row">
-                    <td>{{name}}</td>
-                    <td>{{quantity}}x{{price}}</td>
-                    <td>{{total}}</td>
+                    <td>{{this.name}}</td>
+                    <td>{{this.quantity}}x{{this.price}}</td>
+                    <td>{{this.total}}</td>
                 </tr>
-                {{/items}}
+                {{/each}}
             </tbody>
         </table>
 
@@ -143,6 +142,7 @@
             {{#if mpesaPaybill}}
             <p>Paybill: {{mpesaPaybill}} | A/C: {{mpesaAccountNumber}}</p>
             {{/if}}
+            <p>{{servedByLabel}}: {{servedBy}}</p>
         </div>
 
         <div class="footer">
@@ -151,7 +151,9 @@
         </div>
 
         <div class="qr-code">
-            <!-- QR Code will be injected here if available -->
+            {{#if qrCodeDataUrl}}
+            <img src="{{qrCodeDataUrl}}" alt="QR Code">
+            {{/if}}
         </div>
     </div>
 </body>

@@ -1,6 +1,7 @@
 const { app } = require('electron');
 const fs = require('fs').promises;
 const path = require('path');
+const Handlebars = require('handlebars');
 const qrcode = require('qrcode');
 
 const formatDate = (timestamp) => {
@@ -19,32 +20,38 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
     const templatePath = app.isPackaged
         ? path.join(app.getAppPath(), 'receipt-template.html')
         : path.join(__dirname, 'receipt-template.html');
-    let template = await fs.readFile(templatePath, 'utf-8');
+    const templateSource = await fs.readFile(templatePath, 'utf-8');
+    const template = Handlebars.compile(templateSource);
 
-    template = template.replace('{{businessName}}', businessSetup?.businessName || '');
-    template = template.replace('{{address}}', businessSetup?.address || '');
-    template = template.replace('{{phone}}', businessSetup?.phone || '');
-    template = template.replace('{{receiptId}}', transaction.id);
-    template = template.replace('{{date}}', formatDate(transaction.timestamp));
-    template = template.replace('{{servedBy}}', transaction.cashier);
-    template = template.replace('{{subtotal}}', `Ksh ${transaction.subtotal.toFixed(2)}`);
-    template = template.replace('{{tax}}', `Ksh ${transaction.tax.toFixed(2)}`);
-    template = template.replace('{{total}}', `Ksh ${transaction.total.toFixed(2)}`);
-    template = template.replace('{{paymentMethod}}', transaction.paymentMethod.toUpperCase());
-    template = template.replace('{{mpesaPaybill}}', businessSetup?.mpesaPaybill || '');
-    template = template.replace('{{mpesaAccountNumber}}', businessSetup?.mpesaAccountNumber || '');
-    template = template.replace('{{receiptFooter}}', businessSetup?.receiptFooter || '');
+    const data = {
+        businessName: businessSetup?.businessName || '',
+        address: businessSetup?.address || '',
+        phone: businessSetup?.phone || '',
+        receiptId: transaction.id,
+        date: formatDate(transaction.timestamp),
+        servedByLabel: businessSetup?.servedByLabel || 'Served By',
+        servedBy: transaction.cashier,
+        items: transaction.items.map(item => ({
+            name: item.product.name,
+            quantity: item.quantity,
+            price: item.product.price.toFixed(2),
+            total: (item.quantity * item.product.price).toFixed(2),
+        })),
+        subtotal: `Ksh ${transaction.subtotal.toFixed(2)}`,
+        tax: `Ksh ${transaction.tax.toFixed(2)}`,
+        total: `Ksh ${transaction.total.toFixed(2)}`,
+        paymentMethod: transaction.paymentMethod.toUpperCase(),
+        mpesaPaybill: businessSetup?.mpesaPaybill,
+        mpesaAccountNumber: businessSetup?.mpesaAccountNumber,
+        receiptFooter: businessSetup?.receiptFooter || '',
+        isReprint,
+    };
 
-    const itemsHtml = transaction.items.map(item => `
-        <div class="item-row">
-            <span>${item.product.name}</span>
-            <span>${item.quantity} x ${item.product.price.toFixed(2)}</span>
-            <span>${(item.quantity * item.product.price).toFixed(2)}</span>
-        </div>
-    `).join('');
-    template = template.replace('{{#items}}...{{/items}}', itemsHtml);
+    if (!businessSetup?.mpesaPaybill) {
+        data.qrCodeDataUrl = await qrcode.toDataURL('https://whiz-pos.com');
+    }
 
-    return template;
+    return template(data);
 }
 
 async function generateClosingReport(reportData, businessSetup) {

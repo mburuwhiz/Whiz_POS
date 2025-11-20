@@ -74,7 +74,7 @@ This document outlines the proposed architecture for the WHIZ POS back-office we
 
 The back-office will serve as the central database (Source of Truth).
 
--   **Connection:** The Desktop POS and Mobile APK will communicate with the back-office via a secure REST API.
+-   **Connection & Security:** The Desktop POS and Mobile APK will communicate with the back-office via a secure REST API. All API requests must be authenticated using a secret API Key, which will be sent as a custom header (e.g., `X-API-KEY`). This prevents unauthorized access, as the applications will be deployed in separate environments.
 -   **Offline First:**
     -   When the Desktop or Mobile app is **online**, it will fetch the latest data from the back-office and send any new transactions in real-time.
     -   When **offline**, the apps will store all new transactions and data changes locally.

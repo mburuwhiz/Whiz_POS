@@ -1,6 +1,7 @@
 # Dependencies
 /node_modules
 /back-office/node_modules
+/back-office/.env
 
 # Logs
 *.log

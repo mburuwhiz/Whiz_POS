@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const path = require('path');
 
@@ -24,10 +25,28 @@ app.get('/', (req, res) => {
     });
 });
 
+// Load API key from environment variables
+const API_KEY = process.env.API_KEY;
+
+// Middleware for API Key Authentication
+const apiKeyAuth = (req, res, next) => {
+    const apiKey = req.get('X-API-KEY');
+    if (!apiKey || apiKey !== API_KEY) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    next();
+};
+
+// Group API routes and apply the middleware
+const apiRoutes = express.Router();
+apiRoutes.use(apiKeyAuth);
+
 // API Health Check
-app.get('/api/health', (req, res) => {
+apiRoutes.get('/health', (req, res) => {
     res.json({ status: 'ok', message: 'Back-office is running' });
 });
+
+app.use('/api', apiRoutes);
 
 
 app.listen(port, () => {

@@ -131,6 +131,7 @@ export interface BusinessSetup {
   mpesaAccountNumber: string;
   tax: number;
   subtotal: number;
+  password?: string; // Admin/Business password
 }
 
 export interface CreditTransaction {

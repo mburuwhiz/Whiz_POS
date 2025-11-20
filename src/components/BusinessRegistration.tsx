@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePosStore } from '../store/posStore';
-import { Building2, Mail, Phone, Globe, CheckCircle, AlertCircle } from 'lucide-react';
+import { Building2, Globe, CheckCircle, AlertCircle, Lock } from 'lucide-react';
 
 export default function BusinessRegistration() {
   console.log('BusinessRegistration component rendering');
@@ -9,15 +9,15 @@ export default function BusinessRegistration() {
     isDataLoaded: state.isDataLoaded,
     businessSetup: state.businessSetup,
   }));
-  console.log('isDataLoaded:', isDataLoaded);
-  console.log('businessSetup:', businessSetup);
+
   const [formData, setFormData] = useState({
     businessName: '',
     ownerName: '',
     email: '',
     phone: '',
     address: '',
-    pin: '1234', // Default PIN for the admin user
+    password: '',
+    businessId: '',
     servedByLabel: 'Cashier',
     mpesaPaybill: '',
     mpesaTill: '',
@@ -28,6 +28,12 @@ export default function BusinessRegistration() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState('');
 
+  // Generate a random Business ID on mount
+  useEffect(() => {
+    const randomId = Math.floor(100000 + Math.random() * 900000).toString();
+    setFormData(prev => ({ ...prev, businessId: randomId }));
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -35,6 +41,8 @@ export default function BusinessRegistration() {
 
     const businessData = {
       businessName: formData.businessName,
+      businessId: formData.businessId,
+      password: formData.password,
       address: formData.address,
       phone: formData.phone,
       email: formData.email,
@@ -51,7 +59,7 @@ export default function BusinessRegistration() {
     const adminUser = {
       id: `USR${Date.now()}`,
       name: formData.ownerName,
-      pin: formData.pin,
+      pin: '0000', // Default PIN, but login will use Password now
       role: 'admin' as const,
     };
 
@@ -76,21 +84,36 @@ export default function BusinessRegistration() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
-      <div className="max-w-xl w-full">
-        <div className="text-center mb-8">
-          <Building2 className="w-16 h-16 text-blue-600 mx-auto mb-4" />
-          <h1 className="text-4xl font-bold text-gray-900">Register Your Business</h1>
-          <p className="text-xl text-gray-600">Join thousands of businesses using WHIZ POS</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center py-12 px-4 font-sans">
+      <div className="max-w-3xl w-full">
+        <div className="text-center mb-10">
+          <div className="inline-flex p-4 rounded-full bg-white shadow-lg mb-6">
+            <Building2 className="w-10 h-10 text-blue-600" />
+          </div>
+          <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">Setup Your Business</h1>
+          <p className="text-lg text-gray-500 mt-2">Configure your point of sale system</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Business Information</h2>
+        <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-8 md:p-10">
+          <h2 className="text-xl font-semibold text-gray-800 mb-8 flex items-center pb-4 border-b border-gray-100">
+             Business Details
+          </h2>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Auto-generated Business ID Display */}
+            <div className="bg-blue-50 p-6 rounded-xl border border-blue-100 flex flex-col md:flex-row items-center justify-between">
+              <div>
+                <h3 className="text-blue-900 font-semibold text-lg">Your Business ID</h3>
+                <p className="text-blue-700 text-sm">Use this number to log in to your system.</p>
+              </div>
+              <div className="mt-4 md:mt-0 text-3xl font-mono font-bold text-blue-600 tracking-wider bg-white px-6 py-2 rounded-lg shadow-sm border border-blue-100">
+                {formData.businessId}
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-600 mb-2">
                   Business Name *
                 </label>
                 <input
@@ -98,13 +121,13 @@ export default function BusinessRegistration() {
                   required
                   value={formData.businessName}
                   onChange={handleInputChange('businessName')}
-                  className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                   placeholder="Enter your business name"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-600 mb-2">
                   Owner Name *
                 </label>
                 <input
@@ -112,15 +135,32 @@ export default function BusinessRegistration() {
                   required
                   value={formData.ownerName}
                   onChange={handleInputChange('ownerName')}
-                  className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                   placeholder="Business owner name"
                 />
               </div>
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-2 flex items-center">
+                <Lock className="w-4 h-4 mr-2 text-gray-400" />
+                Admin Password *
+              </label>
+              <input
+                type="password"
+                required
+                minLength={6}
+                value={formData.password}
+                onChange={handleInputChange('password')}
+                className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                placeholder="Create a secure password"
+              />
+              <p className="text-xs text-gray-500 mt-2">This password will be used for the initial login.</p>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-600 mb-2">
                   Email Address *
                 </label>
                 <input
@@ -128,13 +168,13 @@ export default function BusinessRegistration() {
                   required
                   value={formData.email}
                   onChange={handleInputChange('email')}
-                  className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                   placeholder="business@example.com"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-600 mb-2">
                   Phone Number *
                 </label>
                 <input
@@ -142,14 +182,14 @@ export default function BusinessRegistration() {
                   required
                   value={formData.phone}
                   onChange={handleInputChange('phone')}
-                  className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                   placeholder="+254 XXX XXX XXX"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-600 mb-2">
                 Business Address *
               </label>
               <input
@@ -157,82 +197,46 @@ export default function BusinessRegistration() {
                 required
                 value={formData.address}
                 onChange={handleInputChange('address')}
-                className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                 placeholder="123 Business Street, City, Country"
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  "Served By" Label
-                </label>
-                <input
-                  type="text"
-                  value={formData.servedByLabel}
-                  onChange={handleInputChange('servedByLabel')}
-                  className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="e.g., Cashier, Server"
-                />
-              </div>
+            {/* M-Pesa Details (Collapsible or Sectioned) */}
+            <div className="pt-6 border-t border-gray-100">
+                <h3 className="text-md font-semibold text-gray-700 mb-4">Payment Configuration (Optional)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">M-Pesa Paybill</label>
+                        <input type="text" value={formData.mpesaPaybill} onChange={handleInputChange('mpesaPaybill')} className="w-full p-2 rounded bg-gray-50 border text-sm" />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">M-Pesa Till</label>
+                        <input type="text" value={formData.mpesaTill} onChange={handleInputChange('mpesaTill')} className="w-full p-2 rounded bg-gray-50 border text-sm" />
+                    </div>
+                     <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Account Number</label>
+                        <input type="text" value={formData.mpesaAccountNumber} onChange={handleInputChange('mpesaAccountNumber')} className="w-full p-2 rounded bg-gray-50 border text-sm" />
+                    </div>
+                </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  M-Pesa Paybill
-                </label>
-                <input
-                  type="text"
-                  value={formData.mpesaPaybill}
-                  onChange={handleInputChange('mpesaPaybill')}
-                  className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter Paybill number"
-                />
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  M-Pesa Till
-                </label>
-                <input
-                  type="text"
-                  value={formData.mpesaTill}
-                  onChange={handleInputChange('mpesaTill')}
-                  className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter Till number"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                M-Pesa Account Number
-              </label>
-              <input
-                type="text"
-                value={formData.mpesaAccountNumber}
-                onChange={handleInputChange('mpesaAccountNumber')}
-                className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Enter Account number"
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-end pt-6">
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-bold py-4 px-8 rounded-lg transition-colors flex items-center space-x-2"
+                className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-4 px-10 rounded-xl shadow-lg shadow-blue-500/30 transition-all duration-200 transform hover:-translate-y-0.5 flex items-center justify-center space-x-3 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
               >
                 {isSubmitting ? (
                   <>
                     <div className="w-5 h-5 border-2 border-white border-t-transparent animate-spin rounded-full"></div>
-                    <span>Registering...</span>
+                    <span>Setting Up...</span>
                   </>
                 ) : (
                   <>
-                    <Globe className="w-5 h-5" />
-                    <span>Register Business</span>
+                    <CheckCircle className="w-5 h-5" />
+                    <span>Complete Setup</span>
                   </>
                 )}
               </button>
@@ -240,14 +244,14 @@ export default function BusinessRegistration() {
           </form>
 
           {submitMessage && (
-            <div className={`mt-6 p-4 rounded-lg ${submitMessage.includes('successfully') ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+            <div className={`mt-8 p-4 rounded-xl border ${submitMessage.includes('successfully') ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'} animate-fade-in-up`}>
               <div className="flex items-center space-x-3">
                 {submitMessage.includes('successfully') ? (
-                  <CheckCircle className="w-6 h-6 text-green-600" />
+                  <CheckCircle className="w-6 h-6 text-emerald-600" />
                 ) : (
-                  <AlertCircle className="w-6 h-6 text-red-600" />
+                  <AlertCircle className="w-6 h-6 text-rose-600" />
                 )}
-                <p className={`text-lg font-medium ${submitMessage.includes('successfully') ? 'text-green-800' : 'text-red-800'}`}>
+                <p className={`text-md font-medium ${submitMessage.includes('successfully') ? 'text-emerald-800' : 'text-rose-800'}`}>
                   {submitMessage}
                 </p>
               </div>

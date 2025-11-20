@@ -1,0 +1,9 @@
+
+> whiz-pos@5.1.2 dev:vite
+> vite --port 5174
+
+
+  VITE v4.5.14  ready in 1249 ms
+
+  ➜  Local:   http://localhost:5174/
+  ➜  Network: use --host to expose

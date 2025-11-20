@@ -83,3 +83,9 @@ This document outlines the proposed architecture for the WHIZ POS mobile applica
     -   A queue system will be implemented to store any transactions or changes made while offline.
     -   When online, the app will process the queue, sending the data to the back-office and pulling down any updates (e.g., new products).
 -   **User Feedback:** The UI will include a clear indicator of the current sync status (e.g., a cloud icon that is green when synced, orange when syncing, and red when offline).
+
+## Printing Strategy
+
+-   **API-Driven Printing:** The mobile application will not print directly. Instead, it will delegate printing tasks to the main desktop (EXE) application.
+-   **Connection:** The mobile device and the desktop must be on the same local network (e.g., connected via USB tethering or the same Wi-Fi). The desktop application will expose a secure, local API endpoint that the mobile app will call to initiate a print job.
+-   **Offline Handling:** If the mobile app cannot reach the desktop application's API, it will queue the print request locally. The user will be notified that the receipt can be reprinted later from the desktop application once the connection is restored. This ensures no data is lost and that a physical receipt can always be produced.

@@ -1,0 +1,12 @@
+
+> whiz-pos@5.1.2 dev
+> concurrently "npm:dev:vite" "npm:dev:electron"
+
+[dev:electron]
+[dev:electron] > whiz-pos@5.1.2 dev:electron
+[dev:electron] > electron . http://localhost:5174
+[dev:electron]
+[dev:vite]
+[dev:vite] > whiz-pos@5.1.2 dev:vite
+[dev:vite] > vite --port 5174
+[dev:vite]

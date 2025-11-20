@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('electron', {
   printClosingReport: (reportData, businessSetup) => ipcRenderer.send('print-closing-report', reportData, businessSetup),
   getPrinters: () => ipcRenderer.invoke('get-printers'),
   getApiConfig: () => ipcRenderer.invoke('get-api-config'),
+  printBusinessSetup: (businessSetup, adminUser) => ipcRenderer.send('print-business-setup', businessSetup, adminUser),
   uploadImage: async (filePath, apiUrl, apiKey) => {
     const fetch = require('node-fetch');
     const fs = require('fs');

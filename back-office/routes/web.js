@@ -1,36 +1,27 @@
 const express = require('express');
 const router = express.Router();
 
-router.get('/', (req, res) => {
-    res.render('pages/dashboard', { title: 'Dashboard' });
-});
+const dashboardController = require('../controllers/dashboardController');
+const salesController = require('../controllers/salesController');
+const inventoryController = require('../controllers/inventoryController');
+const expensesController = require('../controllers/expensesController');
+const creditController = require('../controllers/creditController');
+const reportsController = require('../controllers/reportsController');
+const usersController = require('../controllers/usersController');
+const settingsController = require('../controllers/settingsController');
 
-router.get('/sales', (req, res) => {
-    res.render('pages/sales', { title: 'Sales' });
-});
+router.get('/', dashboardController.index);
+router.get('/sales', salesController.index);
 
-router.get('/inventory', (req, res) => {
-    res.render('pages/inventory', { title: 'Inventory' });
-});
+router.get('/inventory', inventoryController.index);
+router.post('/inventory/add', inventoryController.addProduct); // Add route
 
-router.get('/expenses', (req, res) => {
-    res.render('pages/expenses', { title: 'Expenses' });
-});
+router.get('/expenses', expensesController.index);
+router.post('/expenses/add', expensesController.addExpense); // Add route
 
-router.get('/credit', (req, res) => {
-    res.render('pages/credit', { title: 'Credit Management' });
-});
-
-router.get('/reports', (req, res) => {
-    res.render('pages/reports', { title: 'Reports' });
-});
-
-router.get('/users', (req, res) => {
-    res.render('pages/users', { title: 'User Management' });
-});
-
-router.get('/settings', (req, res) => {
-    res.render('pages/settings', { title: 'Settings' });
-});
+router.get('/credit', creditController.index);
+router.get('/reports', reportsController.index);
+router.get('/users', usersController.index);
+router.get('/settings', settingsController.index);
 
 module.exports = router;

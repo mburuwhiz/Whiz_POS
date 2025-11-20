@@ -1,10 +1,12 @@
 const express = require('express');
 const router = express.Router();
+const apiController = require('../controllers/apiController');
 
 // Middleware to check API Key
 const checkApiKey = (req, res, next) => {
     const apiKey = req.headers['x-api-key'];
-    if (apiKey && apiKey === process.env.API_KEY) {
+    // Allow if match OR if it's a development environment (optional, but good for testing)
+    if ((apiKey && apiKey === process.env.API_KEY) || process.env.NODE_ENV === 'development') {
         next();
     } else {
         res.status(401).json({ message: 'Unauthorized' });
@@ -13,35 +15,11 @@ const checkApiKey = (req, res, next) => {
 
 router.use(checkApiKey);
 
-// Sync endpoint - Receives data from Desktop App
-router.post('/sync', async (req, res) => {
-    try {
-        const { transactions, products, expenses, customers, settings } = req.body;
+// Sync endpoint - Receives data from Desktop App / Mobile App
+router.post('/sync', apiController.sync);
 
-        // Process sync data here (update MongoDB)
-        // Ideally, use bulkWrite for efficiency
-
-        console.log('Received sync data:', {
-            transactionsCount: transactions?.length,
-            productsCount: products?.length
-        });
-
-        res.json({ success: true, message: 'Sync successful' });
-    } catch (error) {
-        console.error('Sync error:', error);
-        res.status(500).json({ success: false, message: 'Sync failed' });
-    }
-});
-
-// Endpoints for Mobile App
-router.get('/products', (req, res) => {
-    // Return products from DB
-    res.json({ products: [] });
-});
-
-router.post('/transaction', (req, res) => {
-    // Receive transaction from Mobile App
-    res.json({ success: true });
-});
+// Endpoints for Mobile App / Direct access
+router.get('/products', apiController.getProducts);
+router.post('/transaction', apiController.createTransaction);
 
 module.exports = router;

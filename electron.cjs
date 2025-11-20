@@ -213,13 +213,34 @@ app.whenReady().then(async () => {
       if (error.code === 'ENOENT') {
         // If the file doesn't exist in userData, *then* try to seed it from public.
         try {
-          const seedPath = path.join(__dirname, 'public', 'data', fileName);
+          // Determine the correct seed path based on whether the app is packaged.
+          // In production (app.isPackaged), resources are typically in the 'resources' folder or bundled.
+          // We assume 'public/data' is copied to the resources directory or kept relative in dev.
+          // For electron-builder with extraResources:
+          let seedPath;
+          if (app.isPackaged) {
+             // Adjust this path based on your specific electron-builder config.
+             // Often it's in process.resourcesPath or app.getAppPath().
+             // Here we assume the 'public' folder is copied to the root of the app bundle.
+             seedPath = path.join(app.getAppPath(), 'data', fileName);
+             // Note: You might need to adjust 'data' folder location in build config.
+             // Fallback attempt if not found there:
+             try {
+                 await fs.access(seedPath);
+             } catch {
+                 seedPath = path.join(process.resourcesPath, 'data', fileName);
+             }
+          } else {
+             seedPath = path.join(__dirname, 'public', 'data', fileName);
+          }
+
           const seedData = await fs.readFile(seedPath, 'utf-8');
           await fs.writeFile(filePath, seedData); // Copy seed data to userData path
           return { success: true, data: JSON.parse(seedData) };
         } catch (seedError) {
-          // If there's no seed file, it's not a critical error.
+          // If there's no seed file, it's not a critical error (unless it's essential config).
           // The app should handle the absence of data.
+          // console.log(`No seed data found for ${fileName} at ${seedPath}`);
           return { success: true, data: null };
         }
       }

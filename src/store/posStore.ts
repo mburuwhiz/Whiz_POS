@@ -820,8 +820,23 @@ export const usePosStore = create<PosState>()(
           const { data: businessSetupData } = await readDataFromFile('business-setup.json');
           let isSetup = false;
           if (businessSetupData && businessSetupData.isSetup) {
-            set({ businessSetup: businessSetupData });
+            // Check if we have env vars to override/set defaults for Back Office
+            const updatedBusinessSetup = { ...businessSetupData };
+            if (!updatedBusinessSetup.backOfficeUrl && import.meta.env.VITE_BACK_OFFICE_URL) {
+                updatedBusinessSetup.backOfficeUrl = import.meta.env.VITE_BACK_OFFICE_URL;
+            }
+            if (!updatedBusinessSetup.backOfficeApiKey && import.meta.env.VITE_BACK_OFFICE_API_KEY) {
+                updatedBusinessSetup.backOfficeApiKey = import.meta.env.VITE_BACK_OFFICE_API_KEY;
+            }
+
+            set({ businessSetup: updatedBusinessSetup });
             isSetup = true;
+          } else if (businessSetupData && !businessSetupData.isSetup) {
+             // Pre-fill setup data if available from env, even if not setup
+              const prefillSetup = { ...businessSetupData };
+              if (import.meta.env.VITE_BACK_OFFICE_URL) prefillSetup.backOfficeUrl = import.meta.env.VITE_BACK_OFFICE_URL;
+              if (import.meta.env.VITE_BACK_OFFICE_API_KEY) prefillSetup.backOfficeApiKey = import.meta.env.VITE_BACK_OFFICE_API_KEY;
+              set({ businessSetup: prefillSetup });
           }
 
           const fileNames = ['products.json', 'users.json', 'transactions.json', 'credit-customers.json', 'expenses.json'];

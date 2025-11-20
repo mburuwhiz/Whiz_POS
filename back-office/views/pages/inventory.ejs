@@ -1,0 +1,96 @@
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+        <h2 class="text-2xl font-bold text-gray-900">Inventory Management</h2>
+        <p class="text-sm text-gray-500">Manage your products, categories, and stock levels.</p>
+    </div>
+    <div class="flex gap-2">
+        <button class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm">
+            <i data-lucide="tag" class="w-4 h-4"></i>
+            Categories
+        </button>
+        <button class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 shadow-sm shadow-blue-600/20 transition-colors">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            Add Product
+        </button>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <!-- Categories Sidebar (Desktop) -->
+    <div class="hidden lg:block bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        <h3 class="font-bold text-gray-900 mb-4 px-2">Categories</h3>
+        <nav class="space-y-1">
+            <a href="#" class="flex items-center justify-between px-3 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium">
+                <span>All Products</span>
+                <span class="bg-blue-100 text-blue-800 py-0.5 px-2 rounded-full text-xs">124</span>
+            </a>
+            <a href="#" class="flex items-center justify-between px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors">
+                <span>Coffee</span>
+                <span class="text-gray-400 text-xs">42</span>
+            </a>
+            <a href="#" class="flex items-center justify-between px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors">
+                <span>Pastries</span>
+                <span class="text-gray-400 text-xs">18</span>
+            </a>
+            <a href="#" class="flex items-center justify-between px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors">
+                <span>Beverages</span>
+                <span class="text-gray-400 text-xs">64</span>
+            </a>
+        </nav>
+    </div>
+
+    <!-- Product Grid -->
+    <div class="lg:col-span-3">
+        <!-- Search & Sort -->
+        <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-6 flex gap-4">
+            <div class="flex-1 relative">
+                <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i>
+                <input type="text" placeholder="Search products..." class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+            </div>
+            <select class="px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white text-gray-600 focus:ring-2 focus:ring-blue-500 outline-none">
+                <option>Newest First</option>
+                <option>Price: Low to High</option>
+                <option>Price: High to Low</option>
+                <option>Stock: Low to High</option>
+            </select>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+            <!-- Product Card -->
+            <% for(let i = 0; i < 6; i++) { %>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden group hover:shadow-md transition-shadow">
+                <div class="aspect-video bg-gray-100 relative">
+                    <div class="absolute top-3 right-3 z-10">
+                        <button class="p-1.5 bg-white/90 backdrop-blur rounded-lg text-gray-500 hover:text-blue-600 shadow-sm">
+                            <i data-lucide="more-vertical" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <!-- Placeholder Image -->
+                    <div class="w-full h-full flex items-center justify-center text-gray-400">
+                        <i data-lucide="image" class="w-8 h-8"></i>
+                    </div>
+                </div>
+                <div class="p-4">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <p class="text-xs font-medium text-blue-600 mb-1">Coffee</p>
+                            <h3 class="font-bold text-gray-900">Cappuccino</h3>
+                        </div>
+                        <span class="font-bold text-gray-900">Ksh. 250</span>
+                    </div>
+                    <p class="text-sm text-gray-500 line-clamp-2 mb-4">Rich espresso with steamed milk foam.</p>
+                    <div class="flex items-center justify-between pt-4 border-t border-gray-100">
+                        <div class="flex items-center gap-2 text-sm text-gray-500">
+                            <i data-lucide="box" class="w-4 h-4"></i>
+                            <span>45 in stock</span>
+                        </div>
+                        <button class="p-2 text-gray-400 hover:text-blue-600 transition-colors">
+                            <i data-lucide="edit-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <% } %>
+        </div>
+    </div>
+</div>

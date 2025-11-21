@@ -6,6 +6,7 @@ const expressLayouts = require('express-ejs-layouts');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const morgan = require('morgan');
+const session = require('express-session');
 
 // Load environment variables
 dotenv.config();
@@ -18,6 +19,14 @@ app.use(cors());
 app.use(morgan('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// Session Configuration
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'whiz-pos-secret-key',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { maxAge: 24 * 60 * 60 * 1000 } // 24 hours
+}));
 
 // Static files
 app.use(express.static(path.join(__dirname, 'public')));
@@ -36,6 +45,7 @@ mongoose.connect(process.env.MONGODB_URI)
 app.use((req, res, next) => {
   res.locals.businessName = process.env.BUSINESS_NAME || 'WHIZ POS';
   res.locals.currentPath = req.path;
+  res.locals.user = req.session.user || null;
   next();
 });
 

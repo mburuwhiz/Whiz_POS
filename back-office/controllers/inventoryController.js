@@ -23,6 +23,7 @@ exports.addProduct = async (req, res) => {
         await newProduct.save();
         res.redirect('/inventory');
     } catch (error) {
+        console.error('Add product error:', error);
         res.status(500).send('Error adding product');
     }
 };

@@ -1,62 +1,61 @@
 <div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
     <div>
         <h2 class="text-2xl font-bold text-gray-900">Credit Management</h2>
-        <p class="text-sm text-gray-500">Manage customer credit accounts and balances.</p>
+        <p class="text-sm text-gray-500">Track customer debts and payments.</p>
     </div>
-    <button class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 shadow-sm shadow-blue-600/20 transition-colors">
-        <i data-lucide="user-plus" class="w-4 h-4"></i>
-        Add Customer
-    </button>
+    <div class="flex gap-2">
+        <button class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 shadow-sm shadow-blue-600/20 transition-colors">
+            <i data-lucide="user-plus" class="w-4 h-4"></i>
+            Add Customer
+        </button>
+    </div>
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <!-- Customer List -->
-    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="p-4 border-b border-gray-100">
-            <div class="relative">
-                <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i>
-                <input type="text" placeholder="Search customers..." class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
-            </div>
-        </div>
-        <div class="overflow-x-auto">
-            <table class="w-full text-left text-sm">
-                <thead class="bg-gray-50 border-b border-gray-100">
-                    <tr>
-                        <th class="px-6 py-4 font-medium text-gray-500">Customer Name</th>
-                        <th class="px-6 py-4 font-medium text-gray-500">Phone</th>
-                        <th class="px-6 py-4 font-medium text-gray-500">Total Due</th>
-                        <th class="px-6 py-4 font-medium text-gray-500 text-right">Action</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100">
-                    <% for(let i = 0; i < 5; i++) { %>
-                    <tr class="hover:bg-gray-50 transition-colors cursor-pointer group">
-                        <td class="px-6 py-4 font-medium text-gray-900 flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">
-                                JD
-                            </div>
-                            John Doe
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+    <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <p class="text-sm font-medium text-gray-500 mb-1">Total Outstanding Credit</p>
+        <h3 class="text-2xl font-bold text-gray-900">Ksh. <%= customers.reduce((sum, c) => sum + c.balance, 0).toLocaleString() %></h3>
+    </div>
+</div>
+
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+            <thead class="bg-gray-50 border-b border-gray-100">
+                <tr>
+                    <th class="px-6 py-4 font-medium text-gray-500">Customer Name</th>
+                    <th class="px-6 py-4 font-medium text-gray-500">Phone</th>
+                    <th class="px-6 py-4 font-medium text-gray-500 text-right">Total Credit</th>
+                    <th class="px-6 py-4 font-medium text-gray-500 text-right">Paid Amount</th>
+                    <th class="px-6 py-4 font-medium text-gray-500 text-right">Balance</th>
+                    <th class="px-6 py-4 font-medium text-gray-500 text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                <% if (customers && customers.length > 0) { %>
+                    <% customers.forEach(customer => { %>
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-gray-900"><%= customer.name %></td>
+                        <td class="px-6 py-4 text-gray-500"><%= customer.phone || 'N/A' %></td>
+                        <td class="px-6 py-4 text-right text-gray-900">Ksh. <%= customer.totalCredit.toLocaleString() %></td>
+                        <td class="px-6 py-4 text-right text-green-600">Ksh. <%= customer.paidAmount.toLocaleString() %></td>
+                        <td class="px-6 py-4 text-right font-bold <%= customer.balance > 0 ? 'text-red-600' : 'text-gray-900' %>">
+                            Ksh. <%= customer.balance.toLocaleString() %>
                         </td>
-                        <td class="px-6 py-4 text-gray-500">0712 345 678</td>
-                        <td class="px-6 py-4 font-bold text-red-600">Ksh. 4,500</td>
                         <td class="px-6 py-4 text-right">
-                            <button class="text-blue-600 hover:text-blue-700 font-medium text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                                View Details
+                            <button class="text-blue-600 hover:text-blue-700 font-medium text-xs mr-2">Record Payment</button>
+                            <button class="text-gray-400 hover:text-blue-600 transition-colors">
+                                <i data-lucide="eye" class="w-4 h-4"></i>
                             </button>
                         </td>
                     </tr>
-                    <% } %>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Customer Detail / Payment (Placeholder) -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col items-center justify-center text-center min-h-[400px]">
-        <div class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 text-gray-400">
-            <i data-lucide="user" class="w-8 h-8"></i>
-        </div>
-        <h3 class="text-lg font-bold text-gray-900 mb-2">Select a Customer</h3>
-        <p class="text-gray-500 text-sm max-w-[200px]">Click on a customer from the list to view details and record payments.</p>
+                    <% }) %>
+                <% } else { %>
+                    <tr>
+                        <td colspan="6" class="px-6 py-4 text-center text-gray-500">No credit customers found.</td>
+                    </tr>
+                <% } %>
+            </tbody>
+        </table>
     </div>
 </div>

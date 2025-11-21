@@ -296,7 +296,7 @@ ipcMain.handle('get-api-config', async () => {
         apiKey = crypto.randomBytes(32).toString('hex');
     }
     const ipAddress = getLocalIpAddress();
-    const port = server.address().port;
+    const port = server && server.address() ? server.address().port : 3000;
     const config = {
         apiKey,
         apiUrl: `http://${ipAddress}:${port}`

@@ -9,10 +9,6 @@
             <i data-lucide="download" class="w-4 h-4"></i>
             Export
         </button>
-        <button class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 shadow-sm shadow-blue-600/20 transition-colors">
-            <i data-lucide="plus" class="w-4 h-4"></i>
-            New Sale
-        </button>
     </div>
 </div>
 
@@ -40,32 +36,38 @@
                 <tr>
                     <th class="px-6 py-4 font-medium text-gray-500">Transaction ID</th>
                     <th class="px-6 py-4 font-medium text-gray-500">Date</th>
-                    <th class="px-6 py-4 font-medium text-gray-500">Customer</th>
+                    <th class="px-6 py-4 font-medium text-gray-500">Cashier</th>
                     <th class="px-6 py-4 font-medium text-gray-500">Items</th>
                     <th class="px-6 py-4 font-medium text-gray-500">Amount</th>
-                    <th class="px-6 py-4 font-medium text-gray-500">Status</th>
+                    <th class="px-6 py-4 font-medium text-gray-500">Payment</th>
                     <th class="px-6 py-4 font-medium text-gray-500 text-right">Actions</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
-                <% for(let i = 0; i < 10; i++) { %>
-                <tr class="hover:bg-gray-50 transition-colors">
-                    <td class="px-6 py-4 font-medium text-gray-900">#TRX-87<%= i %>2</td>
-                    <td class="px-6 py-4 text-gray-500">Oct 24, 2023</td>
-                    <td class="px-6 py-4 text-gray-900">John Doe</td>
-                    <td class="px-6 py-4 text-gray-500">3 items</td>
-                    <td class="px-6 py-4 font-medium text-gray-900">Ksh. 1,250</td>
-                    <td class="px-6 py-4">
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            Completed
-                        </span>
-                    </td>
-                    <td class="px-6 py-4 text-right">
-                        <button class="text-gray-400 hover:text-blue-600 transition-colors">
-                            <i data-lucide="eye" class="w-4 h-4"></i>
-                        </button>
-                    </td>
-                </tr>
+                <% if (transactions && transactions.length > 0) { %>
+                    <% transactions.forEach(trx => { %>
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-gray-900">#<%= trx.transactionId ? trx.transactionId.slice(-6) : 'N/A' %></td>
+                        <td class="px-6 py-4 text-gray-500"><%= new Date(trx.date).toLocaleString() %></td>
+                        <td class="px-6 py-4 text-gray-900"><%= trx.cashier || 'N/A' %></td>
+                        <td class="px-6 py-4 text-gray-500"><%= trx.items ? trx.items.length : 0 %> items</td>
+                        <td class="px-6 py-4 font-medium text-gray-900">Ksh. <%= trx.totalAmount %></td>
+                        <td class="px-6 py-4">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                <%= trx.paymentMethod %>
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <button class="text-gray-400 hover:text-blue-600 transition-colors">
+                                <i data-lucide="eye" class="w-4 h-4"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    <% }) %>
+                <% } else { %>
+                    <tr>
+                        <td colspan="7" class="px-6 py-4 text-center text-gray-500">No transactions found.</td>
+                    </tr>
                 <% } %>
             </tbody>
         </table>
@@ -73,7 +75,7 @@
 
     <!-- Pagination -->
     <div class="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
-        <p class="text-sm text-gray-500">Showing 1 to 10 of 128 entries</p>
+        <p class="text-sm text-gray-500">Showing recent transactions</p>
         <div class="flex gap-2">
             <button class="px-3 py-1 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50">Previous</button>
             <button class="px-3 py-1 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50">Next</button>

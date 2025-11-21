@@ -1,43 +1,26 @@
 <div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
     <div>
-        <h2 class="text-2xl font-bold text-gray-900">Expenses</h2>
-        <p class="text-sm text-gray-500">Track and manage business expenses.</p>
+        <h2 class="text-2xl font-bold text-gray-900">Expense Tracking</h2>
+        <p class="text-sm text-gray-500">Monitor and manage your business expenses.</p>
     </div>
-    <button class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 shadow-sm shadow-blue-600/20 transition-colors">
-        <i data-lucide="plus" class="w-4 h-4"></i>
-        Add Expense
-    </button>
+    <div class="flex gap-2">
+        <button class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 shadow-sm shadow-blue-600/20 transition-colors">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            Add Expense
+        </button>
+    </div>
 </div>
 
+<!-- Stats -->
 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
     <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-        <p class="text-sm font-medium text-gray-500 mb-1">Total Expenses (This Month)</p>
-        <h3 class="text-2xl font-bold text-gray-900">Ksh. 45,200</h3>
-    </div>
-    <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-        <p class="text-sm font-medium text-gray-500 mb-1">Largest Category</p>
-        <h3 class="text-2xl font-bold text-gray-900">Utilities</h3>
-    </div>
-    <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-        <p class="text-sm font-medium text-gray-500 mb-1">Pending Payments</p>
-        <h3 class="text-2xl font-bold text-gray-900">Ksh. 0</h3>
+        <p class="text-sm font-medium text-gray-500 mb-1">Total Expenses</p>
+        <h3 class="text-2xl font-bold text-gray-900">Ksh. <%= expenses.reduce((sum, e) => sum + e.amount, 0).toLocaleString() %></h3>
+        <p class="text-xs text-gray-500 mt-2">All time</p>
     </div>
 </div>
 
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-    <div class="p-4 border-b border-gray-100 flex flex-wrap gap-4">
-        <div class="flex-1 relative min-w-[200px]">
-            <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i>
-            <input type="text" placeholder="Search expenses..." class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
-        </div>
-        <select class="px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white text-gray-600 focus:ring-2 focus:ring-blue-500 outline-none">
-            <option>All Categories</option>
-            <option>Rent</option>
-            <option>Utilities</option>
-            <option>Supplies</option>
-        </select>
-    </div>
-
     <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">
             <thead class="bg-gray-50 border-b border-gray-100">
@@ -46,33 +29,34 @@
                     <th class="px-6 py-4 font-medium text-gray-500">Category</th>
                     <th class="px-6 py-4 font-medium text-gray-500">Date</th>
                     <th class="px-6 py-4 font-medium text-gray-500">Recorded By</th>
-                    <th class="px-6 py-4 font-medium text-gray-500">Amount</th>
+                    <th class="px-6 py-4 font-medium text-gray-500 text-right">Amount</th>
                     <th class="px-6 py-4 font-medium text-gray-500 text-right">Actions</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
-                <% for(let i = 0; i < 5; i++) { %>
-                <tr class="hover:bg-gray-50 transition-colors">
-                    <td class="px-6 py-4 font-medium text-gray-900">Electricity Bill</td>
-                    <td class="px-6 py-4 text-gray-500">
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                            Utilities
-                        </span>
-                    </td>
-                    <td class="px-6 py-4 text-gray-500">Oct 20, 2023</td>
-                    <td class="px-6 py-4 text-gray-900">Admin</td>
-                    <td class="px-6 py-4 font-bold text-gray-900">Ksh. 2,500</td>
-                    <td class="px-6 py-4 text-right">
-                        <div class="flex justify-end gap-2">
-                            <button class="p-1 text-gray-400 hover:text-blue-600 transition-colors">
-                                <i data-lucide="edit-2" class="w-4 h-4"></i>
-                            </button>
-                            <button class="p-1 text-gray-400 hover:text-red-600 transition-colors">
+                <% if (expenses && expenses.length > 0) { %>
+                    <% expenses.forEach(expense => { %>
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-gray-900"><%= expense.description %></td>
+                        <td class="px-6 py-4">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                <%= expense.category || 'General' %>
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-gray-500"><%= new Date(expense.date).toLocaleDateString() %></td>
+                        <td class="px-6 py-4 text-gray-900"><%= expense.recordedBy || 'N/A' %></td>
+                        <td class="px-6 py-4 font-bold text-gray-900 text-right">Ksh. <%= expense.amount.toLocaleString() %></td>
+                        <td class="px-6 py-4 text-right">
+                            <button class="text-gray-400 hover:text-red-600 transition-colors">
                                 <i data-lucide="trash-2" class="w-4 h-4"></i>
                             </button>
-                        </div>
-                    </td>
-                </tr>
+                        </td>
+                    </tr>
+                    <% }) %>
+                <% } else { %>
+                    <tr>
+                        <td colspan="6" class="px-6 py-4 text-center text-gray-500">No expenses recorded.</td>
+                    </tr>
                 <% } %>
             </tbody>
         </table>

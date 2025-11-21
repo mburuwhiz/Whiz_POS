@@ -8,10 +8,7 @@
             <i data-lucide="tag" class="w-4 h-4"></i>
             Categories
         </button>
-        <button class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 shadow-sm shadow-blue-600/20 transition-colors">
-            <i data-lucide="plus" class="w-4 h-4"></i>
-            Add Product
-        </button>
+        <!-- Form hidden, maybe open in modal? For now simpler UI -->
     </div>
 </div>
 
@@ -22,20 +19,9 @@
         <nav class="space-y-1">
             <a href="#" class="flex items-center justify-between px-3 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium">
                 <span>All Products</span>
-                <span class="bg-blue-100 text-blue-800 py-0.5 px-2 rounded-full text-xs">124</span>
+                <span class="bg-blue-100 text-blue-800 py-0.5 px-2 rounded-full text-xs"><%= products.length %></span>
             </a>
-            <a href="#" class="flex items-center justify-between px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors">
-                <span>Coffee</span>
-                <span class="text-gray-400 text-xs">42</span>
-            </a>
-            <a href="#" class="flex items-center justify-between px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors">
-                <span>Pastries</span>
-                <span class="text-gray-400 text-xs">18</span>
-            </a>
-            <a href="#" class="flex items-center justify-between px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors">
-                <span>Beverages</span>
-                <span class="text-gray-400 text-xs">64</span>
-            </a>
+            <!-- Placeholder for dynamic categories -->
         </nav>
     </div>
 
@@ -55,9 +41,9 @@
             </select>
         </div>
 
+        <% if (products && products.length > 0) { %>
         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-            <!-- Product Card -->
-            <% for(let i = 0; i < 6; i++) { %>
+            <% products.forEach(product => { %>
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden group hover:shadow-md transition-shadow">
                 <div class="aspect-video bg-gray-100 relative">
                     <div class="absolute top-3 right-3 z-10">
@@ -65,24 +51,30 @@
                             <i data-lucide="more-vertical" class="w-4 h-4"></i>
                         </button>
                     </div>
-                    <!-- Placeholder Image -->
-                    <div class="w-full h-full flex items-center justify-center text-gray-400">
-                        <i data-lucide="image" class="w-8 h-8"></i>
-                    </div>
+                    <% if (product.image) { %>
+                        <img src="<%= product.image %>" alt="<%= product.name %>" class="w-full h-full object-cover" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                        <div class="w-full h-full items-center justify-center text-gray-400 hidden bg-gray-50">
+                            <i data-lucide="image" class="w-8 h-8"></i>
+                        </div>
+                    <% } else { %>
+                        <div class="w-full h-full flex items-center justify-center text-gray-400 bg-gray-50">
+                            <i data-lucide="image" class="w-8 h-8"></i>
+                        </div>
+                    <% } %>
                 </div>
                 <div class="p-4">
                     <div class="flex justify-between items-start mb-2">
                         <div>
-                            <p class="text-xs font-medium text-blue-600 mb-1">Coffee</p>
-                            <h3 class="font-bold text-gray-900">Cappuccino</h3>
+                            <p class="text-xs font-medium text-blue-600 mb-1"><%= product.category || 'Uncategorized' %></p>
+                            <h3 class="font-bold text-gray-900"><%= product.name %></h3>
                         </div>
-                        <span class="font-bold text-gray-900">Ksh. 250</span>
+                        <span class="font-bold text-gray-900">Ksh. <%= product.price %></span>
                     </div>
-                    <p class="text-sm text-gray-500 line-clamp-2 mb-4">Rich espresso with steamed milk foam.</p>
-                    <div class="flex items-center justify-between pt-4 border-t border-gray-100">
+                    <!-- Description not in schema, maybe add later -->
+                    <div class="flex items-center justify-between pt-4 border-t border-gray-100 mt-4">
                         <div class="flex items-center gap-2 text-sm text-gray-500">
                             <i data-lucide="box" class="w-4 h-4"></i>
-                            <span>45 in stock</span>
+                            <span><%= product.stock %> in stock</span>
                         </div>
                         <button class="p-2 text-gray-400 hover:text-blue-600 transition-colors">
                             <i data-lucide="edit-2" class="w-4 h-4"></i>
@@ -90,7 +82,13 @@
                     </div>
                 </div>
             </div>
-            <% } %>
+            <% }) %>
         </div>
+        <% } else { %>
+            <div class="bg-white rounded-xl p-8 text-center text-gray-500">
+                <i data-lucide="package" class="w-12 h-12 mx-auto mb-4 text-gray-300"></i>
+                <p>No products found.</p>
+            </div>
+        <% } %>
     </div>
 </div>

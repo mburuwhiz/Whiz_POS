@@ -23,6 +23,7 @@ exports.addExpense = async (req, res) => {
         await newExpense.save();
         res.redirect('/expenses');
     } catch (error) {
+        console.error('Add expense error:', error);
         res.status(500).send('Error adding expense');
     }
 };

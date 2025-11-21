@@ -462,6 +462,7 @@ export const usePosStore = create<PosState>()(
         set((state) => {
           const updatedCustomers = [...state.creditCustomers, customer];
           saveDataToFile('credit-customers.json', updatedCustomers);
+          state.addToSyncQueue({ type: 'add-credit-customer', data: customer });
           return { creditCustomers: updatedCustomers };
         });
       },
@@ -472,6 +473,7 @@ export const usePosStore = create<PosState>()(
                 customer.id === id ? { ...customer, ...updates, lastUpdated: new Date().toISOString() } : customer
             );
             saveDataToFile('credit-customers.json', updatedCustomers);
+            state.addToSyncQueue({ type: 'update-credit-customer', data: { id, updates } });
             return { creditCustomers: updatedCustomers };
         });
       },
@@ -494,6 +496,7 @@ export const usePosStore = create<PosState>()(
         set((state) => {
           const updatedCustomers = state.creditCustomers.filter(customer => customer.id !== id);
           saveDataToFile('credit-customers.json', updatedCustomers);
+          state.addToSyncQueue({ type: 'delete-credit-customer', data: { id } });
           return { creditCustomers: updatedCustomers };
         });
       },
@@ -502,6 +505,7 @@ export const usePosStore = create<PosState>()(
         set((state) => {
           const updatedExpenses = [expense, ...state.expenses];
           saveDataToFile('expenses.json', updatedExpenses);
+          state.addToSyncQueue({ type: 'add-expense', data: expense });
           return { expenses: updatedExpenses };
         });
       },

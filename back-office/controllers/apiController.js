@@ -10,28 +10,32 @@ exports.getData = async (req, res) => {
         const users = await User.find({});
         const expenses = await Expense.find({});
         const creditCustomers = await Customer.find({});
-        // BusinessSetup? Usually local specific but maybe sync global settings.
-        // For now return main entities.
-
-        // Map Mongoose docs to Desktop interface if needed, or just return as is
-        // Desktop expects: { products: [], users: [], expenses: [], creditCustomers: [] }
-
-        // Need to map _id or productId to id for Desktop?
-        // Desktop sync logic: `serverDataById.get(localItem.id)`
-        // If Desktop uses `productId` (number) and Server uses `productId`, we are good.
-        // If Desktop uses `id` (string) for others, we need to ensure consistency.
 
         const mapProduct = p => ({
             ...p.toObject(),
-            id: p.productId || p._id, // Fallback
-            // map other fields if names differ
+            id: p.productId,
+        });
+
+        const mapUser = u => ({
+            ...u.toObject(),
+            id: u.userId,
+        });
+
+        const mapExpense = e => ({
+            ...e.toObject(),
+            id: e.expenseId,
+        });
+
+        const mapCustomer = c => ({
+            ...c.toObject(),
+            id: c.customerId,
         });
 
         res.json({
             products: products.map(mapProduct),
-            users: users, // User sync might be tricky with passwords.
-            expenses: expenses,
-            creditCustomers: creditCustomers
+            users: users.map(mapUser),
+            expenses: expenses.map(mapExpense),
+            creditCustomers: creditCustomers.map(mapCustomer)
         });
     } catch (error) {
         console.error('Get Data Error:', error);
@@ -150,28 +154,40 @@ async function processOperation(op) {
             case 'add-user':
             case 'update-user':
                 const userData = op.type === 'update-user' ? op.data.updates : op.data;
-                const userQuery = userData.username ? { username: userData.username } : { _id: userData.id }; // Fallback
+                const userId = op.type === 'update-user' ? op.data.id : op.data.id;
 
-                // Use username as unique identifier for sync if available
-                // Ensure pin is saved
-                await User.updateOne(
-                    userQuery,
-                    { $set: userData },
-                    { upsert: true }
-                );
+                const userUpdate = { ...userData };
+                if (userId) userUpdate.userId = userId;
+                delete userUpdate.id; // Remove desktop ID from main object fields
+
+                // Try to find by userId first, then username
+                // Upsert based on userId if present
+                if (userId) {
+                    await User.updateOne(
+                        { userId: userId },
+                        { $set: userUpdate },
+                        { upsert: true }
+                    );
+                } else if (userUpdate.username) {
+                    await User.updateOne(
+                        { username: userUpdate.username },
+                        { $set: userUpdate },
+                        { upsert: true }
+                    );
+                }
+                break;
+
+            case 'delete-user':
+                await User.deleteOne({ userId: op.data.id });
                 break;
 
             case 'add-credit-customer':
             case 'update-credit-customer':
-                // data: Customer object or {id, updates}
-                // Desktop uses `id` (string like CUST...)
                 const custId = op.type === 'update-credit-customer' ? op.data.id : op.data.id;
                 const custData = op.type === 'update-credit-customer' ? op.data.updates : op.data;
 
-                // Use customerId for reliable sync
                 const updateData = { ...custData };
                 if (custId) updateData.customerId = custId;
-                // Ensure we don't overwrite the mongo _id with the desktop string id
                 delete updateData.id;
                 delete updateData._id;
 
@@ -180,6 +196,10 @@ async function processOperation(op) {
                     { $set: updateData },
                     { upsert: true }
                 );
+                break;
+
+            case 'delete-credit-customer':
+                await Customer.deleteOne({ customerId: op.data.id });
                 break;
         }
     } catch (e) {
@@ -198,9 +218,26 @@ exports.getProducts = async (req, res) => {
 
 exports.createTransaction = async (req, res) => {
     try {
-        // Simplified for now
+        const op = { type: 'new-transaction', data: req.body };
+        await processOperation(op);
         res.json({ success: true });
     } catch (error) {
+        console.error('Create Transaction Error:', error);
         res.status(500).json({ error: 'Failed to create transaction' });
+    }
+};
+
+exports.uploadImage = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No image file provided' });
+        }
+        // Return the URL to the uploaded image
+        // Assuming the server serves static files from 'public' folder
+        const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+        res.json({ success: true, imageUrl });
+    } catch (error) {
+        console.error('Upload Error:', error);
+        res.status(500).json({ error: 'Failed to upload image' });
     }
 };

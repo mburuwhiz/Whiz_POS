@@ -1,38 +1,28 @@
-from playwright.sync_api import Page, expect, sync_playwright
 
-def verify_back_office(page: Page):
-    # 1. Arrange: Go to the Dashboard
-    page.goto("http://localhost:5000")
+import requests
+import time
+import sys
 
-    # 2. Assert: Check title
-    expect(page).to_have_title("WHIZ POS | Dashboard")
+BACK_OFFICE_URL = "http://localhost:5000"
 
-    # 3. Assert: Check Sidebar existence
-    expect(page.locator("text=Back Office")).to_be_visible()
-
-    # 4. Screenshot
-    page.screenshot(path="/home/jules/verification/dashboard_verification.png")
-    print("Dashboard screenshot taken.")
-
-    # 5. Navigate to Sales
-    page.click("text=Sales")
-    expect(page).to_have_title("WHIZ POS | Sales")
-    page.screenshot(path="/home/jules/verification/sales_verification.png")
-    print("Sales page screenshot taken.")
-
-    # 6. Navigate to Inventory
-    page.click("text=Inventory")
-    expect(page).to_have_title("WHIZ POS | Inventory")
-    page.screenshot(path="/home/jules/verification/inventory_verification.png")
-    print("Inventory page screenshot taken.")
+def verify_back_office():
+    print("Verifying Back Office API...")
+    try:
+        response = requests.get(f"{BACK_OFFICE_URL}/api/sync", timeout=5)
+        if response.status_code == 200:
+            print("SUCCESS: Back Office API is running and responding.")
+            return True
+        else:
+            print(f"FAILURE: Back Office API returned status code {response.status_code}")
+            return False
+    except requests.exceptions.ConnectionError:
+        print("FAILURE: Could not connect to Back Office API. Is the server running?")
+        return False
+    except Exception as e:
+        print(f"FAILURE: An error occurred: {e}")
+        return False
 
 if __name__ == "__main__":
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
-        try:
-            verify_back_office(page)
-        except Exception as e:
-            print(f"Verification failed: {e}")
-        finally:
-            browser.close()
+    success = verify_back_office()
+    if not success:
+        sys.exit(1)

@@ -3,6 +3,13 @@ import { NavLink } from 'react-router-dom';
 import { usePosStore } from '../store/posStore';
 import { Store, Coffee, BarChart3, Users, Calendar, Settings, DollarSign, Database, Package, Gift, Camera, Activity, Building2, UserCheck, Printer } from 'lucide-react';
 
+/**
+ * Helper component to group navigation links with a title.
+ *
+ * @param {object} props
+ * @param {string} props.title - The title of the navigation group.
+ * @param {React.ReactNode} props.children - The navigation links to display within the group.
+ */
 const NavGroup = ({ title, children }: { title: string, children: React.ReactNode }) => (
   <div>
     <h3 className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">{title}</h3>
@@ -10,9 +17,15 @@ const NavGroup = ({ title, children }: { title: string, children: React.ReactNod
   </div>
 );
 
+/**
+ * Main Navigation Sidebar component.
+ * Displays navigation links based on the user's role (admin/manager vs cashier).
+ * Uses `NavLink` for client-side routing with active state styling.
+ */
 const Navigation = () => {
   const { businessSetup, currentCashier } = usePosStore();
 
+  // Do not render navigation if business is not set up
   if (!businessSetup?.isSetup) {
     return null;
   }
@@ -20,6 +33,14 @@ const Navigation = () => {
   const userRole = currentCashier?.role;
   const isAdminOrManager = userRole === 'admin' || userRole === 'manager';
 
+  /**
+   * Computes class names for navigation links.
+   * Applies active styling if the link matches the current route.
+   *
+   * @param {object} props - Render props from NavLink.
+   * @param {boolean} props.isActive - Whether the link is currently active.
+   * @returns {string} The constructed class string.
+   */
   const navLinkClasses = ({ isActive }: { isActive: boolean }) =>
     `flex items-center space-x-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
       isActive

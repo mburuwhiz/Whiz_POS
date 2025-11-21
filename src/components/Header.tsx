@@ -2,9 +2,16 @@ import React from 'react';
 import { usePosStore } from '../store/posStore';
 import { User, LogOut } from 'lucide-react';
 
+/**
+ * Header component for the application.
+ * Displays the current logged-in cashier and a logout button.
+ */
 const Header = () => {
   const { currentCashier, logout } = usePosStore();
 
+  /**
+   * Handles the logout action by clearing the current user from the store.
+   */
   const handleLogout = () => {
     logout();
   };

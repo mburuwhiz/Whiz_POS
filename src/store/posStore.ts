@@ -4,15 +4,57 @@ import { persist } from 'zustand/middleware';
 // Define the Electron API that will be exposed on the window object
 declare global {
   interface Window {
+    /**
+     * The Electron interface exposed via `preload.js`.
+     * Provides secure access to native functionality.
+     */
     electron: {
+      /**
+       * Saves data to a local JSON file.
+       * @param fileName Name of the file (e.g., 'products.json').
+       * @param data The JSON data to save.
+       */
       saveData: (fileName: string, data: any) => Promise<{ success: boolean; error?: any }>;
+
+      /**
+       * Reads data from a local JSON file.
+       * @param fileName Name of the file to read.
+       */
       readData: (fileName: string) => Promise<{ success: boolean; data?: any; error?: any }>;
+
+      /**
+       * Prints a transaction receipt.
+       */
       printReceipt: (transaction: Transaction, businessSetup: BusinessSetup, isReprint: boolean) => void;
+
+      /**
+       * Saves a temporary image to the persistent local storage.
+       */
       saveImage: (tempPath: string) => Promise<{ success: boolean; path?: string; fileName?: string; error?: any }>;
+
+      /**
+       * Prints the daily closing report.
+       */
       printClosingReport: (reportData: ClosingReportData, businessSetup: BusinessSetup) => void;
+
+      /**
+       * Prints the initial business setup sheet.
+       */
       printBusinessSetup: (businessSetup: BusinessSetup, adminUser: User) => void;
+
+      /**
+       * Retrieves the local API configuration (URL, Key, QR).
+       */
       getApiConfig: () => Promise<{ apiUrl: string, apiKey: string, qrCodeDataUrl: string }>;
+
+      /**
+       * Uploads an image to the remote Back Office server.
+       */
       uploadImage: (filePath: string, apiUrl: string, apiKey: string) => Promise<{ imageUrl: string }>;
+
+      /**
+       * Gets list of printers.
+       */
       getPrinters: () => Promise<any[]>;
     };
   }
@@ -111,6 +153,8 @@ export interface BusinessSetup {
   businessId?: string;
   apiUrl?: string;
   apiKey?: string;
+  backOfficeUrl?: string;
+  backOfficeApiKey?: string;
   address: string;
   phone?: string;
   email?: string;
@@ -248,6 +292,11 @@ interface PosState {
   pushDataToServer: () => Promise<void>;
 }
 
+/**
+ * Main Zustand store for the POS application.
+ * Handles all state management including products, transactions, users, cart, and sync.
+ * Persists data to local storage via 'zustand/middleware'.
+ */
 export const usePosStore = create<PosState>()(
   persist(
     (set, get) => ({
@@ -273,13 +322,19 @@ export const usePosStore = create<PosState>()(
       lastSyncTime: null,
       lastClosingReportDate: null,
 
-      // User operations
+      /**
+       * Logs in a user and updates the session state.
+       */
       login: (user) => {
         set((state) => ({
           currentCashier: user,
           businessSetup: state.businessSetup ? { ...state.businessSetup, isLoggedIn: true } : null,
         }));
       },
+
+      /**
+       * Logs out the current user.
+       */
       logout: () => {
         set((state) => ({
           currentCashier: null,
@@ -290,6 +345,10 @@ export const usePosStore = create<PosState>()(
       // Product operations
       setProducts: (products) => set({ products }),
 
+      /**
+       * Adds a product to the shopping cart.
+       * Increments quantity if product already exists.
+       */
       addToCart: (product) => {
         set((state) => {
           const existingItem = state.cart.find(item => item.product.id === product.id);
@@ -342,6 +401,11 @@ export const usePosStore = create<PosState>()(
       closeLogin: () => set({ isLoginOpen: false }),
       openKeyboard: (inputElement) => set({ isKeyboardOpen: true, activeInput: inputElement }),
       closeKeyboard: () => set({ isKeyboardOpen: false, activeInput: null }),
+
+      /**
+       * Updates the value of the active input field based on on-screen keyboard input.
+       * Dispatches a native 'input' event to ensure React state updates.
+       */
       updateKeyboardTargetValue: (value) => {
         const { activeInput, closeKeyboard } = get();
         if (!activeInput) return;
@@ -380,6 +444,9 @@ export const usePosStore = create<PosState>()(
       setCurrentPage: (page) => set({ currentPage: page }),
 
       // Transaction operations
+      /**
+       * Completes a transaction, saves it, updates credit if needed, and prints receipt.
+       */
       completeTransaction: (paymentMethod, creditCustomerName) => {
         const state = get();
         if (!state.currentCashier) return;

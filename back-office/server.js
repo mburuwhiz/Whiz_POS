@@ -8,6 +8,11 @@ const bodyParser = require('body-parser');
 const morgan = require('morgan');
 const session = require('express-session');
 
+/**
+ * Main Server Application Entry Point.
+ * Configures Express app, database connection, middleware, and routes.
+ */
+
 // Load environment variables
 dotenv.config();
 

@@ -3,6 +3,13 @@ const fs = require('fs').promises;
 const path = require('path');
 const qrcode = require('qrcode');
 
+/**
+ * Helper function to format a timestamp into a readable date string.
+ * Format: YYYY-MM-DD HH:MM AM/PM
+ *
+ * @param {string|number} timestamp - The date to format.
+ * @returns {string} The formatted date string.
+ */
 const formatDate = (timestamp) => {
     const date = new Date(timestamp);
     const year = date.getFullYear();
@@ -15,6 +22,14 @@ const formatDate = (timestamp) => {
     return `${year}-${month}-${day} ${hours.toString().padStart(2, '0')}:${minutes} ${ampm}`;
 };
 
+/**
+ * Generates the HTML content for a transaction receipt.
+ *
+ * @param {Transaction} transaction - The transaction details.
+ * @param {BusinessSetup} businessSetup - The business configuration.
+ * @param {boolean} isReprint - Whether this is a reprint (adds a label).
+ * @returns {Promise<string>} The populated HTML string.
+ */
 async function generateReceipt(transaction, businessSetup, isReprint = false) {
     const templatePath = app.isPackaged
         ? path.join(app.getAppPath(), 'receipt-template.html')
@@ -47,6 +62,13 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
     return template;
 }
 
+/**
+ * Generates the HTML content for the daily closing report.
+ *
+ * @param {ClosingReportData} reportData - The aggregated report data.
+ * @param {BusinessSetup} businessSetup - The business configuration.
+ * @returns {Promise<string>} The populated HTML string.
+ */
 async function generateClosingReport(reportData, businessSetup) {
     const templatePath = app.isPackaged
       ? path.join(app.getAppPath(), 'closing-report-template.html')
@@ -101,6 +123,13 @@ async function generateClosingReport(reportData, businessSetup) {
     return template;
 }
 
+/**
+ * Generates the HTML content for the initial business setup invoice.
+ *
+ * @param {BusinessSetup} businessSetup - The business configuration.
+ * @param {User} adminUser - The admin user details.
+ * @returns {Promise<string>} The populated HTML string.
+ */
 async function generateBusinessSetup(businessSetup, adminUser) {
     const templatePath = app.isPackaged
       ? path.join(app.getAppPath(), 'startup-invoice-template.html')

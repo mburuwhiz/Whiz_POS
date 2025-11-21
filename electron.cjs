@@ -7,10 +7,19 @@ const crypto = require('crypto');
 const os = require('os');
 const { generateReceipt, generateClosingReport, generateBusinessSetup } = require(path.join(__dirname, 'print-jobs.cjs'));
 
+/**
+ * Main Electron Process Script.
+ * Handles application lifecycle, window management, IPC communication, and a local API server for mobile printing.
+ */
+
 // Define paths for storing user data and assets.
 const userDataPath = path.join(app.getPath('userData'), 'data');
 const productImagesPath = path.join(app.getPath('userData'), 'assets', 'product_images');
 
+/**
+ * Ensures that the necessary application directories exist.
+ * Creates 'data' and 'assets/product_images' directories in the user data path.
+ */
 async function ensureAppDirs() {
   try {
     await fs.mkdir(userDataPath, { recursive: true });
@@ -20,6 +29,10 @@ async function ensureAppDirs() {
   }
 }
 
+/**
+ * Ensures that the initial JSON data files exist in the user data directory.
+ * If a file is missing, it is created with a default empty structure.
+ */
 async function ensureDataFilesExist() {
   const dataFiles = {
     'business-setup.json': { isSetup: false },
@@ -41,6 +54,13 @@ async function ensureDataFilesExist() {
   }
 }
 
+/**
+ * Loads a URL into a BrowserWindow with retry logic.
+ * Useful for development when the Vite server might not be ready immediately.
+ *
+ * @param {BrowserWindow} win - The window to load the URL into.
+ * @param {string} url - The URL to load.
+ */
 const loadUrlWithRetries = (win, url) => {
   win.loadURL(url).catch(() => {
     console.log('Vite server not ready, retrying in 2 seconds...');
@@ -50,6 +70,10 @@ const loadUrlWithRetries = (win, url) => {
   });
 };
 
+/**
+ * Creates the main application window.
+ * Configures size, preferences, and loads the application content.
+ */
 function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 1200,
@@ -81,6 +105,12 @@ app.commandLine.appendSwitch('remote-debugging-port', '9222');
 let apiKey = null;
 let server = null;
 
+/**
+ * Gets the local IPv4 address of the machine.
+ * Used for generating the connection URL for the mobile app.
+ *
+ * @returns {string} The local IP address.
+ */
 function getLocalIpAddress() {
     const interfaces = os.networkInterfaces();
     for (const name of Object.keys(interfaces)) {
@@ -93,6 +123,10 @@ function getLocalIpAddress() {
     return '127.0.0.1';
 }
 
+/**
+ * Starts the local Express API server.
+ * This server allows the Mobile App to send print jobs to the Desktop App.
+ */
 function startApiServer() {
     const apiApp = express();
     apiApp.use(express.json());
@@ -174,7 +208,14 @@ app.whenReady().then(async () => {
 
   createWindow();
 
-  // IPC handler for saving an image
+  /**
+   * IPC Handler: 'save-image'
+   * Saves an image from a temporary path to the application's persistent storage.
+   *
+   * @param {Electron.IpcMainInvokeEvent} event
+   * @param {string} tempPath - The path to the temporary image file.
+   * @returns {Promise<{success: boolean, path?: string, fileName?: string, error?: string}>}
+   */
   ipcMain.handle('save-image', async (event, tempPath) => {
     if (!tempPath || typeof tempPath !== 'string') {
       console.error('Invalid or missing tempPath for save-image');
@@ -191,7 +232,15 @@ app.whenReady().then(async () => {
     }
   });
 
-  // IPC handler for saving data
+  /**
+   * IPC Handler: 'save-data'
+   * Writes JSON data to a file in the user data directory.
+   *
+   * @param {Electron.IpcMainInvokeEvent} event
+   * @param {string} fileName - The name of the file to save.
+   * @param {any} data - The data to serialize and save.
+   * @returns {Promise<{success: boolean, error?: string}>}
+   */
   ipcMain.handle('save-data', async (event, fileName, data) => {
     try {
       const filePath = path.join(userDataPath, fileName);
@@ -203,7 +252,15 @@ app.whenReady().then(async () => {
     }
   });
 
-  // IPC handler for reading data
+  /**
+   * IPC Handler: 'read-data'
+   * Reads JSON data from a file in the user data directory.
+   * If the file is missing, attempts to seed it from default data.
+   *
+   * @param {Electron.IpcMainInvokeEvent} event
+   * @param {string} fileName - The name of the file to read.
+   * @returns {Promise<{success: boolean, data?: any, error?: string}>}
+   */
   ipcMain.handle('read-data', async (event, fileName) => {
     const filePath = path.join(userDataPath, fileName);
     try {
@@ -252,6 +309,12 @@ app.whenReady().then(async () => {
   });
 
   // --- Printing Logic ---
+  /**
+   * Creates a hidden BrowserWindow to render HTML content and triggers the print dialog.
+   *
+   * @param {string} htmlContent - The HTML string to print.
+   * @param {Object} options - Electron print options.
+   */
   const printHtml = (htmlContent, options = {}) => {
     const printWindow = new BrowserWindow({ show: false, webPreferences: { contextIsolation: false, nodeIntegration: true } });
 
@@ -266,22 +329,37 @@ app.whenReady().then(async () => {
     });
   };
 
-
+  /**
+   * IPC Listener: 'print-receipt'
+   * Generates and prints a transaction receipt.
+   */
   ipcMain.on('print-receipt', async (event, transaction, businessSetup, isReprint = false) => {
       const htmlContent = await generateReceipt(transaction, businessSetup, isReprint);
       printHtml(htmlContent);
   });
 
+  /**
+   * IPC Listener: 'print-receipt-from-api'
+   * Generates and prints a receipt requested via the local API (e.g., from Mobile App).
+   */
   ipcMain.on('print-receipt-from-api', async (event, transaction, businessSetup) => {
       const htmlContent = await generateReceipt(transaction, businessSetup, true);
       printHtml(htmlContent);
   });
 
+  /**
+   * IPC Listener: 'print-business-setup'
+   * Generates and prints the initial business setup invoice.
+   */
   ipcMain.on('print-business-setup', async (event, businessSetup, adminUser) => {
       const htmlContent = await generateBusinessSetup(businessSetup, adminUser);
       printHtml(htmlContent, { copies: 2 });
   });
 
+  /**
+   * IPC Listener: 'print-closing-report'
+   * Generates and prints the daily closing report.
+   */
   ipcMain.on('print-closing-report', async (event, reportData, businessSetup) => {
       const htmlContent = await generateClosingReport(reportData, businessSetup);
       printHtml(htmlContent);
@@ -292,6 +370,13 @@ app.whenReady().then(async () => {
   });
 });
 
+/**
+ * IPC Handler: 'get-api-config'
+ * Retrieves or generates the API Key and connection details for the local API server.
+ * Returns a QR code data URL for easy mobile connection.
+ *
+ * @returns {Promise<{apiKey: string, apiUrl: string, qrCodeDataUrl: string}>}
+ */
 ipcMain.handle('get-api-config', async () => {
     if (!apiKey) {
         apiKey = crypto.randomBytes(32).toString('hex');

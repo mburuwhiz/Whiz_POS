@@ -3,18 +3,27 @@ import { usePosStore } from '../store/posStore';
 import { X, CreditCard, Smartphone, Wallet, CheckCircle } from 'lucide-react';
 import CreditCustomerModal from './CreditCustomerModal';
 
+/**
+ * Modal component for handling the checkout process.
+ * Allows selecting payment method (Cash, M-Pesa, Credit) and completing the transaction.
+ */
 export default function CheckoutModal() {
   const { isCheckoutOpen, closeCheckout, cart, completeTransaction } = usePosStore();
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'mpesa' | 'credit'>('cash');
   const [creditCustomer, setCreditCustomer] = useState('');
   const [isCreditModalOpen, setIsCreditModalOpen] = useState(false);
 
+  // Calculate totals
   const subtotal = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
   const tax = subtotal * 0; // Tax is set to 0 as per user instruction
   const total = subtotal + tax;
 
   if (!isCheckoutOpen) return null;
 
+  /**
+   * Finalizes the transaction.
+   * Validates credit customer selection if payment method is credit.
+   */
   const handleComplete = () => {
     if (paymentMethod === 'credit' && !creditCustomer.trim()) {
       alert('Please select a customer for credit payment');
@@ -23,11 +32,19 @@ export default function CheckoutModal() {
     completeTransaction(paymentMethod, paymentMethod === 'credit' ? creditCustomer : undefined);
   };
 
+  /**
+   * Callback when a customer is selected from the CreditCustomerModal.
+   * @param customerName - The name of the selected customer.
+   */
   const handleSelectCustomer = (customerName: string) => {
     setCreditCustomer(customerName);
     setIsCreditModalOpen(false);
   };
 
+  /**
+   * Updates the selected payment method.
+   * Opens the credit customer selection modal if 'credit' is chosen.
+   */
   const handlePaymentMethodChange = (method: 'cash' | 'mpesa' | 'credit') => {
     setPaymentMethod(method);
     if (method === 'credit') {
@@ -35,6 +52,9 @@ export default function CheckoutModal() {
     }
   };
 
+  /**
+   * Reusable button component for payment methods.
+   */
   const PaymentButton = ({ method, current, setMethod, icon, label }: any) => {
     const isSelected = method === current;
     return (

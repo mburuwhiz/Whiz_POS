@@ -63,10 +63,53 @@
                 <option>This Year</option>
             </select>
         </div>
-        <div class="h-80 bg-gray-50 rounded-lg flex items-center justify-center text-gray-400">
-            <p>Chart integration pending (requires client-side JS)</p>
+        <div class="h-80 w-full">
+            <canvas id="salesChart"></canvas>
         </div>
     </div>
+
+    <script>
+        const ctx = document.getElementById('salesChart').getContext('2d');
+        const chartData = <%- typeof chartData !== 'undefined' ? chartData : '{"labels":[], "data":[]}' %>;
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartData.labels,
+                datasets: [{
+                    label: 'Sales (Ksh)',
+                    data: chartData.data,
+                    borderColor: 'rgb(37, 99, 235)',
+                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            display: true,
+                            drawBorder: false
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+    </script>
 
     <!-- Recent Transactions -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">

@@ -245,6 +245,7 @@ interface PosState {
   loadInitialData: () => void;
   autoPrintClosingReport: () => void;
   finishSetup: (businessData: Omit<BusinessSetup, 'createdAt'>, adminUser: Omit<User, 'createdAt' | 'isActive'>) => Promise<void>;
+  pushDataToServer: () => Promise<void>;
 }
 
 export const usePosStore = create<PosState>()(
@@ -920,6 +921,42 @@ export const usePosStore = create<PosState>()(
           }
         };
         printWithRetry();
+      },
+
+      pushDataToServer: async () => {
+        const state = get();
+        const apiUrl = state.businessSetup?.apiUrl?.replace(/\/$/, '');
+        if (!state.isOnline || !apiUrl || !state.businessSetup?.apiKey) {
+            console.log("Cannot push data: Offline or no API config");
+            return;
+        }
+
+        try {
+            const payload = {
+                products: state.products,
+                users: state.users,
+                expenses: state.expenses,
+                customers: state.creditCustomers,
+                transactions: state.transactions
+            };
+
+            const response = await fetch(`${apiUrl}/api/sync/full`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${state.businessSetup.apiKey}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error('Full sync failed');
+            }
+            console.log("Full sync successful");
+            set({ lastSyncTime: new Date().toISOString() });
+        } catch (error) {
+            console.error('Full sync error:', error);
+        }
       },
     }),
     {

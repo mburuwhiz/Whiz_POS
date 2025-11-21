@@ -16,11 +16,12 @@ const checkApiKey = (req, res, next) => {
 
 router.use(checkApiKey);
 
-// Sync endpoint - Receives data from Desktop App / Mobile App
+// Sync endpoints
 router.post('/sync', apiController.sync);
-router.get('/sync', apiController.getData); // Pull data from server
+router.post('/sync/full', apiController.fullSync);
+router.get('/sync', apiController.getData);
 
-// Endpoints for Mobile App / Direct access
+// Mobile/Direct endpoints
 router.get('/products', apiController.getProducts);
 router.post('/transaction', apiController.createTransaction);
 

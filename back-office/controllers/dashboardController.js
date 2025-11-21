@@ -28,6 +28,37 @@ exports.index = async (req, res) => {
         // 5. Recent Transactions
         const recentTransactions = await Transaction.find().sort({ date: -1 }).limit(5);
 
+        // 6. Sales Data for Chart (Last 7 Days)
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 6);
+        startDate.setHours(0, 0, 0, 0);
+
+        const dailySales = await Transaction.aggregate([
+            {
+                $match: {
+                    date: { $gte: startDate, $lte: endDate }
+                }
+            },
+            {
+                $group: {
+                    _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
+                    total: { $sum: "$totalAmount" }
+                }
+            },
+            { $sort: { _id: 1 } }
+        ]);
+
+        // Fill in missing days with 0
+        const chartLabels = [];
+        const chartData = [];
+        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+            const dateStr = d.toISOString().split('T')[0];
+            chartLabels.push(d.toLocaleDateString('en-US', { weekday: 'short' }));
+            const sales = dailySales.find(s => s._id === dateStr);
+            chartData.push(sales ? sales.total : 0);
+        }
+
         res.render('pages/dashboard', {
             title: 'Dashboard',
             stats: {
@@ -36,7 +67,8 @@ exports.index = async (req, res) => {
                 inventoryValue,
                 creditDue
             },
-            recentTransactions
+            recentTransactions,
+            chartData: JSON.stringify({ labels: chartLabels, data: chartData })
         });
     } catch (error) {
         console.error("Dashboard Error:", error);
@@ -44,6 +76,7 @@ exports.index = async (req, res) => {
             title: 'Dashboard',
             stats: { totalSales: 0, transactionCount: 0, inventoryValue: 0, creditDue: 0 },
             recentTransactions: [],
+            chartData: '{"labels":[], "data":[]}',
             error: 'Failed to load dashboard data'
         });
     }

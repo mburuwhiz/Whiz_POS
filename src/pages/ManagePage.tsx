@@ -200,6 +200,22 @@ const ManagePage = () => {
                           />
                       </div>
                   </div>
+                  <div className="mt-6 pt-6 border-t border-gray-100">
+                      <button
+                        onClick={() => {
+                            if (window.confirm('Are you sure you want to overwrite cloud data with local data? This action cannot be undone.')) {
+                                usePosStore.getState().pushDataToServer();
+                            }
+                        }}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 text-white font-semibold rounded-lg shadow hover:bg-purple-700 transition-colors"
+                      >
+                          <i data-lucide="upload-cloud" className="w-5 h-5"></i>
+                          Sync Local Data to Cloud (Full Push)
+                      </button>
+                      <p className="text-xs text-gray-500 mt-2 text-center">
+                          Use this to initialize the Back Office with your current Desktop data.
+                      </p>
+                  </div>
               </div>
           </div>
       )}

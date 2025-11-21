@@ -55,6 +55,43 @@ exports.sync = async (req, res) => {
     }
 };
 
+exports.fullSync = async (req, res) => {
+    try {
+        const { products, users, expenses, customers, transactions } = req.body;
+
+        if (products) {
+            for (const p of products) {
+                await processOperation({ type: 'add-product', data: p });
+            }
+        }
+        if (users) {
+            for (const u of users) {
+                await processOperation({ type: 'add-user', data: u });
+            }
+        }
+        if (expenses) {
+            for (const e of expenses) {
+                await processOperation({ type: 'add-expense', data: e });
+            }
+        }
+        if (customers) {
+            for (const c of customers) {
+                await processOperation({ type: 'add-credit-customer', data: c });
+            }
+        }
+        if (transactions) {
+            for (const t of transactions) {
+                await processOperation({ type: 'new-transaction', data: t });
+            }
+        }
+
+        res.json({ success: true, message: 'Full sync complete' });
+    } catch (error) {
+        console.error('Full Sync Error:', error);
+        res.status(500).json({ success: false, message: 'Full sync failed', error: error.message });
+    }
+};
+
 async function processOperation(op) {
     try {
         switch (op.type) {
@@ -106,6 +143,20 @@ async function processOperation(op) {
                 await Expense.updateOne(
                     { expenseId: op.data.id },
                     { $set: { ...op.data, expenseId: op.data.id } },
+                    { upsert: true }
+                );
+                break;
+
+            case 'add-user':
+            case 'update-user':
+                const userData = op.type === 'update-user' ? op.data.updates : op.data;
+                const userQuery = userData.username ? { username: userData.username } : { _id: userData.id }; // Fallback
+
+                // Use username as unique identifier for sync if available
+                // Ensure pin is saved
+                await User.updateOne(
+                    userQuery,
+                    { $set: userData },
                     { upsert: true }
                 );
                 break;

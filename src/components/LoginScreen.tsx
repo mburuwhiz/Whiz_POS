@@ -1,8 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { usePosStore } from '../store/posStore';
-import { User } from '../types';
-import { Store, Lock, User as UserIcon } from 'lucide-react';
+import { Store, Lock } from 'lucide-react';
 
+/**
+ * LoginScreen Component
+ *
+ * Provides a user interface for users to log in using a PIN.
+ * Allows selection of a user from a dropdown and authentication via a 4-digit PIN.
+ *
+ * @returns {JSX.Element | null} The login screen component or null if business setup is missing.
+ */
 export default function LoginScreen() {
   const { login, users, businessSetup } = usePosStore();
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -15,12 +22,21 @@ export default function LoginScreen() {
 
   if (!businessSetup) return null;
 
+  /**
+   * Handles the selection of a user from the dropdown.
+   * Resets the PIN and error state.
+   *
+   * @param {string} userId - The ID of the selected user.
+   */
   const handleUserSelect = (userId: string) => {
     setSelectedUserId(userId);
     setPin('');
     setLoginError('');
   };
 
+  /**
+   * Attempts to authenticate the user with the entered PIN.
+   */
   const handleLogin = () => {
     if (!selectedUserId || pin.length !== 4) {
       setLoginError('Please select a user and enter 4-digit PIN');
@@ -37,21 +53,36 @@ export default function LoginScreen() {
     }
   };
 
+  /**
+   * Appends a digit to the current PIN.
+   *
+   * @param {string} key - The digit pressed.
+   */
   const handleKeyPress = (key: string) => {
     if (pin.length < 4) {
       setPin(pin + key);
     }
   };
 
+  /**
+   * Removes the last digit from the PIN.
+   */
   const handleBackspace = () => {
     setPin(pin.slice(0, -1));
   };
 
+  /**
+   * Clears the entire PIN entry.
+   */
   const handleClear = () => {
     setPin('');
     setLoginError('');
   };
 
+  /**
+   * Retrieves the full user object for the currently selected user ID.
+   * @returns {User | undefined} The selected user object.
+   */
   const getSelectedUser = () => {
     if (!selectedUserId) return null;
     return users.find(u => u.id === selectedUserId);

@@ -3,20 +3,30 @@ import Draggable from 'react-draggable';
 import { usePosStore } from '../store/posStore';
 import { X, CornerDownLeft, ArrowUp, ChevronsUp, Trash2 } from 'lucide-react';
 
+/**
+ * OnScreenKeyboard Component
+ *
+ * A virtual keyboard that appears when an input field is focused (if enabled).
+ * It supports dragging, character input, caps lock, shift, and backspace.
+ * The keyboard updates the value of the currently focused input element.
+ *
+ * @returns {JSX.Element | null} The keyboard UI or null if inactive.
+ */
 const OnScreenKeyboard = () => {
   const { isKeyboardOpen, closeKeyboard, updateKeyboardTargetValue, activeInput, keyboardInput, setKeyboardInput } = usePosStore();
   const [layout, setLayout] = useState('default');
   const [capsLock, setCapsLock] = useState(false);
   const [shift, setShift] = useState(false);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
   const nodeRef = useRef(null);
 
+  // Reset modifiers when keyboard opens/closes
   useEffect(() => {
     if (!isKeyboardOpen) {
       setCapsLock(false);
       setShift(false);
     }
 
+    // Close keyboard when clicking outside
     const handleClickOutside = (event: MouseEvent) => {
       if (nodeRef.current && !(nodeRef.current as any).contains(event.target)) {
         closeKeyboard();
@@ -34,6 +44,7 @@ const OnScreenKeyboard = () => {
     };
   }, [isKeyboardOpen, closeKeyboard]);
 
+  // Sync local input preview with the active DOM element
   useEffect(() => {
     if (activeInput) {
       const handleInput = (e: Event) => {
@@ -51,6 +62,12 @@ const OnScreenKeyboard = () => {
     return null;
   }
 
+  /**
+   * Handles a key press on the virtual keyboard.
+   * Logic for standard keys, shift, caps lock, and special keys.
+   *
+   * @param {string} key - The key value pressed.
+   */
   const handleKeyPress = (key: string) => {
     if (!activeInput) return;
 
@@ -97,12 +114,21 @@ const OnScreenKeyboard = () => {
 
   const currentKeys = (shift || capsLock) && !((shift && capsLock)) ? keys.shift : keys.default;
 
+  // Center the keyboard initially
+  const defaultPosition = { x: '-50%', y: '0%' };
+
   return (
-    <Draggable nodeRef={nodeRef} handle=".keyboard-handle" key={isKeyboardOpen ? 'open' : 'closed'}>
+    <Draggable
+      nodeRef={nodeRef}
+      handle=".keyboard-handle"
+      key={isKeyboardOpen ? 'open' : 'closed'}
+      positionOffset={defaultPosition} // Use positionOffset to center without interfering with drag
+    >
       <div
         ref={nodeRef}
-        className="fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-3xl bg-gray-200 dark:bg-gray-800 p-2 rounded-lg shadow-2xl z-50"
+        className="fixed bottom-4 left-1/2 w-full max-w-3xl bg-gray-200 dark:bg-gray-800 p-2 rounded-lg shadow-2xl z-50"
         onClick={(e) => e.stopPropagation()}
+        style={{ left: '50%' }} // Combine with positionOffset
       >
         <div className="keyboard-handle bg-gray-300 dark:bg-gray-700 h-6 rounded-t-md flex items-center justify-center cursor-move">
           <div className="w-12 h-1 bg-gray-400 dark:bg-gray-500 rounded-full" />

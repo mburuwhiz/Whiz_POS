@@ -2,15 +2,32 @@ import { useEffect, useState } from 'react';
 import { usePosStore } from '../store/posStore';
 import { Wifi, WifiOff, RefreshCw, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 
+/**
+ * Represents a single synchronization operation.
+ */
 interface SyncOperation {
+  /** Unique identifier for the sync operation */
   id: string;
+  /** The type of data being synced */
   type: 'transaction' | 'customer' | 'expense' | 'user';
+  /** The data payload or result metadata */
   data: any;
+  /** Timestamp when the operation was created */
   timestamp: string;
+  /** Current status of the operation */
   status: 'pending' | 'syncing' | 'completed' | 'failed';
+  /** Number of times this operation has been retried */
   retryCount: number;
 }
 
+/**
+ * SyncEngine Component
+ *
+ * Manages and displays the status of data synchronization between the local device
+ * and the central back-office server. Handles both automatic and manual sync triggers.
+ *
+ * @returns {JSX.Element} The rendered SyncEngine component.
+ */
 export default function SyncEngine() {
   const { 
     isOnline, 
@@ -65,6 +82,10 @@ export default function SyncEngine() {
     return () => clearInterval(interval);
   }, [isOnline]);
 
+  /**
+   * Triggers the automatic synchronization process.
+   * Processes the sync queue and updates the sync history.
+   */
   const handleAutoSync = async () => {
     if (isSyncing || !isOnline) return;
 
@@ -105,6 +126,10 @@ export default function SyncEngine() {
     }
   };
 
+  /**
+   * Manually triggers a full synchronization of all local data.
+   * Re-queues all transactions, customers, expenses, and users for sync.
+   */
   const handleManualSync = async () => {
     if (isSyncing) return;
 
@@ -144,6 +169,10 @@ export default function SyncEngine() {
     await handleAutoSync();
   };
 
+  /**
+   * Calculates statistics for the current sync state and history.
+   * @returns {Object} Counts for pending, completed, failed, and total operations.
+   */
   const getSyncStats = () => {
     const pending = syncQueue.length;
     const completed = syncHistory.filter(op => op.status === 'completed').length;

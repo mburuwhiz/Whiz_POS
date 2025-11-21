@@ -2,6 +2,14 @@ import React, { useState, useMemo } from 'react';
 import { usePosStore } from '../store/posStore';
 import { BarChart3, TrendingUp, DollarSign, CreditCard, Calendar, Download, Filter } from 'lucide-react';
 
+/**
+ * ReportsPage Component
+ *
+ * Displays comprehensive reports and analytics for the business.
+ * Allows filtering by date range and exporting reports to JSON.
+ *
+ * @returns {JSX.Element} The rendered page.
+ */
 export default function ReportsPage() {
   const { transactions, expenses, getDailySales, getTransactionsByDateRange, setCurrentPage } = usePosStore();
   const [dateRange, setDateRange] = useState({
@@ -10,10 +18,16 @@ export default function ReportsPage() {
   });
   const [reportType, setReportType] = useState<'sales' | 'expenses' | 'credits'>('sales');
 
+  /**
+   * Filters transactions based on the selected date range.
+   */
   const filteredTransactions = useMemo(() => {
     return getTransactionsByDateRange(dateRange.startDate, dateRange.endDate);
   }, [dateRange, getTransactionsByDateRange]);
 
+  /**
+   * Filters expenses based on the selected date range.
+   */
   const filteredExpenses = useMemo(() => {
     return expenses.filter(expense => {
       const expenseDate = expense.timestamp.split('T')[0];
@@ -21,6 +35,9 @@ export default function ReportsPage() {
     });
   }, [expenses, dateRange]);
 
+  /**
+   * Computes sales summary metrics (cash, mpesa, credit, net profit).
+   */
   const salesSummary = useMemo(() => {
     const cash = filteredTransactions
       .filter(t => t.paymentMethod === 'cash')
@@ -49,6 +66,9 @@ export default function ReportsPage() {
     };
   }, [filteredTransactions, filteredExpenses]);
 
+  /**
+   * Identifies the top 10 best-selling products.
+   */
   const topProducts = useMemo(() => {
     const productSales: { [key: string]: { quantity: number; revenue: number } } = {};
     
@@ -69,6 +89,9 @@ export default function ReportsPage() {
       .slice(0, 10);
   }, [filteredTransactions]);
 
+  /**
+   * Generates and downloads a JSON report file.
+   */
   const downloadReport = () => {
     const reportData = {
       dateRange,

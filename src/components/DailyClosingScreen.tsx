@@ -2,6 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { usePosStore, ClosingReportData } from '../store/posStore';
 import { Calendar, Printer, Download, User, Hash, Clock, CreditCard as CreditCardIcon, Briefcase } from 'lucide-react';
 
+/**
+ * DailyClosingScreen Component
+ *
+ * Displays the daily closing report, which summarizes sales by cashier and payment method.
+ * Allows selecting a date and printing the report.
+ *
+ * @returns {JSX.Element} The rendered closing report screen.
+ */
 export default function DailyClosingScreen() {
   const { getDailyClosingReport, setCurrentPage, businessSetup } = usePosStore();
   
@@ -13,6 +21,9 @@ export default function DailyClosingScreen() {
     setReport(generatedReport);
   }, [selectedDate, getDailyClosingReport]);
 
+  /**
+   * Triggers the print job for the closing report via Electron.
+   */
   const handlePrint = () => {
     if (report && businessSetup && window.electron) {
       window.electron.printClosingReport(report, businessSetup);

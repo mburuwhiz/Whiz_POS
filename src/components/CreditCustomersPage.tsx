@@ -1,8 +1,16 @@
 import React, { useState, useMemo } from 'react';
 import { usePosStore } from '../store/posStore';
-import { CreditCustomer } from '../store/posStore'; // Import from store directly
+import { CreditCustomer } from '../store/posStore';
 import { Users, Phone, DollarSign, CheckCircle, Clock, Search, Plus, Edit, Trash2 } from 'lucide-react';
 
+/**
+ * CreditCustomersPage Component
+ *
+ * Manages the list of customers who have credit accounts.
+ * Allows adding, editing, deleting customers, and recording payments.
+ *
+ * @returns {JSX.Element} The rendered page.
+ */
 export default function CreditCustomersPage() {
   const { 
     creditCustomers, 
@@ -23,6 +31,9 @@ export default function CreditCustomersPage() {
     phone: '',
   });
 
+  /**
+   * Filters customers based on the search term (name or phone).
+   */
   const filteredCustomers = useMemo(() => {
     return creditCustomers.filter(customer =>
       customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -30,14 +41,23 @@ export default function CreditCustomersPage() {
     );
   }, [creditCustomers, searchTerm]);
 
+  /**
+   * Retrieves the list of customers with outstanding balances.
+   */
   const unpaidCredits = useMemo(() => {
     return getUnpaidCredits();
   }, [getUnpaidCredits]);
 
+  /**
+   * Calculates the total outstanding debt across all customers.
+   */
   const totalUnpaid = useMemo(() => {
     return unpaidCredits.reduce((sum, customer) => sum + (customer.balance || 0), 0);
   }, [unpaidCredits]);
 
+  /**
+   * Handles the creation of a new credit customer.
+   */
   const handleAddCustomer = () => {
     if (!formData.name.trim()) return;
 
@@ -58,6 +78,10 @@ export default function CreditCustomersPage() {
     setShowAddForm(false);
   };
 
+  /**
+   * Prepares the form for editing an existing customer.
+   * @param {CreditCustomer} customer - The customer to edit.
+   */
   const handleEditCustomer = (customer: CreditCustomer) => {
     setEditingCustomer(customer);
     setFormData({
@@ -66,6 +90,9 @@ export default function CreditCustomersPage() {
     });
   };
 
+  /**
+   * Updates the existing customer with new form data.
+   */
   const handleUpdateCustomer = () => {
     if (!editingCustomer || !formData.name.trim()) return;
 
@@ -79,17 +106,31 @@ export default function CreditCustomersPage() {
     setFormData({ name: '', phone: '' });
   };
 
+  /**
+   * Records a payment for a specific customer.
+   * @param {string} customerId - The ID of the customer.
+   * @param {number} amount - The amount paid.
+   */
   const handlePayment = (customerId: string, amount: number) => {
     if (amount <= 0) return;
     addCreditPayment(customerId, amount);
   };
 
+  /**
+   * Deletes a customer after confirmation.
+   * @param {string} customerId - The ID of the customer to delete.
+   */
   const handleDeleteCustomer = (customerId: string) => {
     if (confirm('Are you sure you want to delete this customer?')) {
       deleteCreditCustomer(customerId);
     }
   };
 
+  /**
+   * Retrieves all transactions associated with a specific customer.
+   * @param {CreditCustomer} customer - The customer object.
+   * @returns {Transaction[]} List of transactions.
+   */
   const getCustomerTransactions = (customer: CreditCustomer) => {
     if (!customer || !customer.transactions) {
       return [];

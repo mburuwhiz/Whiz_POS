@@ -2,6 +2,14 @@ import React, { useState } from 'react';
 import { usePosStore } from '../store/posStore';
 import { Building2, Mail, Phone, Globe, CheckCircle, AlertCircle } from 'lucide-react';
 
+/**
+ * BusinessRegistration Component
+ *
+ * Displays a form for the initial setup of the business.
+ * Captures business details and the first admin user account.
+ *
+ * @returns {JSX.Element} The registration form component.
+ */
 export default function BusinessRegistration() {
   console.log('BusinessRegistration component rendering');
   const { finishSetup, isDataLoaded, businessSetup } = usePosStore(state => ({
@@ -28,6 +36,12 @@ export default function BusinessRegistration() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState('');
 
+  /**
+   * Handles form submission.
+   * Creates the business setup and admin user in the store.
+   *
+   * @param {React.FormEvent} e - The form submission event.
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -66,6 +80,12 @@ export default function BusinessRegistration() {
     }
   };
 
+  /**
+   * Generic input change handler.
+   *
+   * @param {keyof typeof formData} field - The form field to update.
+   * @returns {Function} Event handler function.
+   */
   const handleInputChange = (field: keyof typeof formData) => (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {

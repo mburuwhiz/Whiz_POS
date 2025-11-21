@@ -3,6 +3,14 @@ import { usePosStore } from '../store/posStore';
 import { X, CreditCard, Smartphone, Wallet, CheckCircle } from 'lucide-react';
 import CreditCustomerModal from './CreditCustomerModal';
 
+/**
+ * CheckoutModal Component
+ *
+ * Displays the final checkout screen where the user can review the transaction
+ * total and select a payment method (Cash, M-Pesa, or Credit).
+ *
+ * @returns {JSX.Element | null} The checkout modal or null if not open.
+ */
 export default function CheckoutModal() {
   const { isCheckoutOpen, closeCheckout, cart, completeTransaction } = usePosStore();
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'mpesa' | 'credit'>('cash');
@@ -15,6 +23,10 @@ export default function CheckoutModal() {
 
   if (!isCheckoutOpen) return null;
 
+  /**
+   * Handles the completion of the transaction.
+   * Validates credit customer selection if credit is chosen.
+   */
   const handleComplete = () => {
     if (paymentMethod === 'credit' && !creditCustomer.trim()) {
       alert('Please select a customer for credit payment');
@@ -23,11 +35,22 @@ export default function CheckoutModal() {
     completeTransaction(paymentMethod, paymentMethod === 'credit' ? creditCustomer : undefined);
   };
 
+  /**
+   * Handler for selecting a credit customer from the modal.
+   *
+   * @param {string} customerName - The selected customer's name.
+   */
   const handleSelectCustomer = (customerName: string) => {
     setCreditCustomer(customerName);
     setIsCreditModalOpen(false);
   };
 
+  /**
+   * Updates the selected payment method.
+   * Opens the credit customer modal if 'credit' is selected.
+   *
+   * @param {'cash' | 'mpesa' | 'credit'} method - The selected method.
+   */
   const handlePaymentMethodChange = (method: 'cash' | 'mpesa' | 'credit') => {
     setPaymentMethod(method);
     if (method === 'credit') {
@@ -35,6 +58,9 @@ export default function CheckoutModal() {
     }
   };
 
+  /**
+   * Helper component for rendering a payment method button.
+   */
   const PaymentButton = ({ method, current, setMethod, icon, label }: any) => {
     const isSelected = method === current;
     return (

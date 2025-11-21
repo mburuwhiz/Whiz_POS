@@ -3,6 +3,12 @@ const fs = require('fs').promises;
 const path = require('path');
 const qrcode = require('qrcode');
 
+/**
+ * Formats a timestamp into a readable date string (YYYY-MM-DD HH:MM AM/PM).
+ *
+ * @param {number|string} timestamp - The timestamp to format.
+ * @returns {string} The formatted date string.
+ */
 const formatDate = (timestamp) => {
     const date = new Date(timestamp);
     const year = date.getFullYear();
@@ -15,6 +21,15 @@ const formatDate = (timestamp) => {
     return `${year}-${month}-${day} ${hours.toString().padStart(2, '0')}:${minutes} ${ampm}`;
 };
 
+/**
+ * Generates the HTML content for a transaction receipt.
+ * Replaces placeholders in the template with actual transaction data.
+ *
+ * @param {Object} transaction - The transaction data object.
+ * @param {Object} businessSetup - The business configuration details.
+ * @param {boolean} [isReprint=false] - Flag to indicate if this is a reprinted receipt.
+ * @returns {Promise<string>} A promise that resolves to the complete HTML string.
+ */
 async function generateReceipt(transaction, businessSetup, isReprint = false) {
     const templatePath = app.isPackaged
         ? path.join(app.getAppPath(), 'receipt-template.html')
@@ -47,6 +62,14 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
     return template;
 }
 
+/**
+ * Generates the HTML content for the daily closing report.
+ * Aggregates sales data and includes breakdowns by cashier.
+ *
+ * @param {Object} reportData - The aggregated report data.
+ * @param {Object} businessSetup - The business configuration details.
+ * @returns {Promise<string>} A promise that resolves to the complete HTML string.
+ */
 async function generateClosingReport(reportData, businessSetup) {
     const templatePath = app.isPackaged
       ? path.join(app.getAppPath(), 'closing-report-template.html')
@@ -101,6 +124,13 @@ async function generateClosingReport(reportData, businessSetup) {
     return template;
 }
 
+/**
+ * Generates the HTML content for the initial business setup invoice.
+ *
+ * @param {Object} businessSetup - The business configuration details.
+ * @param {Object} adminUser - The administrative user's details.
+ * @returns {Promise<string>} A promise that resolves to the complete HTML string.
+ */
 async function generateBusinessSetup(businessSetup, adminUser) {
     const templatePath = app.isPackaged
       ? path.join(app.getAppPath(), 'startup-invoice-template.html')

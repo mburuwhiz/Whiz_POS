@@ -1,11 +1,24 @@
 import React from 'react';
 import { usePosStore } from '../store/posStore';
 import { Plus } from 'lucide-react';
+import cartPlaceholder from '../assets/cart.png'; // Use direct import for assets in Vite
 
+/**
+ * ProductGrid Component
+ *
+ * Displays a grid of available products for selection.
+ * Includes a search bar to filter products by name.
+ * Allows adding products to the cart by clicking on the product card.
+ *
+ * @returns {JSX.Element} The rendered product grid.
+ */
 export default function ProductGrid() {
   const { products, addToCart } = usePosStore();
   const [searchTerm, setSearchTerm] = React.useState('');
 
+  /**
+   * Filters the product list based on the user's search input.
+   */
   const filteredProducts = products.filter((product) =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -32,13 +45,15 @@ export default function ProductGrid() {
             <div>
               <div className="aspect-square bg-gray-200 rounded-md mb-3 flex items-center justify-center overflow-hidden">
                 <img
-                  src={product.image || product.localImage || './assets/cart.png'}
+                  // Prioritize remote URL, then local path, then imported placeholder
+                  src={product.image || product.localImage || cartPlaceholder}
                   alt={product.name}
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
-                    if (target.src !== './assets/cart.png') {
-                      target.src = './assets/cart.png';
+                    // Prevent infinite loop if placeholder also fails (unlikely with import)
+                    if (target.src !== cartPlaceholder) {
+                      target.src = cartPlaceholder;
                     }
                   }}
                 />

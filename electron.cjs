@@ -11,6 +11,12 @@ const { generateReceipt, generateClosingReport, generateBusinessSetup } = requir
 const userDataPath = path.join(app.getPath('userData'), 'data');
 const productImagesPath = path.join(app.getPath('userData'), 'assets', 'product_images');
 
+/**
+ * Ensures that the necessary application directories exist.
+ * Creates 'data' and 'assets/product_images' directories in the user data path.
+ *
+ * @returns {Promise<void>} A promise that resolves when the directories are created or verified.
+ */
 async function ensureAppDirs() {
   try {
     await fs.mkdir(userDataPath, { recursive: true });
@@ -20,6 +26,12 @@ async function ensureAppDirs() {
   }
 }
 
+/**
+ * Ensures that the required data files (JSON) exist in the user data directory.
+ * If a file does not exist, it initializes it with default content.
+ *
+ * @returns {Promise<void>} A promise that resolves when all data files are checked/created.
+ */
 async function ensureDataFilesExist() {
   const dataFiles = {
     'business-setup.json': { isSetup: false },
@@ -41,6 +53,14 @@ async function ensureDataFilesExist() {
   }
 }
 
+/**
+ * Attempts to load a URL into a BrowserWindow, retrying if the load fails.
+ * Useful for development when the Vite server might not be ready immediately.
+ *
+ * @param {BrowserWindow} win - The Electron BrowserWindow instance.
+ * @param {string} url - The URL to load.
+ * @returns {void}
+ */
 const loadUrlWithRetries = (win, url) => {
   win.loadURL(url).catch(() => {
     console.log('Vite server not ready, retrying in 2 seconds...');
@@ -50,6 +70,12 @@ const loadUrlWithRetries = (win, url) => {
   });
 };
 
+/**
+ * Creates the main application window.
+ * Configures the window dimensions, web preferences, and loads the application URL (dev or prod).
+ *
+ * @returns {void}
+ */
 function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 1200,
@@ -81,6 +107,12 @@ app.commandLine.appendSwitch('remote-debugging-port', '9222');
 let apiKey = null;
 let server = null;
 
+/**
+ * Retrieves the local IPv4 address of the machine.
+ * Used for generating the API URL for mobile device connections.
+ *
+ * @returns {string} The local IPv4 address. Returns '127.0.0.1' if no external interface is found.
+ */
 function getLocalIpAddress() {
     const interfaces = os.networkInterfaces();
     for (const name of Object.keys(interfaces)) {
@@ -93,10 +125,24 @@ function getLocalIpAddress() {
     return '127.0.0.1';
 }
 
+/**
+ * Starts the local Express API server.
+ * This server handles requests from the mobile app and back-office sync.
+ *
+ * @returns {void}
+ */
 function startApiServer() {
     const apiApp = express();
     apiApp.use(express.json());
 
+    /**
+     * Middleware to authenticate requests using the API key.
+     *
+     * @param {Object} req - The Express request object.
+     * @param {Object} res - The Express response object.
+     * @param {Function} next - The next middleware function.
+     * @returns {void}
+     */
     const authMiddleware = (req, res, next) => {
         const authHeader = req.headers['authorization'];
         if (!authHeader || authHeader !== `Bearer ${apiKey}`) {
@@ -173,7 +219,13 @@ app.whenReady().then(async () => {
 
   createWindow();
 
-  // IPC handler for saving an image
+  /**
+   * IPC Handler: Saves a temporary image file to the permanent application storage.
+   *
+   * @param {Electron.IpcMainInvokeEvent} event - The IPC event.
+   * @param {string} tempPath - The path to the temporary file.
+   * @returns {Promise<{success: boolean, path?: string, fileName?: string, error?: string}>} Result object.
+   */
   ipcMain.handle('save-image', async (event, tempPath) => {
     if (!tempPath || typeof tempPath !== 'string') {
       console.error('Invalid or missing tempPath for save-image');
@@ -190,7 +242,14 @@ app.whenReady().then(async () => {
     }
   });
 
-  // IPC handler for saving data
+  /**
+   * IPC Handler: Overwrites a specific data file with new content.
+   *
+   * @param {Electron.IpcMainInvokeEvent} event - The IPC event.
+   * @param {string} fileName - The name of the file to write (e.g., 'products.json').
+   * @param {any} data - The data object to serialize and write.
+   * @returns {Promise<{success: boolean, error?: string}>} Result object.
+   */
   ipcMain.handle('save-data', async (event, fileName, data) => {
     try {
       const filePath = path.join(userDataPath, fileName);
@@ -202,7 +261,14 @@ app.whenReady().then(async () => {
     }
   });
 
-  // IPC handler for reading data
+  /**
+   * IPC Handler: Reads data from a specific JSON file.
+   * Falls back to seed data if the user file doesn't exist.
+   *
+   * @param {Electron.IpcMainInvokeEvent} event - The IPC event.
+   * @param {string} fileName - The name of the file to read.
+   * @returns {Promise<{success: boolean, data?: any, error?: string}>} Result object containing parsed data.
+   */
   ipcMain.handle('read-data', async (event, fileName) => {
     const filePath = path.join(userDataPath, fileName);
     try {
@@ -230,6 +296,14 @@ app.whenReady().then(async () => {
   });
 
   // --- Printing Logic ---
+
+  /**
+   * Renders HTML content in a hidden window and initiates the print job.
+   *
+   * @param {string} htmlContent - The HTML string to print.
+   * @param {Object} [options={}] - Electron print options.
+   * @returns {void}
+   */
   const printHtml = (htmlContent, options = {}) => {
     const printWindow = new BrowserWindow({ show: false, webPreferences: { contextIsolation: false, nodeIntegration: true } });
 
@@ -243,7 +317,6 @@ app.whenReady().then(async () => {
         });
     });
   };
-
 
   ipcMain.on('print-receipt', async (event, transaction, businessSetup, isReprint = false) => {
       const htmlContent = await generateReceipt(transaction, businessSetup, isReprint);
@@ -270,6 +343,11 @@ app.whenReady().then(async () => {
   });
 });
 
+/**
+ * IPC Handler: Generates and returns the API configuration (Key and URL) including a QR code.
+ *
+ * @returns {Promise<{apiKey: string, apiUrl: string, qrCodeDataUrl: string}>} The config object.
+ */
 ipcMain.handle('get-api-config', async () => {
     if (!apiKey) {
         apiKey = crypto.randomBytes(32).toString('hex');

@@ -18,7 +18,11 @@ declare global {
   }
 }
 
-// Helper function for saving data via Electron's main process
+/**
+ * Helper function for saving data via Electron's main process.
+ * @param {string} fileName - The file name to save to.
+ * @param {any} data - The data to save.
+ */
 const saveDataToFile = async (fileName: string, data: any) => {
   if (window.electron) {
     return await window.electron.saveData(fileName, data);
@@ -28,7 +32,10 @@ const saveDataToFile = async (fileName: string, data: any) => {
   }
 };
 
-// Helper function for reading data via Electron's main process
+/**
+ * Helper function for reading data via Electron's main process.
+ * @param {string} fileName - The file name to read from.
+ */
 const readDataFromFile = async (fileName: string) => {
   if (window.electron) {
     return await window.electron.readData(fileName);
@@ -189,16 +196,53 @@ interface PosState {
   syncHistory: any[];
   lastClosingReportDate: string | null;
 
-  // Actions
+  /**
+   * Authenticates a user and logs them in.
+   * @param {User} user - The user to login.
+   */
   login: (user: User) => void;
+
+  /**
+   * Logs out the current user.
+   */
   logout: () => void;
+
+  /**
+   * Updates the product list.
+   * @param {Product[]} products - The new list of products.
+   */
   setProducts: (products: Product[]) => void;
+
+  /**
+   * Adds a product to the shopping cart.
+   * @param {Product} product - The product to add.
+   */
   addToCart: (product: Product) => void;
+
+  /**
+   * Removes a product from the shopping cart.
+   * @param {number} productId - The ID of the product to remove.
+   */
   removeFromCart: (productId: number) => void;
+
+  /**
+   * Updates the quantity of a product in the cart.
+   * @param {number} productId - The product ID.
+   * @param {number} quantity - The new quantity.
+   */
   updateQuantity: (productId: number, quantity: number) => void;
+
+  /**
+   * Clears all items from the cart.
+   */
   clearCart: () => void;
   
+  /**
+   * Sets the currently active cashier.
+   * @param {User | null} user - The cashier user or null.
+   */
   setCurrentCashier: (user: User | null) => void;
+
   openCheckout: () => void;
   closeCheckout: () => void;
   openSetupWizard: () => void;
@@ -211,8 +255,19 @@ interface PosState {
   setKeyboardInput: (value: string) => void;
   setCurrentPage: (page: PosState['currentPage']) => void;
 
+  /**
+   * Completes the current transaction, saves it, and prints a receipt.
+   * @param {'cash' | 'mpesa' | 'credit'} paymentMethod - The payment method used.
+   * @param {string} [creditCustomer] - The name of the credit customer (if applicable).
+   */
   completeTransaction: (paymentMethod: 'cash' | 'mpesa' | 'credit', creditCustomer?: string) => void;
+
+  /**
+   * Reprints a receipt for a past transaction.
+   * @param {string} transactionId - The ID of the transaction to reprint.
+   */
   reprintTransaction: (transactionId: string) => void;
+
   saveTransaction: (transaction: Transaction) => void;
   saveCreditCustomer: (customer: CreditCustomer) => void;
   updateCreditCustomer: (id: string, updates: Partial<CreditCustomer>) => void;

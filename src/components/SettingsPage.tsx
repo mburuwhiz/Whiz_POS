@@ -19,6 +19,14 @@ import {
   Keyboard
 } from 'lucide-react';
 
+/**
+ * SettingsPage Component
+ *
+ * Allows configuration of business details, user management, and synchronization settings.
+ * Divided into tabs: Business, Users, and Cloud Sync.
+ *
+ * @returns {JSX.Element} The rendered settings page.
+ */
 export default function SettingsPage() {
   const { 
     businessSetup, 
@@ -60,6 +68,7 @@ export default function SettingsPage() {
 
   const [apiConfig, setApiConfig] = useState<{ apiUrl: string, apiKey: string, qrCodeDataUrl: string } | null>(null);
 
+  // Load business settings into local state when component mounts or businessSetup changes
   useEffect(() => {
     if (businessSetup) {
       setBusinessData({
@@ -79,21 +88,31 @@ export default function SettingsPage() {
     }
   }, [businessSetup]);
 
+  // Fetch API config for Mobile/Cloud Sync tab
   useEffect(() => {
       if(activeTab === 'mobile' && window.electron) {
           window.electron.getApiConfig().then(setApiConfig);
       }
   }, [activeTab]);
 
+  /**
+   * Saves the modified business settings to the store.
+   */
   const handleSaveBusiness = () => {
     saveBusinessSetup({ ...businessSetup, ...businessData, isSetup: true } as any);
     setEditingBusiness(false);
   };
 
+  /**
+   * Updates user form data.
+   */
   const handleUserFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setUserData({ ...userData, [e.target.name]: e.target.value });
   };
 
+  /**
+   * Adds a new user to the system.
+   */
   const handleAddUser = () => {
     if (!userData.name || !userData.pin) return;
 
@@ -107,30 +126,45 @@ export default function SettingsPage() {
     resetUserForm();
   };
 
+  /**
+   * Prepares the user form for editing.
+   */
   const handleEditUser = (user: User) => {
     setEditingUser(user);
     setUserData({ name: user.name, pin: user.pin, role: user.role });
     setShowAddUser(true);
   };
 
+  /**
+   * Updates an existing user's details.
+   */
   const handleUpdateUser = () => {
     if (!editingUser) return;
     updateUser(editingUser.id, { ...editingUser, ...userData });
     resetUserForm();
   };
 
+  /**
+   * Deletes a user from the system.
+   */
   const handleDeleteUser = (userId: string) => {
     if (window.confirm('Are you sure you want to delete this user?')) {
       deleteUser(userId);
     }
   };
 
+  /**
+   * Resets the user form state.
+   */
   const resetUserForm = () => {
     setUserData({ name: '', pin: '', role: 'cashier' });
     setEditingUser(null);
     setShowAddUser(false);
   }
 
+  /**
+   * Updates local business data state on input change.
+   */
   const handleBusinessDataChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setBusinessData({ ...businessData, [e.target.name]: e.target.value });
   };

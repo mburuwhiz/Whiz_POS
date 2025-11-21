@@ -19,6 +19,10 @@ exports.index = async (req, res) => {
 
 exports.addUser = async (req, res) => {
     try {
+        // Remove empty email to prevent unique index error (null/empty string conflicts)
+        if (!req.body.email) {
+            delete req.body.email;
+        }
         const newUser = new User(req.body);
         await newUser.save();
         res.redirect('/users');
@@ -40,6 +44,8 @@ exports.updateUser = async (req, res) => {
         updates.isActive = !!req.body.isActive;
         // Remove password if empty to avoid overwriting with empty string
         if (!updates.password) delete updates.password;
+        // Remove empty email
+        if (!updates.email) delete updates.email;
 
         await User.findByIdAndUpdate(req.params.id, updates);
         res.redirect('/users');

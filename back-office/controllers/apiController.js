@@ -203,6 +203,11 @@ async function processOperation(op) {
                     userUpdate.pin = userData.pin;
                 }
 
+                // Ensure email is undefined if null/empty to avoid unique index violation
+                if (!userUpdate.email) {
+                    delete userUpdate.email;
+                }
+
                 delete userUpdate.id; // Remove desktop ID from main object fields
 
                 // Generate username from name if missing

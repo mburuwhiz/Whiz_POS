@@ -11,7 +11,7 @@ const morgan = require('morgan');
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const DEFAULT_PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors());
@@ -43,6 +43,23 @@ app.use((req, res, next) => {
 app.use('/', require('./routes/web'));
 app.use('/api', require('./routes/api'));
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+const startServer = (port) => {
+  const server = app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+    if (port !== parseInt(DEFAULT_PORT)) {
+      console.warn(`\nWARNING: Port ${DEFAULT_PORT} was in use. Running on fallback port ${port}.`);
+      console.warn(`Please update your Desktop App .env file to use VITE_BACK_OFFICE_URL=http://localhost:${port} if needed.\n`);
+    }
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.log(`Port ${port} is busy, trying ${port + 1}...`);
+      startServer(port + 1);
+    } else {
+      console.error('Server error:', err);
+    }
+  });
+};
+
+startServer(parseInt(DEFAULT_PORT));

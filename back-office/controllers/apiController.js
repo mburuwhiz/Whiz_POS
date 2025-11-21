@@ -150,27 +150,23 @@ async function processOperation(op) {
             case 'add-product':
             case 'update-product':
                 const prodData = op.type === 'update-product' ? op.data.updates : op.data;
-                // prodId coming from desktop is an integer (e.g. 1739...), ensure it's saved as Number
-                const prodId = Number(op.type === 'update-product' ? op.data.id : op.data.id);
+                // prodId can be Number (legacy) or String (new alphanumeric IDs)
+                const prodId = op.type === 'update-product' ? op.data.id : op.data.id;
 
                 const prodUpdate = { ...prodData };
                 if (prodId) prodUpdate.productId = prodId;
                 delete prodUpdate.id; // Remove local desktop ID alias
 
                 // Use productId to find and update
-                if (!isNaN(prodId)) {
-                    await Product.updateOne(
-                        { productId: prodId },
-                        { $set: prodUpdate },
-                        { upsert: true }
-                    );
-                } else {
-                    console.error('Invalid product ID for sync:', op.data.id);
-                }
+                await Product.updateOne(
+                    { productId: prodId },
+                    { $set: prodUpdate },
+                    { upsert: true }
+                );
                 break;
 
             case 'delete-product':
-                await Product.deleteOne({ productId: Number(op.data.id) });
+                await Product.deleteOne({ productId: op.data.id });
                 break;
 
             case 'add-expense':

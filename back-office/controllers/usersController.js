@@ -24,7 +24,12 @@ exports.addUser = async (req, res) => {
         res.redirect('/users');
     } catch (error) {
         console.error('Add user error:', error);
-        res.status(500).send('Error adding user');
+        const users = await User.find().sort({ username: 1 });
+        res.render('pages/users', {
+            title: 'User Management',
+            users,
+            error: error.code === 11000 ? 'Username or ID already exists.' : 'Error adding user. Please try again.'
+        });
     }
 };
 
@@ -40,7 +45,12 @@ exports.updateUser = async (req, res) => {
         res.redirect('/users');
     } catch (error) {
         console.error('Update user error:', error);
-        res.status(500).send('Error updating user');
+        const users = await User.find().sort({ username: 1 });
+        res.render('pages/users', {
+            title: 'User Management',
+            users,
+            error: 'Error updating user.'
+        });
     }
 };
 
@@ -50,6 +60,11 @@ exports.deleteUser = async (req, res) => {
         res.redirect('/users');
     } catch (error) {
         console.error('Delete user error:', error);
-        res.status(500).send('Error deleting user');
+        const users = await User.find().sort({ username: 1 });
+        res.render('pages/users', {
+            title: 'User Management',
+            users,
+            error: 'Error deleting user.'
+        });
     }
 };

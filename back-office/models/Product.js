@@ -7,8 +7,9 @@ const mongoose = require('mongoose');
 const ProductSchema = new mongoose.Schema({
   /**
    * Unique identifier synced from Desktop POS.
+   * Can be Number (legacy) or String (new alphanumeric IDs).
    */
-  productId: { type: Number, unique: true },
+  productId: { type: String, unique: true },
 
   /**
    * Name of the product.

@@ -38,8 +38,9 @@ const UserSchema = new mongoose.Schema({
 
   /**
    * Email address of the user.
+   * Sparse index allows multiple users to have null/undefined email.
    */
-  email: String,
+  email: { type: String, sparse: true, unique: true },
 
   /**
    * Whether the user account is active.

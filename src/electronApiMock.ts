@@ -15,17 +15,50 @@ export const setupElectronMock = () => {
         return { success: true };
       },
       readData: async (fileName) => {
+        // For verification/testing, we might want to bypass actual file fetches
+        // if they cause issues or if we want to simulate specific states.
+        // Here, we can return mock data if the fetch fails or is slow.
         try {
           const response = await fetch(`/data/${fileName}`);
           if (!response.ok) {
-            throw new Error(`Failed to fetch mock data: ${fileName}`);
+             // If 404, return specific mock data for 'business-setup.json' to auto-login for tests
+             if (fileName === 'business-setup.json') {
+                 return {
+                     success: true,
+                     data: {
+                         isSetup: true,
+                         isLoggedIn: true, // Important for bypassing login screen
+                         businessName: "Mock Business",
+                         printerType: "thermal"
+                     }
+                 };
+             }
+             if (fileName === 'users.json') {
+                 return {
+                     success: true,
+                     data: [{ id: '1', name: 'Test User', role: 'admin', isActive: true, pin: '1234' }]
+                 }
+             }
+             throw new Error(`Failed to fetch mock data: ${fileName}`);
           }
           const data = await response.json();
           console.log(`[Mock] readData(${fileName}):`, data);
           return { success: true, data };
         } catch (error) {
           console.error(`[Mock] Error reading data ${fileName}:`, error);
-          // Return success:true with undefined data to mimic file-not-found scenario without breaking the app
+
+          // Fallback mocks for robustness
+          if (fileName === 'business-setup.json') {
+                 return {
+                     success: true,
+                     data: {
+                         isSetup: true,
+                         isLoggedIn: true,
+                         businessName: "Mock Business",
+                         printerType: "thermal"
+                     }
+                 };
+          }
           return { success: true, data: undefined };
         }
       },

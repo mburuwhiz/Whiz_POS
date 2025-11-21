@@ -22,7 +22,7 @@ const NavGroup = ({ title, children }: { title: string, children: React.ReactNod
  * Displays navigation links based on the user's role (admin/manager vs cashier).
  * Uses `NavLink` for client-side routing with active state styling.
  */
-const Navigation = () => {
+const Navigation = ({ onClose }: { onClose?: () => void }) => {
   const { businessSetup, currentCashier } = usePosStore();
 
   // Do not render navigation if business is not set up
@@ -48,25 +48,29 @@ const Navigation = () => {
         : 'text-gray-600 hover:bg-sky-100 hover:text-sky-600'
     }`;
 
+  const handleNavClick = () => {
+    if (onClose) onClose();
+  };
+
   return (
-    <div className="w-64 bg-white shadow-md">
+    <div className="w-64 h-full bg-white shadow-md flex flex-col">
       <div className="p-4">
         <div className="flex items-center space-x-2">
           <Store className="w-8 h-8 text-sky-500" />
           <span className="font-bold text-xl text-gray-800">WHIZ POS</span>
         </div>
       </div>
-      <nav className="p-4 space-y-4">
+      <nav className="p-4 space-y-4 flex-1 overflow-y-auto">
         <NavGroup title="Point of Sale">
-          <NavLink to="/" className={navLinkClasses}>
+          <NavLink to="/" className={navLinkClasses} onClick={handleNavClick}>
             <Coffee className="w-5 h-5" />
             <span>POS</span>
           </NavLink>
-          <NavLink to="/customers" className={navLinkClasses}>
+          <NavLink to="/customers" className={navLinkClasses} onClick={handleNavClick}>
             <Users className="w-5 h-5" />
             <span>Credits</span>
           </NavLink>
-          <NavLink to="/previous-receipts" className={navLinkClasses}>
+          <NavLink to="/previous-receipts" className={navLinkClasses} onClick={handleNavClick}>
             <Printer className="w-5 h-5" />
             <span>Old Receipts</span>
           </NavLink>
@@ -74,15 +78,15 @@ const Navigation = () => {
 
         {isAdminOrManager && (
           <NavGroup title="Analytics">
-            <NavLink to="/dashboard" className={navLinkClasses}>
+            <NavLink to="/dashboard" className={navLinkClasses} onClick={handleNavClick}>
               <Activity className="w-5 h-5" />
               <span>Dashboard</span>
             </NavLink>
-            <NavLink to="/reports" className={navLinkClasses}>
+            <NavLink to="/reports" className={navLinkClasses} onClick={handleNavClick}>
               <BarChart3 className="w-5 h-5" />
               <span>Reports</span>
             </NavLink>
-            <NavLink to="/closing" className={navLinkClasses}>
+            <NavLink to="/closing" className={navLinkClasses} onClick={handleNavClick}>
               <Calendar className="w-5 h-5" />
               <span>Closing</span>
             </NavLink>
@@ -90,11 +94,11 @@ const Navigation = () => {
         )}
 
         <NavGroup title="Management">
-          <NavLink to="/expenses" className={navLinkClasses}>
+          <NavLink to="/expenses" className={navLinkClasses} onClick={handleNavClick}>
             <DollarSign className="w-5 h-5" />
             <span>Expenses</span>
           </NavLink>
-          <NavLink to="/loyalty" className={navLinkClasses}>
+          <NavLink to="/loyalty" className={navLinkClasses} onClick={handleNavClick}>
             <Gift className="w-5 h-5" />
             <span>Loyalty</span>
           </NavLink>
@@ -102,19 +106,19 @@ const Navigation = () => {
 
         {isAdminOrManager && (
           <NavGroup title="Administration">
-            <NavLink to="/backoffice" className={navLinkClasses}>
+            <NavLink to="/backoffice" className={navLinkClasses} onClick={handleNavClick}>
               <UserCheck className="w-5 h-5" />
               <span>Back Office</span>
             </NavLink>
-            <NavLink to="/register" className={navLinkClasses}>
+            <NavLink to="/register" className={navLinkClasses} onClick={handleNavClick}>
               <Building2 className="w-5 h-5" />
               <span>Register</span>
             </NavLink>
-            <NavLink to="/sync" className={navLinkClasses}>
+            <NavLink to="/sync" className={navLinkClasses} onClick={handleNavClick}>
               <Database className="w-5 h-5" />
               <span>Sync</span>
             </NavLink>
-            <NavLink to="/manage" className={navLinkClasses}>
+            <NavLink to="/manage" className={navLinkClasses} onClick={handleNavClick}>
               <Settings className="w-5 h-5" />
               <span>Manage</span>
             </NavLink>
@@ -122,7 +126,7 @@ const Navigation = () => {
         )}
 
         <NavGroup title="Tools">
-            <NavLink to="/scanner" className={navLinkClasses}>
+            <NavLink to="/scanner" className={navLinkClasses} onClick={handleNavClick}>
                 <Camera className="w-5 h-5" />
                 <span>Scanner</span>
             </NavLink>

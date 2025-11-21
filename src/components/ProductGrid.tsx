@@ -39,11 +39,11 @@ export default function ProductGrid() {
           className="border border-gray-300 rounded-lg px-4 py-2"
         />
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
         {filteredProducts.map((product) => (
           <div
             key={product.id}
-            className="bg-gray-50 rounded-lg p-4 hover:shadow-xl transition-shadow cursor-pointer border border-gray-200 flex flex-col justify-between"
+            className="bg-gray-50 rounded-lg p-2 md:p-4 hover:shadow-xl transition-shadow cursor-pointer border border-gray-200 flex flex-col justify-between"
             onClick={() => addToCart(product)}
           >
             <div>

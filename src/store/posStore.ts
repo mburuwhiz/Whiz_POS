@@ -521,7 +521,10 @@ export const usePosStore = create<PosState>()(
       saveTransaction: (transaction) => {
         set((state) => {
           const updatedTransactions = [transaction, ...state.transactions];
-          saveDataToFile('transactions.json', updatedTransactions);
+          // Only attempt to save to file if Electron is available, otherwise rely on persistence
+          if (window.electron) {
+             saveDataToFile('transactions.json', updatedTransactions);
+          }
           return { transactions: updatedTransactions };
         });
       },
@@ -529,7 +532,9 @@ export const usePosStore = create<PosState>()(
       saveCreditCustomer: (customer) => {
         set((state) => {
           const updatedCustomers = [...state.creditCustomers, customer];
-          saveDataToFile('credit-customers.json', updatedCustomers);
+          if (window.electron) {
+             saveDataToFile('credit-customers.json', updatedCustomers);
+          }
           state.addToSyncQueue({ type: 'add-credit-customer', data: customer });
           return { creditCustomers: updatedCustomers };
         });
@@ -540,7 +545,9 @@ export const usePosStore = create<PosState>()(
             const updatedCustomers = state.creditCustomers.map(customer =>
                 customer.id === id ? { ...customer, ...updates, lastUpdated: new Date().toISOString() } : customer
             );
-            saveDataToFile('credit-customers.json', updatedCustomers);
+            if (window.electron) {
+               saveDataToFile('credit-customers.json', updatedCustomers);
+            }
             state.addToSyncQueue({ type: 'update-credit-customer', data: { id, updates } });
             return { creditCustomers: updatedCustomers };
         });
@@ -563,7 +570,9 @@ export const usePosStore = create<PosState>()(
       deleteCreditCustomer: (id) => {
         set((state) => {
           const updatedCustomers = state.creditCustomers.filter(customer => customer.id !== id);
-          saveDataToFile('credit-customers.json', updatedCustomers);
+          if (window.electron) {
+             saveDataToFile('credit-customers.json', updatedCustomers);
+          }
           state.addToSyncQueue({ type: 'delete-credit-customer', data: { id } });
           return { creditCustomers: updatedCustomers };
         });
@@ -572,14 +581,18 @@ export const usePosStore = create<PosState>()(
       saveExpense: (expense) => {
         set((state) => {
           const updatedExpenses = [expense, ...state.expenses];
-          saveDataToFile('expenses.json', updatedExpenses);
+          if (window.electron) {
+             saveDataToFile('expenses.json', updatedExpenses);
+          }
           state.addToSyncQueue({ type: 'add-expense', data: expense });
           return { expenses: updatedExpenses };
         });
       },
 
       saveBusinessSetup: (setup) => {
-        saveDataToFile('business-setup.json', setup);
+        if (window.electron) {
+           saveDataToFile('business-setup.json', setup);
+        }
         set((state) => {
             state.addToSyncQueue({ type: 'update-business-setup', data: setup });
             return { businessSetup: setup };

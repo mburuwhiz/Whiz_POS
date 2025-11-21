@@ -14,7 +14,7 @@
     "dev:electron": "electron . http://localhost:5174",
     "build": "npm run build:exe && npm run build:apk",
     "build:exe": "vite build && electron-builder",
-    "build:apk": "echo 'APK build command placeholder. Replace with your actual build command.'",
+    "build:apk": "vite build && npx cap sync android && cd android && ./gradlew assembleDebug",
     "preview": "vite preview",
     "back-office:dev": "npm run dev --prefix back-office",
     "postinstall": "electron-rebuild"

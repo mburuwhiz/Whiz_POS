@@ -1,2 +1,25 @@
-back-office/node_modules/
+# Dependencies
 node_modules/
+back-office/node_modules/
+
+# Environment variables
+.env
+back-office/.env
+
+# Build outputs
+dist/
+back-office/dist/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE settings
+.vscode/
+.idea/

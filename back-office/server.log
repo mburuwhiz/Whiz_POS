@@ -1,4 +1,0 @@
-Server running on port 5000
-[0mGET / [32m200[0m 12.071 ms - 15644[0m
-[0mGET /sales [32m200[0m 3.885 ms - 21476[0m
-[0mGET /inventory [32m200[0m 3.123 ms - 22896[0m

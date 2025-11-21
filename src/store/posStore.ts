@@ -591,6 +591,8 @@ export const usePosStore = create<PosState>()(
         set((state) => ({
           syncQueue: [...state.syncQueue, operation]
         }));
+        // Trigger sync immediately for real-time updates
+        get().processSyncQueue();
       },
 
       processSyncQueue: async () => {
@@ -599,7 +601,7 @@ export const usePosStore = create<PosState>()(
         if (!state.isOnline || state.syncQueue.length === 0 || !apiUrl || !state.businessSetup?.apiKey) return;
 
         const queue = [...state.syncQueue];
-        set({ syncQueue: [] });
+        set({ syncQueue: [] }); // Optimistically clear queue
 
         try {
           const response = await fetch(`${apiUrl}/api/sync`, {
@@ -612,11 +614,16 @@ export const usePosStore = create<PosState>()(
           });
 
           if (!response.ok) {
-            throw new Error('Sync failed');
+            throw new Error(`Sync failed with status: ${response.status}`);
           }
+
+          // Sync successful, update time and trigger a pull to get any updates
           set({ lastSyncTime: new Date().toISOString() });
+          get().syncFromServer();
+
         } catch (error) {
           console.error('Sync failed:', error);
+          // On total failure (network), put items back in queue
           set((state) => ({
             syncQueue: [...queue, ...state.syncQueue]
           }));

@@ -49,10 +49,19 @@ exports.getData = async (req, res) => {
 exports.sync = async (req, res) => {
     try {
         if (Array.isArray(req.body)) {
+            const results = [];
             for (const op of req.body) {
-                await processOperation(op);
+                try {
+                    await processOperation(op);
+                    results.push({ opId: op.id, status: 'success' });
+                } catch (opError) {
+                    console.error(`Operation failed: ${op.type}`, opError);
+                    results.push({ opId: op.id, status: 'failed', error: opError.message });
+                }
             }
-            res.json({ success: true });
+            // We return 200 even if some ops failed, to prevent the client from retrying successful ones repeatedly.
+            // The client should ideally handle partial failures, but for now, clearing the queue is safer than blocking it.
+            res.json({ success: true, results });
             return;
         }
         res.json({ success: true }); // fallback

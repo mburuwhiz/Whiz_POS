@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const CustomerSchema = new mongoose.Schema({
+  customerId: { type: String, unique: true, sparse: true }, // Added to sync with Desktop ID
   name: { type: String, required: true },
   phone: String,
   balance: { type: Number, default: 0 },

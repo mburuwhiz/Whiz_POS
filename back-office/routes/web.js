@@ -32,13 +32,25 @@ router.get('/sales', salesController.index);
 
 router.get('/inventory', inventoryController.index);
 router.post('/inventory/add', inventoryController.addProduct);
+router.post('/inventory/edit/:id', inventoryController.updateProduct);
+router.post('/inventory/delete/:id', inventoryController.deleteProduct);
 
 router.get('/expenses', expensesController.index);
 router.post('/expenses/add', expensesController.addExpense);
+router.post('/expenses/delete/:id', expensesController.deleteExpense);
 
 router.get('/credit', creditController.index);
+router.post('/credit/add', creditController.addCustomer);
+router.post('/credit/payment/:id', creditController.recordPayment);
+router.post('/credit/delete/:id', creditController.deleteCustomer);
+
 router.get('/reports', reportsController.index);
+
 router.get('/users', usersController.index);
+router.post('/users/add', usersController.addUser);
+router.post('/users/edit/:id', usersController.updateUser);
+router.post('/users/delete/:id', usersController.deleteUser);
+
 router.get('/settings', settingsController.index);
 
 module.exports = router;

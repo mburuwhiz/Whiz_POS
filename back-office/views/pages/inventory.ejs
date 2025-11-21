@@ -4,11 +4,41 @@
         <p class="text-sm text-gray-500">Manage your products, categories, and stock levels.</p>
     </div>
     <div class="flex gap-2">
-        <button class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm">
-            <i data-lucide="tag" class="w-4 h-4"></i>
-            Categories
+        <button onclick="document.getElementById('addProductModal').classList.remove('hidden')" class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 shadow-sm shadow-blue-600/20 transition-colors">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            Add Product
         </button>
-        <!-- Form hidden, maybe open in modal? For now simpler UI -->
+    </div>
+</div>
+
+<!-- Add Product Modal -->
+<div id="addProductModal" class="fixed inset-0 bg-gray-900/50 z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
+        <h3 class="text-lg font-bold mb-4">Add New Product</h3>
+        <form action="/inventory/add" method="POST" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Product Name</label>
+                <input type="text" name="name" required class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Price (Ksh)</label>
+                    <input type="number" name="price" required class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Stock</label>
+                    <input type="number" name="stock" value="0" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                <input type="text" name="category" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+            <div class="flex justify-end gap-2 mt-6">
+                <button type="button" onclick="document.getElementById('addProductModal').classList.add('hidden')" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save Product</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -76,10 +106,48 @@
                             <i data-lucide="box" class="w-4 h-4"></i>
                             <span><%= product.stock %> in stock</span>
                         </div>
-                        <button class="p-2 text-gray-400 hover:text-blue-600 transition-colors">
-                            <i data-lucide="edit-2" class="w-4 h-4"></i>
-                        </button>
+                        <div class="flex">
+                            <button onclick="document.getElementById('editProductModal-<%= product._id %>').classList.remove('hidden')" class="p-2 text-gray-400 hover:text-blue-600 transition-colors">
+                                <i data-lucide="edit-2" class="w-4 h-4"></i>
+                            </button>
+                            <form action="/inventory/delete/<%= product._id %>" method="POST" onsubmit="return confirm('Are you sure?');">
+                                <button type="submit" class="p-2 text-gray-400 hover:text-red-600 transition-colors">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </form>
+                        </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Edit Modal for each product -->
+            <div id="editProductModal-<%= product._id %>" class="fixed inset-0 bg-gray-900/50 z-50 hidden flex items-center justify-center">
+                <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl text-left">
+                    <h3 class="text-lg font-bold mb-4">Edit Product</h3>
+                    <form action="/inventory/edit/<%= product._id %>" method="POST" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Product Name</label>
+                            <input type="text" name="name" value="<%= product.name %>" required class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Price (Ksh)</label>
+                                <input type="number" name="price" value="<%= product.price %>" required class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Stock</label>
+                                <input type="number" name="stock" value="<%= product.stock %>" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                            <input type="text" name="category" value="<%= product.category %>" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div class="flex justify-end gap-2 mt-6">
+                            <button type="button" onclick="document.getElementById('editProductModal-<%= product._id %>').classList.add('hidden')" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+                            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Update Product</button>
+                        </div>
+                    </form>
                 </div>
             </div>
             <% }) %>

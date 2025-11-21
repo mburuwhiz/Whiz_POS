@@ -16,3 +16,40 @@ exports.index = async (req, res) => {
         });
     }
 };
+
+exports.addUser = async (req, res) => {
+    try {
+        const newUser = new User(req.body);
+        await newUser.save();
+        res.redirect('/users');
+    } catch (error) {
+        console.error('Add user error:', error);
+        res.status(500).send('Error adding user');
+    }
+};
+
+exports.updateUser = async (req, res) => {
+    try {
+        const updates = { ...req.body };
+        // Handle checkbox for boolean
+        updates.isActive = !!req.body.isActive;
+        // Remove password if empty to avoid overwriting with empty string
+        if (!updates.password) delete updates.password;
+
+        await User.findByIdAndUpdate(req.params.id, updates);
+        res.redirect('/users');
+    } catch (error) {
+        console.error('Update user error:', error);
+        res.status(500).send('Error updating user');
+    }
+};
+
+exports.deleteUser = async (req, res) => {
+    try {
+        await User.findByIdAndDelete(req.params.id);
+        res.redirect('/users');
+    } catch (error) {
+        console.error('Delete user error:', error);
+        res.status(500).send('Error deleting user');
+    }
+};

@@ -168,21 +168,16 @@ async function processOperation(op) {
                 const custId = op.type === 'update-credit-customer' ? op.data.id : op.data.id;
                 const custData = op.type === 'update-credit-customer' ? op.data.updates : op.data;
 
-                // Update by ID? But Mongo uses _id by default.
-                // I should add `customerId` to Customer model or use `phone` if unique?
-                // Use `phone` as key if available, else name?
-                // Desktop generates `id`. Let's use `phone` as the unique key for business logic if possible,
-                // BUT desktop ID is the reliable ref.
-                // Let's try to match by `name` or `phone`.
-                // Better: Store desktop ID.
+                // Use customerId for reliable sync
+                const updateData = { ...custData };
+                if (custId) updateData.customerId = custId;
+                // Ensure we don't overwrite the mongo _id with the desktop string id
+                delete updateData.id;
+                delete updateData._id;
 
-                // Wait, I didn't add `customerId` to Customer schema.
-                // I will rely on `phone` for now as it's often unique, or `name`.
-                // But wait, desktop sends `id`.
-                // Let's assumed phone is unique for now.
                 await Customer.updateOne(
-                    { phone: custData.phone || "UNKNOWN" }, // Risky if no phone
-                    { $set: custData },
+                    { customerId: custId },
+                    { $set: updateData },
                     { upsert: true }
                 );
                 break;

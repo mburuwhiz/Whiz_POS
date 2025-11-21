@@ -19,11 +19,38 @@ exports.index = async (req, res) => {
 
 exports.addProduct = async (req, res) => {
     try {
-        const newProduct = new Product(req.body);
+        console.log('Add Product Request Body:', req.body);
+        const productData = req.body;
+        // Generate productId if not present (required by Schema)
+        if (!productData.productId) {
+            productData.productId = Date.now();
+        }
+        const newProduct = new Product(productData);
         await newProduct.save();
+        console.log('Product saved successfully');
         res.redirect('/inventory');
     } catch (error) {
         console.error('Add product error:', error);
-        res.status(500).send('Error adding product');
+        res.status(500).send('Error adding product: ' + error.message);
+    }
+};
+
+exports.updateProduct = async (req, res) => {
+    try {
+        await Product.findByIdAndUpdate(req.params.id, req.body);
+        res.redirect('/inventory');
+    } catch (error) {
+        console.error('Update product error:', error);
+        res.status(500).send('Error updating product');
+    }
+};
+
+exports.deleteProduct = async (req, res) => {
+    try {
+        await Product.findByIdAndDelete(req.params.id);
+        res.redirect('/inventory');
+    } catch (error) {
+        console.error('Delete product error:', error);
+        res.status(500).send('Error deleting product');
     }
 };

@@ -925,9 +925,22 @@ export const usePosStore = create<PosState>()(
 
       pushDataToServer: async () => {
         const state = get();
-        const apiUrl = state.businessSetup?.apiUrl?.replace(/\/$/, '');
-        if (!state.isOnline || !apiUrl || !state.businessSetup?.apiKey) {
-            console.log("Cannot push data: Offline or no API config");
+        // Use backOfficeUrl if available, fallback to apiUrl (legacy)
+        const rawUrl = state.businessSetup?.backOfficeUrl || state.businessSetup?.apiUrl;
+        const apiKey = state.businessSetup?.backOfficeApiKey || state.businessSetup?.apiKey;
+
+        const apiUrl = rawUrl?.replace(/\/$/, '');
+
+        if (!state.isOnline) {
+            console.error("Cannot push data: App is offline");
+            return;
+        }
+        if (!apiUrl) {
+            console.error("Cannot push data: No Back Office URL configured");
+            return;
+        }
+        if (!apiKey) {
+            console.error("Cannot push data: No Back Office API Key configured");
             return;
         }
 
@@ -944,7 +957,8 @@ export const usePosStore = create<PosState>()(
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${state.businessSetup.apiKey}`
+                    'Authorization': `Bearer ${apiKey}`,
+                    'X-API-KEY': apiKey
                 },
                 body: JSON.stringify(payload)
             });

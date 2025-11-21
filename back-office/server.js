@@ -37,9 +37,37 @@ app.set('layout', './layout/main');
 app.set('view engine', 'ejs');
 
 // Database Connection
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('MongoDB Connected'))
-  .catch(err => console.error('MongoDB Connection Error:', err));
+const connectDB = async () => {
+  try {
+    let mongoUri = process.env.MONGODB_URI;
+
+    if (mongoUri) {
+        // Attempt to connect to the provided URI
+        try {
+            await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 });
+            console.log(`MongoDB Connected: ${mongoUri.includes('mongodb+srv') ? 'Cloud Cluster' : 'Local Instance'}`);
+        } catch (error) {
+            console.error('CRITICAL: Failed to connect to the provided MONGODB_URI.');
+            console.error('Error Details:', error.message);
+            // Throwing error here to prevent silent fallback to in-memory DB when user expects real DB
+            throw new Error('Database connection failed. Please check your MONGODB_URI.');
+        }
+    } else {
+        // Fallback to in-memory ONLY if no URI is provided
+        console.warn('WARNING: No MONGODB_URI provided. Using temporary in-memory database. Data will be lost on restart.');
+        const { MongoMemoryServer } = require('mongodb-memory-server');
+        const mongod = await MongoMemoryServer.create();
+        mongoUri = mongod.getUri();
+        process.env.MONGODB_URI = mongoUri;
+        await mongoose.connect(mongoUri);
+        console.log('MongoDB Connected (Temporary In-Memory)');
+    }
+  } catch (err) {
+    console.error('MongoDB Connection Error:', err);
+  }
+};
+
+connectDB();
 
 // Global variables for views
 app.use((req, res, next) => {

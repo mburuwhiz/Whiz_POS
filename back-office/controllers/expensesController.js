@@ -19,11 +19,26 @@ exports.index = async (req, res) => {
 
 exports.addExpense = async (req, res) => {
     try {
-        const newExpense = new Expense(req.body);
+        const expenseData = req.body;
+        // Generate expenseId if not present
+        if (!expenseData.expenseId) {
+            expenseData.expenseId = `EXP${Date.now()}`;
+        }
+        const newExpense = new Expense(expenseData);
         await newExpense.save();
         res.redirect('/expenses');
     } catch (error) {
         console.error('Add expense error:', error);
         res.status(500).send('Error adding expense');
+    }
+};
+
+exports.deleteExpense = async (req, res) => {
+    try {
+        await Expense.findByIdAndDelete(req.params.id);
+        res.redirect('/expenses');
+    } catch (error) {
+        console.error('Delete expense error:', error);
+        res.status(500).send('Error deleting expense');
     }
 };

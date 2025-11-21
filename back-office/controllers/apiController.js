@@ -3,6 +3,7 @@ const Product = require('../models/Product');
 const Expense = require('../models/Expense');
 const Customer = require('../models/Customer');
 const User = require('../models/User');
+const BusinessSettings = require('../models/BusinessSettings');
 
 exports.getData = async (req, res) => {
     try {
@@ -10,6 +11,7 @@ exports.getData = async (req, res) => {
         const users = await User.find({});
         const expenses = await Expense.find({});
         const creditCustomers = await Customer.find({});
+        const businessSetup = await BusinessSettings.findOne({});
 
         const mapProduct = p => ({
             ...p.toObject(),
@@ -35,7 +37,8 @@ exports.getData = async (req, res) => {
             products: products.map(mapProduct),
             users: users.map(mapUser),
             expenses: expenses.map(mapExpense),
-            creditCustomers: creditCustomers.map(mapCustomer)
+            creditCustomers: creditCustomers.map(mapCustomer),
+            businessSetup: businessSetup ? businessSetup.toObject() : null
         });
     } catch (error) {
         console.error('Get Data Error:', error);
@@ -61,8 +64,11 @@ exports.sync = async (req, res) => {
 
 exports.fullSync = async (req, res) => {
     try {
-        const { products, users, expenses, customers, transactions } = req.body;
+        const { products, users, expenses, customers, transactions, businessSetup } = req.body;
 
+        if (businessSetup) {
+             await processOperation({ type: 'update-business-setup', data: businessSetup });
+        }
         if (products) {
             for (const p of products) {
                 await processOperation({ type: 'add-product', data: p });
@@ -99,6 +105,25 @@ exports.fullSync = async (req, res) => {
 async function processOperation(op) {
     try {
         switch (op.type) {
+            case 'update-business-setup':
+                // We maintain a single settings document.
+                // Upsert based on a static criteria or just replace the first one.
+                // Here we just delete all and create one, or update if exists.
+                // A safer way is to findOneAndUpdate.
+                const settingsData = { ...op.data };
+                delete settingsData.id; // Remove client-side ID if present
+                delete settingsData._id;
+
+                // We assume there is only one settings document.
+                // Check if one exists
+                const existingSettings = await BusinessSettings.findOne({});
+                if (existingSettings) {
+                    await BusinessSettings.updateOne({ _id: existingSettings._id }, { $set: settingsData });
+                } else {
+                    await BusinessSettings.create(settingsData);
+                }
+                break;
+
             case 'new-transaction':
                 await Transaction.updateOne(
                     { transactionId: op.data.id },
@@ -125,28 +150,46 @@ async function processOperation(op) {
             case 'add-product':
             case 'update-product':
                 const prodData = op.type === 'update-product' ? op.data.updates : op.data;
-                const prodId = op.type === 'update-product' ? op.data.id : op.data.id;
+                // prodId coming from desktop is an integer (e.g. 1739...), ensure it's saved as Number
+                const prodId = Number(op.type === 'update-product' ? op.data.id : op.data.id);
+
                 const prodUpdate = { ...prodData };
                 if (prodId) prodUpdate.productId = prodId;
-                delete prodUpdate.id;
+                delete prodUpdate.id; // Remove local desktop ID alias
 
-                // Use productId to find
-                await Product.updateOne(
-                    { productId: prodId },
-                    { $set: prodUpdate },
-                    { upsert: true }
-                );
+                // Use productId to find and update
+                if (!isNaN(prodId)) {
+                    await Product.updateOne(
+                        { productId: prodId },
+                        { $set: prodUpdate },
+                        { upsert: true }
+                    );
+                } else {
+                    console.error('Invalid product ID for sync:', op.data.id);
+                }
                 break;
 
             case 'delete-product':
-                await Product.deleteOne({ productId: op.data.id });
+                await Product.deleteOne({ productId: Number(op.data.id) });
                 break;
 
             case 'add-expense':
                 // data: Expense object
+                // Ensure 'cashier' is properly saved.
+                const expenseData = { ...op.data, expenseId: op.data.id };
+
+                // Explicitly ensure cashier field is set if present in data
+                if (op.data.cashier) {
+                    expenseData.cashier = op.data.cashier;
+                    // Also fallback to recordedBy for legacy support
+                    if (!expenseData.recordedBy) {
+                        expenseData.recordedBy = op.data.cashier;
+                    }
+                }
+
                 await Expense.updateOne(
                     { expenseId: op.data.id },
-                    { $set: { ...op.data, expenseId: op.data.id } },
+                    { $set: expenseData },
                     { upsert: true }
                 );
                 break;
@@ -158,7 +201,18 @@ async function processOperation(op) {
 
                 const userUpdate = { ...userData };
                 if (userId) userUpdate.userId = userId;
+
+                // Explicitly include PIN if present
+                if (userData.pin) {
+                    userUpdate.pin = userData.pin;
+                }
+
                 delete userUpdate.id; // Remove desktop ID from main object fields
+
+                // Generate username from name if missing
+                if (!userUpdate.username && userUpdate.name) {
+                    userUpdate.username = userUpdate.name.toLowerCase().replace(/\s+/g, '');
+                }
 
                 // Try to find by userId first, then username
                 // Upsert based on userId if present

@@ -580,7 +580,10 @@ export const usePosStore = create<PosState>()(
 
       saveBusinessSetup: (setup) => {
         saveDataToFile('business-setup.json', setup);
-        set({ businessSetup: setup });
+        set((state) => {
+            state.addToSyncQueue({ type: 'update-business-setup', data: setup });
+            return { businessSetup: setup };
+        });
       },
 
       // Sync operations
@@ -635,27 +638,33 @@ export const usePosStore = create<PosState>()(
           const lastSync = state.lastSyncTime ? new Date(state.lastSyncTime) : new Date(0);
 
           const mergeData = (local, server) => {
-            const serverDataById = new Map(server.map(item => [item.id, item]));
+            // Filter out items with invalid IDs to prevent sync errors
+            const validServerItems = server.filter(item => item.id != null);
+            const serverDataById = new Map(validServerItems.map(item => [item.id, item]));
             const localDataById = new Map(local.map(item => [item.id, item]));
+
             const merged = local.map(localItem => {
               const serverItem = serverDataById.get(localItem.id);
               if (serverItem) {
                 const serverTimestamp = new Date(serverItem.updatedAt || serverItem.createdAt);
                 const localTimestamp = new Date(localItem.updatedAt || localItem.createdAt);
-                if (serverTimestamp > localTimestamp && localTimestamp > lastSync) {
-                  // Conflict: server is newer, but local has been changed since last sync.
-                  // For now, we prioritize local changes. A better implementation
-                  // would flag this for user resolution.
-                  return localItem;
+
+                // Conflict Resolution:
+                // If Server data is strictly newer than Local data, accept Server data.
+                // This handles the case where Back Office makes a change (e.g. updates User PIN).
+                if (serverTimestamp.getTime() > localTimestamp.getTime()) {
+                     return serverItem;
                 }
-                return serverItem; // Server is newer, no local changes.
+                // Otherwise, keep local data (Client Wins / Unchanged)
+                return localItem;
               }
-              return localItem; // Local only.
+              return localItem; // Exists locally but not on server (yet)
             });
 
-            server.forEach(serverItem => {
+            // Add items that exist on Server but not Locally (Downstream Sync)
+            validServerItems.forEach(serverItem => {
               if (!localDataById.has(serverItem.id)) {
-                merged.push(serverItem); // New from server.
+                merged.push(serverItem);
               }
             });
             return merged;
@@ -670,8 +679,9 @@ export const usePosStore = create<PosState>()(
           if (serverData.businessSetup) {
             const serverTimestamp = new Date(serverData.businessSetup.updatedAt || serverData.businessSetup.createdAt);
             const localTimestamp = state.businessSetup ? new Date(state.businessSetup.updatedAt || state.businessSetup.createdAt) : new Date(0);
+            // If server data is newer, update local
             if (serverTimestamp > localTimestamp) {
-              newBusinessSetup = serverData.businessSetup;
+              newBusinessSetup = { ...state.businessSetup, ...serverData.businessSetup };
             }
           }
 
@@ -1017,7 +1027,8 @@ export const usePosStore = create<PosState>()(
                 users: state.users,
                 expenses: state.expenses,
                 customers: state.creditCustomers,
-                transactions: state.transactions
+                transactions: state.transactions,
+                businessSetup: state.businessSetup
             };
 
             const response = await fetch(`${apiUrl}/api/sync/full`, {
@@ -1069,9 +1080,9 @@ export const usePosStore = create<PosState>()(
 // Periodically process the sync queue (push)
 setInterval(() => {
   usePosStore.getState().processSyncQueue();
-}, 60000); // every 60 seconds
+}, 10000); // every 10 seconds
 
 // Periodically sync from server (pull)
 setInterval(() => {
   usePosStore.getState().syncFromServer();
-}, 300000); // every 5 minutes
+}, 10000); // every 10 seconds

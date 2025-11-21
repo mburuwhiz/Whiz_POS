@@ -161,4 +161,10 @@ router.post('/users/delete/:id', usersController.deleteUser);
  */
 router.get('/settings', settingsController.index);
 
+/**
+ * POST /settings
+ * Updates business settings.
+ */
+router.post('/settings', settingsController.update);
+
 module.exports = router;

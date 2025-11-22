@@ -2,157 +2,144 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Receipt</title>
     <style>
         body {
-            font-family: 'monospace', sans-serif;
+            font-family: 'Courier New', Courier, monospace;
             font-size: 12px;
-            color: #333;
+            color: #000;
             margin: 0;
-            padding: 10px;
-            width: 300px; /* Standard receipt width */
+            padding: 5px;
+            width: 300px; /* Approx 80mm receipt printer width */
         }
-        .container {
-            width: 100%;
-        }
-        .header, .footer {
+        .header {
             text-align: center;
+            margin-bottom: 10px;
         }
         .header h1 {
-            font-size: 18px;
-            margin: 0;
-            font-weight: bold;
+            font-size: 16px;
+            margin: 0 0 5px 0;
+            text-transform: uppercase;
         }
         .header p {
             margin: 2px 0;
         }
-        .meta-info, .payment-details {
-            margin-top: 10px;
+        .separator {
+            border-top: 1px dashed #000;
+            margin: 8px 0;
         }
-        .meta-info p, .payment-details p {
-            margin: 3px 0;
+        .info {
+            margin-bottom: 8px;
+        }
+        .info p {
+            margin: 2px 0;
         }
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
-        }
-        th, td {
-            padding: 4px 0;
         }
         th {
             text-align: left;
-            border-bottom: 1px dashed #333;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 4px;
         }
-        .item-row td:nth-child(2) {
-            text-align: right;
+        td {
+            padding: 4px 0;
+            vertical-align: top;
         }
-        .item-row td:nth-child(3) {
-            text-align: right;
-            white-space: nowrap;
-        }
-        .totals-table {
-            margin-top: 10px;
-        }
-        .totals-table td {
-            padding: 3px 0;
-        }
-        .totals-table td:first-child {
-            text-align: right;
-            font-weight: bold;
-            padding-right: 15px;
-        }
-        .totals-table td:last-child {
-            text-align: right;
-            font-weight: bold;
-        }
-        hr.dashed {
-            border: 0;
-            border-top: 1px dashed #333;
-            margin: 10px 0;
-        }
-        .qr-code {
+        .qty {
+            width: 15%;
             text-align: center;
-            margin-top: 10px;
         }
-        .qr-code img {
-            width: 80px;
-            height: 80px;
+        .price {
+            width: 25%;
+            text-align: right;
+        }
+        .total {
+            width: 25%;
+            text-align: right;
+        }
+        .totals {
+            margin-top: 8px;
+        }
+        .totals .row {
+            display: flex;
+            justify-content: space-between;
+            margin: 2px 0;
+        }
+        .totals .total-row {
+            font-weight: bold;
+            font-size: 14px;
+            margin-top: 4px;
+            border-top: 1px dashed #000;
+            padding-top: 4px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 10px;
+        }
+        .footer p {
+            margin: 2px 0;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>{{businessName}}</h1>
-            <p>{{address}}</p>
-            <p>Phone: {{phone}}</p>
+    <div class="header">
+        <h1>{{businessName}}</h1>
+        <p>{{address}}</p>
+        <p>{{phone}}</p>
+    </div>
+
+    <div class="separator"></div>
+
+    <div class="info">
+        <p>Receipt #: {{receiptId}}</p>
+        <p>Date: {{date}}</p>
+        <p>Served By: {{servedBy}}</p>
+        <p>Payment: {{paymentMethod}}</p>
+    </div>
+
+    <div class="separator"></div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th class="qty">Qty</th>
+                <th class="price">Price</th>
+                <th class="total">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{itemsHtml}}
+        </tbody>
+    </table>
+
+    <div class="separator"></div>
+
+    <div class="totals">
+        <div class="row">
+            <span>Subtotal:</span>
+            <span>{{subtotal}}</span>
         </div>
-
-        <hr class="dashed">
-
-        <div class="meta-info">
-            <p>Receipt: {{receiptId}}</p>
-            <p>Date: {{date}}</p>
-            <p>{{servedByLabel}}: {{servedBy}}</p>
+        <div class="row">
+            <span>Tax:</span>
+            <span>{{tax}}</span>
         </div>
-
-        <table>
-            <thead>
-                <tr>
-                    <th>Item</th>
-                    <th>Qty</th>
-                    <th>Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                {{#items}}
-                <tr class="item-row">
-                    <td>{{name}}</td>
-                    <td>{{quantity}}x{{price}}</td>
-                    <td>{{total}}</td>
-                </tr>
-                {{/items}}
-            </tbody>
-        </table>
-
-        <hr class="dashed">
-
-        <table class="totals-table">
-            <tbody>
-                <tr>
-                    <td>Subtotal:</td>
-                    <td>{{subtotal}}</td>
-                </tr>
-                <tr>
-                    <td>Tax:</td>
-                    <td>{{tax}}</td>
-                </tr>
-                <tr>
-                    <td>Total:</td>
-                    <td>{{total}}</td>
-                </tr>
-            </tbody>
-        </table>
-
-        <hr class="dashed">
-
-        <div class="payment-details">
-            <p>Payment Method: {{paymentMethod}}</p>
-            {{#if mpesaPaybill}}
-            <p>Paybill: {{mpesaPaybill}} | A/C: {{mpesaAccountNumber}}</p>
-            {{/if}}
+        <div class="row total-row">
+            <span>TOTAL:</span>
+            <span>{{total}}</span>
         </div>
+    </div>
 
-        <div class="footer">
-            <p>Thank you for your business!</p>
-            <p style="font-size: 9px;">{{receiptFooter}}</p>
-        </div>
+    {{mpesaDetails}}
 
-        <div class="qr-code">
-            <!-- QR Code will be injected here if available -->
-        </div>
+    <div class="separator"></div>
+
+    <div class="footer">
+        <p>{{receiptHeader}}</p>
+        <p>{{receiptFooter}}</p>
     </div>
 </body>
 </html>

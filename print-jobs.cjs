@@ -36,28 +36,50 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
         : path.join(__dirname, 'receipt-template.html');
     let template = await fs.readFile(templatePath, 'utf-8');
 
-    template = template.replace('{{businessName}}', businessSetup?.businessName || '');
+    template = template.replace('{{businessName}}', businessSetup?.businessName || 'WHIZ POS');
     template = template.replace('{{address}}', businessSetup?.address || '');
     template = template.replace('{{phone}}', businessSetup?.phone || '');
-    template = template.replace('{{receiptId}}', transaction.id);
+    template = template.replace('{{receiptId}}', transaction.id + (isReprint ? ' (REPRINT)' : ''));
     template = template.replace('{{date}}', formatDate(transaction.timestamp));
     template = template.replace('{{servedBy}}', transaction.cashier);
+    template = template.replace('{{paymentMethod}}', transaction.paymentMethod.toUpperCase());
     template = template.replace('{{subtotal}}', `Ksh ${transaction.subtotal.toFixed(2)}`);
     template = template.replace('{{tax}}', `Ksh ${transaction.tax.toFixed(2)}`);
     template = template.replace('{{total}}', `Ksh ${transaction.total.toFixed(2)}`);
-    template = template.replace('{{paymentMethod}}', transaction.paymentMethod.toUpperCase());
-    template = template.replace('{{mpesaPaybill}}', businessSetup?.mpesaPaybill || '');
-    template = template.replace('{{mpesaAccountNumber}}', businessSetup?.mpesaAccountNumber || '');
-    template = template.replace('{{receiptFooter}}', businessSetup?.receiptFooter || '');
 
+    template = template.replace('{{receiptHeader}}', businessSetup?.receiptHeader || 'Thank you for your business!');
+    template = template.replace('{{receiptFooter}}', businessSetup?.receiptFooter || 'Please come again!');
+
+    // Generate Items HTML
     const itemsHtml = transaction.items.map(item => `
-        <div class="item-row">
-            <span>${item.product.name}</span>
-            <span>${item.quantity} x ${item.product.price.toFixed(2)}</span>
-            <span>${(item.quantity * item.product.price).toFixed(2)}</span>
-        </div>
+        <tr>
+            <td>${item.product.name}</td>
+            <td class="qty">${item.quantity}</td>
+            <td class="price">${item.product.price.toFixed(2)}</td>
+            <td class="total">${(item.quantity * item.product.price).toFixed(2)}</td>
+        </tr>
     `).join('');
-    template = template.replace('{{#items}}...{{/items}}', itemsHtml);
+    template = template.replace('{{itemsHtml}}', itemsHtml);
+
+    // Generate M-Pesa Details HTML if applicable
+    let mpesaDetailsHtml = '';
+    if (businessSetup?.mpesaPaybill && (transaction.paymentMethod === 'mpesa' || !transaction.paymentMethod)) {
+        mpesaDetailsHtml = `
+            <div class="separator"></div>
+            <div class="info">
+                <p>Paybill: ${businessSetup.mpesaPaybill}</p>
+                <p>Account: ${businessSetup.mpesaAccountNumber || 'Business Number'}</p>
+            </div>
+        `;
+    } else if (businessSetup?.mpesaTill && (transaction.paymentMethod === 'mpesa' || !transaction.paymentMethod)) {
+         mpesaDetailsHtml = `
+            <div class="separator"></div>
+            <div class="info">
+                <p>Buy Goods Till: ${businessSetup.mpesaTill}</p>
+            </div>
+        `;
+    }
+    template = template.replace('{{mpesaDetails}}', mpesaDetailsHtml);
 
     return template;
 }

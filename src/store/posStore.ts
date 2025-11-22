@@ -777,11 +777,13 @@ export const usePosStore = create<PosState>()(
             .filter(t => t.paymentMethod === 'credit' && t.creditCustomer)
             .map(t => {
               const customer = state.creditCustomers.find(c => c.name === t.creditCustomer);
-              const creditSale = customer?.creditSales.find(cs => cs.transactionId === t.id);
+              // If the customer has paid their balance or if we implement partial payment logic later
+              // For now, if balance > 0, we consider recent transactions as part of that unpaid balance
+              const isPaid = (customer?.balance || 0) <= 0;
               return {
                 customerName: t.creditCustomer || 'N/A',
                 amount: t.total,
-                status: creditSale?.status || 'unpaid',
+                status: isPaid ? 'paid' : 'unpaid',
               };
             });
 
@@ -820,9 +822,7 @@ export const usePosStore = create<PosState>()(
 
       getUnpaidCredits: () => {
         const state = get();
-        return state.creditCustomers.filter(customer =>
-          customer.creditSales.some(sale => sale.status !== 'paid')
-        );
+        return state.creditCustomers.filter(customer => (customer.balance || 0) > 0);
       },
 
       addUser: (user) => {

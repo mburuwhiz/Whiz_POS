@@ -64,26 +64,25 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
 
     // Generate M-Pesa Details HTML if applicable
     let mpesaDetailsHtml = '';
-    // Show details if payment method is M-Pesa, OR always show if configured (per user request to handle cases where one or both are entered)
-    // User text: "if none was selected then leave the parts if one was entred then enter one, if all was entred then do as above"
-    // This implies showing configured values when relevant.
-    if (transaction.paymentMethod === 'mpesa' || !transaction.paymentMethod) {
-        let details = [];
-        if (businessSetup?.mpesaPaybill) {
-            details.push(`<p>Paybill: <b>${businessSetup.mpesaPaybill}</b> | A/C: <b>${businessSetup.mpesaAccountNumber || 'Business No'}</b></p>`);
-        }
-        if (businessSetup?.mpesaTill) {
-            details.push(`<p>Buy Goods Till: <b>${businessSetup.mpesaTill}</b></p>`);
-        }
+    let details = [];
 
-        if (details.length > 0) {
-            mpesaDetailsHtml = `
-                <div class="separator"></div>
-                <div class="info">
-                    ${details.join('')}
-                </div>
-            `;
-        }
+    // Check if Paybill details are present in business setup
+    if (businessSetup?.mpesaPaybill) {
+        details.push(`<p>Paybill No: <b>${businessSetup.mpesaPaybill}</b> | A/C No: <b>${businessSetup.mpesaAccountNumber || 'Business No'}</b></p>`);
+    }
+
+    // Check if Till details are present in business setup
+    if (businessSetup?.mpesaTill) {
+        details.push(`<p style="text-align: center;">Pay By Till : <b>${businessSetup.mpesaTill}</b></p>`);
+    }
+
+    if (details.length > 0) {
+        mpesaDetailsHtml = `
+            <div class="separator"></div>
+            <div class="info">
+                ${details.join('')}
+            </div>
+        `;
     }
     template = template.replace('{{mpesaDetails}}', mpesaDetailsHtml);
 

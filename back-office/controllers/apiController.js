@@ -20,7 +20,7 @@ exports.getData = async (req, res) => {
 
         const mapUser = u => ({
             ...u.toObject(),
-            id: u.userId,
+            id: u.userId || u._id.toString(),
         });
 
         const mapExpense = e => ({

@@ -19,11 +19,19 @@ exports.index = async (req, res) => {
 
 exports.addUser = async (req, res) => {
     try {
+        const userData = { ...req.body };
+
         // Remove empty email to prevent unique index error (null/empty string conflicts)
-        if (!req.body.email) {
-            delete req.body.email;
+        if (!userData.email) {
+            delete userData.email;
         }
-        const newUser = new User(req.body);
+
+        // Generate userId if not present (for Desktop POS sync)
+        if (!userData.userId) {
+            userData.userId = `USR${Date.now()}`;
+        }
+
+        const newUser = new User(userData);
         await newUser.save();
         res.redirect('/users');
     } catch (error) {

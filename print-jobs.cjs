@@ -37,6 +37,7 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
     let template = await fs.readFile(templatePath, 'utf-8');
 
     template = template.replace('{{businessName}}', businessSetup?.businessName || 'WHIZ POS');
+    template = template.replace('{{location}}', 'KAGWE TOWN');
     template = template.replace('{{address}}', businessSetup?.address || '');
     template = template.replace('{{phone}}', businessSetup?.phone || '');
     template = template.replace('{{receiptId}}', transaction.id + (isReprint ? ' (REPRINT)' : ''));
@@ -63,21 +64,26 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
 
     // Generate M-Pesa Details HTML if applicable
     let mpesaDetailsHtml = '';
-    if (businessSetup?.mpesaPaybill && (transaction.paymentMethod === 'mpesa' || !transaction.paymentMethod)) {
-        mpesaDetailsHtml = `
-            <div class="separator"></div>
-            <div class="info">
-                <p>Paybill: ${businessSetup.mpesaPaybill}</p>
-                <p>Account: ${businessSetup.mpesaAccountNumber || 'Business Number'}</p>
-            </div>
-        `;
-    } else if (businessSetup?.mpesaTill && (transaction.paymentMethod === 'mpesa' || !transaction.paymentMethod)) {
-         mpesaDetailsHtml = `
-            <div class="separator"></div>
-            <div class="info">
-                <p>Buy Goods Till: ${businessSetup.mpesaTill}</p>
-            </div>
-        `;
+    // Show details if payment method is M-Pesa, OR always show if configured (per user request to handle cases where one or both are entered)
+    // User text: "if none was selected then leave the parts if one was entred then enter one, if all was entred then do as above"
+    // This implies showing configured values when relevant.
+    if (transaction.paymentMethod === 'mpesa' || !transaction.paymentMethod) {
+        let details = [];
+        if (businessSetup?.mpesaPaybill) {
+            details.push(`<p>Paybill: <b>${businessSetup.mpesaPaybill}</b> | A/C: <b>${businessSetup.mpesaAccountNumber || 'Business No'}</b></p>`);
+        }
+        if (businessSetup?.mpesaTill) {
+            details.push(`<p>Buy Goods Till: <b>${businessSetup.mpesaTill}</b></p>`);
+        }
+
+        if (details.length > 0) {
+            mpesaDetailsHtml = `
+                <div class="separator"></div>
+                <div class="info">
+                    ${details.join('')}
+                </div>
+            `;
+        }
     }
     template = template.replace('{{mpesaDetails}}', mpesaDetailsHtml);
 

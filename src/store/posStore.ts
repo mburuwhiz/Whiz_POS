@@ -633,15 +633,30 @@ export const usePosStore = create<PosState>()(
       syncFromServer: async () => {
         const state = get();
         const apiUrl = state.businessSetup?.apiUrl?.replace(/\/$/, '');
-        if (!state.isOnline || !apiUrl || !state.businessSetup?.apiKey) return;
+
+        // Add debug logging for diagnosis
+        if (!state.isOnline) { console.debug("Sync skipped: Offline"); return; }
+        if (!apiUrl) { console.debug("Sync skipped: No API URL"); return; }
+        if (!state.businessSetup?.apiKey) { console.debug("Sync skipped: No API Key"); return; }
 
         try {
+          console.debug(`Syncing from server: ${apiUrl}/api/sync`);
           const response = await fetch(`${apiUrl}/api/sync`, {
             headers: {
               'Authorization': `Bearer ${state.businessSetup.apiKey}`
             }
           });
+
+          if (!response.ok) {
+             console.error(`Sync fetch failed: ${response.status} ${response.statusText}`);
+             return;
+          }
+
           const serverData = await response.json();
+          console.debug("Sync data received:", {
+             products: serverData.products?.length,
+             users: serverData.users?.length
+          });
           const lastSync = state.lastSyncTime ? new Date(state.lastSyncTime) : new Date(0);
 
           const mergeData = (local, server) => {
@@ -1084,12 +1099,4 @@ export const usePosStore = create<PosState>()(
 
 // Initial data will be loaded in the main App component.
 
-// Periodically process the sync queue (push)
-setInterval(() => {
-  usePosStore.getState().processSyncQueue();
-}, 10000); // every 10 seconds
-
-// Periodically sync from server (pull)
-setInterval(() => {
-  usePosStore.getState().syncFromServer();
-}, 10000); // every 10 seconds
+// Sync intervals are now managed in App.tsx to ensure proper lifecycle and state access

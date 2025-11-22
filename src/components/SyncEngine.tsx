@@ -174,12 +174,19 @@ export default function SyncEngine() {
               </div>
             </div>
             <button
+              onClick={() => { usePosStore.getState().syncFromServer(); }}
+              className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 mr-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Pull Updates</span>
+            </button>
+            <button
               onClick={handleManualSync}
               disabled={isSyncing || !isOnline}
               className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-              <span>Manual Sync</span>
+              <span>Push Local Data</span>
             </button>
           </div>
         </div>

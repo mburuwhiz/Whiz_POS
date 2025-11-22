@@ -25,6 +25,33 @@ function App() {
     init();
   }, [loadInitialData, autoPrintClosingReport]);
 
+  // Periodic Sync (Every 10 seconds)
+  useEffect(() => {
+    const syncInterval = setInterval(() => {
+      const state = usePosStore.getState();
+      const apiUrl = state.businessSetup?.apiUrl || state.businessSetup?.backOfficeUrl;
+
+      if (state.isOnline && apiUrl && state.businessSetup?.apiKey) {
+        // 1. Push pending changes
+        if (state.syncQueue.length > 0) {
+          console.log('Auto-sync: Processing Sync Queue (PUSH)...');
+          state.processSyncQueue();
+        }
+
+        // 2. Pull updates from server
+        console.log('Auto-sync: Fetching updates from server (PULL)...');
+        state.syncFromServer();
+      } else {
+        // Debug log to help diagnose why sync isn't running
+        if (!state.isOnline) console.log('Auto-sync skipped: Offline');
+        else if (!apiUrl) console.log('Auto-sync skipped: No API URL configured');
+        else if (!state.businessSetup?.apiKey) console.log('Auto-sync skipped: No API Key');
+      }
+    }, 10000);
+
+    return () => clearInterval(syncInterval);
+  }, []);
+
   useEffect(() => {
     const handleFocus = (event: FocusEvent) => {
       const { businessSetup, openKeyboard } = usePosStore.getState();

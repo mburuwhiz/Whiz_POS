@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, protocol } = require('electron');
 const path = require('path');
 const fs = require('fs/promises');
 const express = require('express');
+const cors = require('cors');
 const qrcode = require('qrcode');
 const crypto = require('crypto');
 const os = require('os');
@@ -124,12 +125,40 @@ function getLocalIpAddress() {
 }
 
 /**
+ * Helper to safely read JSON file
+ */
+async function readJsonFile(filename) {
+    try {
+        const data = await fs.readFile(path.join(userDataPath, filename), 'utf-8');
+        return JSON.parse(data);
+    } catch (e) {
+        return []; // Default to empty array or object depending on usage, but array is safer for lists
+    }
+}
+
+/**
+ * Helper to safely write JSON file
+ */
+async function writeJsonFile(filename, data) {
+    await fs.writeFile(path.join(userDataPath, filename), JSON.stringify(data, null, 2));
+}
+
+/**
  * Starts the local Express API server.
  * This server allows the Mobile App to send print jobs to the Desktop App.
  */
 function startApiServer() {
     const apiApp = express();
-    apiApp.use(express.json());
+
+    // Increase body limit to support large sync payloads
+    apiApp.use(express.json({ limit: '50mb' }));
+    apiApp.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+    // Enable CORS for all routes
+    apiApp.use(cors());
+
+    // Serve product images statically
+    apiApp.use('/assets', express.static(productImagesPath));
 
     const authMiddleware = (req, res, next) => {
         const authHeader = req.headers['authorization'];
@@ -153,29 +182,120 @@ function startApiServer() {
       res.json({ apiKey, apiUrl: `http://${ipAddress}:${port}` });
     });
 
+    // GET /api/products - Legacy endpoint
     apiApp.get('/api/products', authMiddleware, async (req, res) => {
-        const productsPath = path.join(userDataPath, 'products.json');
+        const products = await readJsonFile('products.json');
+        res.json(products);
+    });
+
+    // GET /api/users - For Mobile Login
+    apiApp.get('/api/users', authMiddleware, async (req, res) => {
+        const users = await readJsonFile('users.json');
+        res.json(users);
+    });
+
+    // GET /api/sync - Full state for Mobile Pull
+    apiApp.get('/api/sync', authMiddleware, async (req, res) => {
         try {
-            const data = await fs.readFile(productsPath, 'utf-8');
-            res.json(JSON.parse(data));
+            const [products, users, expenses, creditCustomers, businessSetup, transactions] = await Promise.all([
+                readJsonFile('products.json'),
+                readJsonFile('users.json'),
+                readJsonFile('expenses.json'),
+                readJsonFile('credit-customers.json'),
+                readJsonFile('business-setup.json').then(d => Array.isArray(d) ? d[0] : d), // Handle potential array wrapper
+                readJsonFile('transactions.json')
+            ]);
+
+            // Filter transactions? Mobile might not need ALL history.
+            // But for now, sending last 100 might be safer to avoid huge payloads.
+            // posStore handles partial updates.
+            const limitedTransactions = Array.isArray(transactions) ? transactions.slice(0, 200) : [];
+
+            // Rewrite image URLs to be accessible via HTTP
+            const ipAddress = getLocalIpAddress();
+            const address = server ? server.address() : null;
+            const port = (address && typeof address === 'object' && address.port) ? address.port : 3000;
+            const baseUrl = `http://${ipAddress}:${port}`;
+
+            const productsWithUrls = products.map(p => {
+                if (p.localImage && !p.image.startsWith('http')) {
+                    // Assuming localImage is absolute path, we need to extract filename
+                    const filename = path.basename(p.localImage);
+                    return { ...p, image: `${baseUrl}/assets/${filename}` };
+                }
+                return p;
+            });
+
+            res.json({
+                products: productsWithUrls,
+                users,
+                expenses,
+                creditCustomers,
+                businessSetup,
+                transactions: limitedTransactions
+            });
         } catch (error) {
-            res.status(500).json({ error: 'Failed to read products' });
+            console.error('Sync GET error:', error);
+            res.status(500).json({ error: 'Sync failed' });
+        }
+    });
+
+    // POST /api/sync - Handle Push Operations
+    apiApp.post('/api/sync', authMiddleware, async (req, res) => {
+        const operations = req.body;
+        if (!Array.isArray(operations)) {
+            return res.status(400).json({ error: 'Invalid payload' });
+        }
+
+        try {
+            // Process operations sequentially
+            for (const op of operations) {
+                const { type, data } = op;
+
+                if (type === 'new-transaction') {
+                    const transactions = await readJsonFile('transactions.json');
+                    transactions.unshift(data);
+                    await writeJsonFile('transactions.json', transactions);
+
+                    // Also notify renderer to update UI if it's showing recent transactions
+                    const win = BrowserWindow.getAllWindows()[0];
+                    if (win) win.webContents.send('sync-update', { type, data });
+
+                } else if (type === 'add-credit-customer') {
+                    const customers = await readJsonFile('credit-customers.json');
+                    customers.push(data);
+                    await writeJsonFile('credit-customers.json', customers);
+
+                } else if (type === 'update-credit-customer') {
+                    const customers = await readJsonFile('credit-customers.json');
+                    const idx = customers.findIndex(c => c.id === data.id);
+                    if (idx !== -1) {
+                        customers[idx] = { ...customers[idx], ...data.updates };
+                        await writeJsonFile('credit-customers.json', customers);
+                    }
+
+                } else if (type === 'add-expense') {
+                    const expenses = await readJsonFile('expenses.json');
+                    expenses.unshift(data);
+                    await writeJsonFile('expenses.json', expenses);
+                }
+                // Add more handlers as needed (add-product, add-user, etc.)
+                // For now, these are the critical ones for "Push Sales"
+            }
+
+            res.json({ success: true });
+        } catch (error) {
+            console.error('Sync POST error:', error);
+            res.status(500).json({ error: 'Sync processing failed' });
         }
     });
 
     apiApp.post('/api/transactions', authMiddleware, async (req, res) => {
         const newTransaction = req.body;
-        const transactionsPath = path.join(userDataPath, 'transactions.json');
         try {
-            let transactions = [];
-            try {
-                const data = await fs.readFile(transactionsPath, 'utf-8');
-                transactions = JSON.parse(data);
-            } catch (readError) {
-                // File might not exist yet, which is fine
-            }
+            const transactions = await readJsonFile('transactions.json');
             transactions.unshift(newTransaction);
-            await fs.writeFile(transactionsPath, JSON.stringify(transactions, null, 2));
+            await writeJsonFile('transactions.json', transactions);
             res.json({ success: true });
         } catch (error) {
             res.status(500).json({ error: 'Failed to save transaction' });
@@ -185,6 +305,7 @@ function startApiServer() {
     apiApp.post('/api/print-receipt', authMiddleware, (req, res) => {
         const { transaction, businessSetup } = req.body;
         const mainWindow = BrowserWindow.getAllWindows()[0];
+        // Add a flag or small modification to indicate remote print if needed
         mainWindow.webContents.send('print-receipt-from-api', transaction, businessSetup);
         res.json({ success: true });
     });

@@ -141,7 +141,7 @@ const ManagePage = () => {
                       <h2 className="text-xl font-bold text-gray-800">Mobile App Connection</h2>
                   </div>
                   <p className="text-sm text-gray-600 mb-4">
-                      Scan this QR code with the Mobile App to connect to this Desktop POS for printing.
+                      Scan this QR code with the Mobile App to connect to this Desktop POS for printing and syncing.
                   </p>
 
                   {apiConfig ? (
@@ -169,7 +169,10 @@ const ManagePage = () => {
                           </div>
                       </div>
                   ) : (
-                      <div className="text-center py-8 text-gray-500">Loading connection details...</div>
+                      <div className="text-center py-8 text-gray-500">
+                        <p>Loading connection details...</p>
+                        <p className="text-xs text-red-500 mt-2">If this persists, ensure the Desktop App is running in Electron.</p>
+                      </div>
                   )}
               </div>
 

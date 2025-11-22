@@ -597,8 +597,10 @@ export const usePosStore = create<PosState>()(
 
       processSyncQueue: async () => {
         const state = get();
-        const apiUrl = state.businessSetup?.apiUrl?.replace(/\/$/, '');
-        if (!state.isOnline || state.syncQueue.length === 0 || !apiUrl || !state.businessSetup?.apiKey) return;
+        const apiUrl = (state.businessSetup?.apiUrl || state.businessSetup?.backOfficeUrl)?.replace(/\/$/, '');
+        const apiKey = state.businessSetup?.apiKey || state.businessSetup?.backOfficeApiKey;
+
+        if (!state.isOnline || state.syncQueue.length === 0 || !apiUrl || !apiKey) return;
 
         const queue = [...state.syncQueue];
         set({ syncQueue: [] }); // Optimistically clear queue
@@ -608,7 +610,7 @@ export const usePosStore = create<PosState>()(
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${state.businessSetup.apiKey}`
+              'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify(queue)
           });
@@ -632,18 +634,19 @@ export const usePosStore = create<PosState>()(
 
       syncFromServer: async () => {
         const state = get();
-        const apiUrl = state.businessSetup?.apiUrl?.replace(/\/$/, '');
+        const apiUrl = (state.businessSetup?.apiUrl || state.businessSetup?.backOfficeUrl)?.replace(/\/$/, '');
+        const apiKey = state.businessSetup?.apiKey || state.businessSetup?.backOfficeApiKey;
 
         // Add debug logging for diagnosis
         if (!state.isOnline) { console.debug("Sync skipped: Offline"); return; }
         if (!apiUrl) { console.debug("Sync skipped: No API URL"); return; }
-        if (!state.businessSetup?.apiKey) { console.debug("Sync skipped: No API Key"); return; }
+        if (!apiKey) { console.debug("Sync skipped: No API Key"); return; }
 
         try {
           console.debug(`Syncing from server: ${apiUrl}/api/sync`);
           const response = await fetch(`${apiUrl}/api/sync`, {
             headers: {
-              'Authorization': `Bearer ${state.businessSetup.apiKey}`
+              'Authorization': `Bearer ${apiKey}`
             }
           });
 

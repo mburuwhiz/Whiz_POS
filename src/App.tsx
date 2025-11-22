@@ -30,8 +30,9 @@ function App() {
     const syncInterval = setInterval(() => {
       const state = usePosStore.getState();
       const apiUrl = state.businessSetup?.apiUrl || state.businessSetup?.backOfficeUrl;
+      const apiKey = state.businessSetup?.apiKey || state.businessSetup?.backOfficeApiKey;
 
-      if (state.isOnline && apiUrl && state.businessSetup?.apiKey) {
+      if (state.isOnline && apiUrl && apiKey) {
         // 1. Push pending changes
         if (state.syncQueue.length > 0) {
           console.log('Auto-sync: Processing Sync Queue (PUSH)...');
@@ -45,7 +46,7 @@ function App() {
         // Debug log to help diagnose why sync isn't running
         if (!state.isOnline) console.log('Auto-sync skipped: Offline');
         else if (!apiUrl) console.log('Auto-sync skipped: No API URL configured');
-        else if (!state.businessSetup?.apiKey) console.log('Auto-sync skipped: No API Key');
+        else if (!apiKey) console.log('Auto-sync skipped: No API Key');
       }
     }, 10000);
 

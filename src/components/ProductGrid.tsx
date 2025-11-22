@@ -24,7 +24,7 @@ export default function ProductGrid() {
   const [searchTerm, setSearchTerm] = React.useState('');
 
   const filteredProducts = products.filter((product) =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase())
+    (product.name || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (

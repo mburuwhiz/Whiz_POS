@@ -124,6 +124,56 @@ export default function ReportsPage() {
             <h3 className="text-lg font-semibold text-gray-800">Date Range</h3>
           </div>
           
+          <div className="flex flex-wrap gap-2 mb-4">
+            <button
+              onClick={() => {
+                const today = new Date().toISOString().split('T')[0];
+                setDateRange({ startDate: today, endDate: today });
+              }}
+              className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-full text-gray-700 transition-colors"
+            >
+              Today
+            </button>
+            <button
+              onClick={() => {
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const date = yesterday.toISOString().split('T')[0];
+                setDateRange({ startDate: date, endDate: date });
+              }}
+              className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-full text-gray-700 transition-colors"
+            >
+              Yesterday
+            </button>
+            <button
+              onClick={() => {
+                const today = new Date();
+                const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+                setDateRange({
+                  startDate: firstDay.toISOString().split('T')[0],
+                  endDate: today.toISOString().split('T')[0]
+                });
+              }}
+              className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-full text-gray-700 transition-colors"
+            >
+              This Month
+            </button>
+            <button
+              onClick={() => {
+                const today = new Date();
+                const firstDay = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                const lastDay = new Date(today.getFullYear(), today.getMonth(), 0);
+                setDateRange({
+                  startDate: firstDay.toISOString().split('T')[0],
+                  endDate: lastDay.toISOString().split('T')[0]
+                });
+              }}
+              className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-full text-gray-700 transition-colors"
+            >
+              Last Month
+            </button>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>

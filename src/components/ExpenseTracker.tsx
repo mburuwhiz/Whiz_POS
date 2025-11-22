@@ -26,8 +26,8 @@ export default function ExpenseTracker() {
   ];
 
   const filteredExpenses = expenses.filter(expense => {
-    const matchesSearch = expense.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         expense.cashier.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (expense.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (expense.cashier || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = categoryFilter === 'all' || expense.category === categoryFilter;
     return matchesSearch && matchesCategory;
   });
@@ -42,7 +42,7 @@ export default function ExpenseTracker() {
   })).filter(cat => cat.total > 0);
 
   const todayExpenses = expenses.filter(expense => 
-    expense.timestamp.startsWith(new Date().toISOString().split('T')[0])
+    (expense.timestamp || '').startsWith(new Date().toISOString().split('T')[0])
   );
 
   const todayTotal = todayExpenses.reduce((sum, expense) => sum + expense.amount, 0);

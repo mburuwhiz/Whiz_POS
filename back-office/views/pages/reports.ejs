@@ -1,54 +1,143 @@
-<div class="mb-6">
-    <h2 class="text-2xl font-bold text-gray-900">Reports</h2>
-    <p class="text-sm text-gray-500">Generate and view business reports.</p>
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+        <h2 class="text-2xl font-bold text-gray-900">Reports & Analytics</h2>
+        <p class="text-sm text-gray-500">View sales performance, expenses, and profit.</p>
+    </div>
+
+    <form action="/reports" method="GET" class="flex flex-wrap items-end gap-2 bg-white p-2 rounded-lg shadow-sm border border-gray-100">
+        <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Start Date</label>
+            <input type="date" name="startDate" value="<%= dateRange.startDate %>" class="px-3 py-1.5 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">End Date</label>
+            <input type="date" name="endDate" value="<%= dateRange.endDate %>" class="px-3 py-1.5 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <button type="submit" class="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors h-[34px]">
+            Generate
+        </button>
+    </form>
 </div>
 
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    <!-- Daily Closing Report -->
-    <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all group cursor-pointer">
-        <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-            <i data-lucide="file-text" class="w-6 h-6"></i>
+<!-- Summary Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium text-gray-500">Total Sales</span>
+            <div class="p-2 bg-green-50 text-green-600 rounded-lg">
+                <i data-lucide="dollar-sign" class="w-5 h-5"></i>
+            </div>
         </div>
-        <h3 class="text-lg font-bold text-gray-900 mb-2">Daily Closing</h3>
-        <p class="text-sm text-gray-500 mb-4">End-of-day summaries including total sales, cash in hand, and expenses.</p>
-        <button class="text-blue-600 font-medium text-sm flex items-center gap-1 group-hover:gap-2 transition-all">
-            Generate Report <i data-lucide="arrow-right" class="w-4 h-4"></i>
-        </button>
+        <h3 class="text-2xl font-bold text-gray-900">Ksh. <%= salesSummary.totalSales.toLocaleString() %></h3>
+        <p class="text-xs text-gray-500 mt-1"><%= salesSummary.transactionCount %> transactions</p>
     </div>
 
-    <!-- Sales Summary -->
-    <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all group cursor-pointer">
-        <div class="w-12 h-12 bg-green-50 text-green-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-            <i data-lucide="bar-chart-3" class="w-6 h-6"></i>
+    <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium text-gray-500">Total Expenses</span>
+            <div class="p-2 bg-red-50 text-red-600 rounded-lg">
+                <i data-lucide="receipt" class="w-5 h-5"></i>
+            </div>
         </div>
-        <h3 class="text-lg font-bold text-gray-900 mb-2">Sales Summary</h3>
-        <p class="text-sm text-gray-500 mb-4">Detailed breakdown of sales by product, category, or cashier over time.</p>
-        <button class="text-green-600 font-medium text-sm flex items-center gap-1 group-hover:gap-2 transition-all">
-            View Analytics <i data-lucide="arrow-right" class="w-4 h-4"></i>
-        </button>
+        <h3 class="text-2xl font-bold text-gray-900">Ksh. <%= totalExpenses.toLocaleString() %></h3>
     </div>
 
-    <!-- Inventory Report -->
-    <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all group cursor-pointer">
-        <div class="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-            <i data-lucide="package" class="w-6 h-6"></i>
+    <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium text-gray-500">Net Profit</span>
+            <div class="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                <i data-lucide="trending-up" class="w-5 h-5"></i>
+            </div>
         </div>
-        <h3 class="text-lg font-bold text-gray-900 mb-2">Stock Report</h3>
-        <p class="text-sm text-gray-500 mb-4">Current stock levels, low stock alerts, and inventory valuation.</p>
-        <button class="text-purple-600 font-medium text-sm flex items-center gap-1 group-hover:gap-2 transition-all">
-            View Stock <i data-lucide="arrow-right" class="w-4 h-4"></i>
-        </button>
+        <h3 class="text-2xl font-bold text-gray-900">Ksh. <%= netProfit.toLocaleString() %></h3>
     </div>
 
-    <!-- Expense Report -->
-    <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all group cursor-pointer">
-        <div class="w-12 h-12 bg-red-50 text-red-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-            <i data-lucide="receipt" class="w-6 h-6"></i>
+    <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium text-gray-500">Payment Methods</span>
+            <div class="p-2 bg-purple-50 text-purple-600 rounded-lg">
+                <i data-lucide="credit-card" class="w-5 h-5"></i>
+            </div>
         </div>
-        <h3 class="text-lg font-bold text-gray-900 mb-2">Expense Report</h3>
-        <p class="text-sm text-gray-500 mb-4">Analysis of business spending and operational costs.</p>
-        <button class="text-red-600 font-medium text-sm flex items-center gap-1 group-hover:gap-2 transition-all">
-            View Expenses <i data-lucide="arrow-right" class="w-4 h-4"></i>
-        </button>
+        <div class="space-y-1">
+            <div class="flex justify-between text-xs">
+                <span class="text-gray-600">Cash:</span>
+                <span class="font-medium">Ksh. <%= salesSummary.cash.toLocaleString() %></span>
+            </div>
+            <div class="flex justify-between text-xs">
+                <span class="text-gray-600">M-Pesa:</span>
+                <span class="font-medium">Ksh. <%= salesSummary.mpesa.toLocaleString() %></span>
+            </div>
+            <div class="flex justify-between text-xs">
+                <span class="text-gray-600">Credit:</span>
+                <span class="font-medium">Ksh. <%= salesSummary.credit.toLocaleString() %></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Sales Breakdown & Top Products -->
+    <div class="lg:col-span-2 space-y-6">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="p-6 border-b border-gray-100">
+                <h3 class="font-bold text-gray-900">Recent Transactions</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-gray-50 text-gray-600 font-medium">
+                        <tr>
+                            <th class="px-6 py-3">Time</th>
+                            <th class="px-6 py-3">Cashier</th>
+                            <th class="px-6 py-3">Method</th>
+                            <th class="px-6 py-3 text-right">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        <% if (transactions && transactions.length > 0) { %>
+                            <% transactions.forEach(t => { %>
+                            <tr class="hover:bg-gray-50/50">
+                                <td class="px-6 py-3 text-gray-600"><%= new Date(t.timestamp).toLocaleTimeString() %></td>
+                                <td class="px-6 py-3 font-medium text-gray-900"><%= t.cashier %></td>
+                                <td class="px-6 py-3 capitalize text-gray-600"><%= t.paymentMethod %></td>
+                                <td class="px-6 py-3 text-right font-medium text-gray-900">Ksh. <%= t.total.toLocaleString() %></td>
+                            </tr>
+                            <% }) %>
+                        <% } else { %>
+                            <tr>
+                                <td colspan="4" class="px-6 py-8 text-center text-gray-500">No transactions found for this period.</td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Selling Products -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 h-fit">
+        <div class="p-6 border-b border-gray-100">
+            <h3 class="font-bold text-gray-900">Top Selling Products</h3>
+        </div>
+        <div class="p-2">
+            <% if (topProducts && topProducts.length > 0) { %>
+                <% topProducts.forEach((product, index) => { %>
+                <div class="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                    <div class="flex items-center gap-3">
+                        <span class="w-6 h-6 flex items-center justify-center text-xs font-bold <%= index < 3 ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600' %> rounded-full">
+                            <%= index + 1 %>
+                        </span>
+                        <div>
+                            <p class="text-sm font-medium text-gray-900"><%= product.name %></p>
+                            <p class="text-xs text-gray-500"><%= product.quantity %> sold</p>
+                        </div>
+                    </div>
+                    <span class="text-sm font-bold text-gray-900">Ksh. <%= product.revenue.toLocaleString() %></span>
+                </div>
+                <% }) %>
+            <% } else { %>
+                <div class="p-6 text-center text-gray-500 text-sm">No sales data available.</div>
+            <% } %>
+        </div>
     </div>
 </div>

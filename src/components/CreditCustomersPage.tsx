@@ -25,7 +25,7 @@ export default function CreditCustomersPage() {
 
   const filteredCustomers = useMemo(() => {
     return creditCustomers.filter(customer =>
-      customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (customer.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (customer.phone && customer.phone.toString().includes(searchTerm))
     );
   }, [creditCustomers, searchTerm]);

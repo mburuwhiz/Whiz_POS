@@ -72,7 +72,7 @@ export default function BarcodeScanner() {
     
     // Find product by barcode (simulated)
     const product = products.find(p => 
-      p.id === randomCode || p.name.toLowerCase().includes(randomCode.slice(0, 3))
+      p.id === randomCode || (p.name || '').toLowerCase().includes(randomCode.slice(0, 3))
     );
     
     if (product) {
@@ -92,9 +92,9 @@ export default function BarcodeScanner() {
 
   const handleManualSearch = () => {
     const product = products.find(p => 
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.id === manualCode ||
-      p.name.toLowerCase().includes(manualCode.toLowerCase())
+      (p.name || '').toLowerCase().includes(manualCode.toLowerCase())
     );
     
     if (product) {
@@ -120,8 +120,8 @@ export default function BarcodeScanner() {
   };
 
   const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.id.toLowerCase().includes(searchTerm.toLowerCase())
+    (product.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (product.id || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (

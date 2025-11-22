@@ -18,7 +18,7 @@ const CreditCustomerModal: React.FC<CreditCustomerModalProps> = ({ isOpen, onClo
   if (!isOpen) return null;
 
   const filteredCustomers = creditCustomers.filter(c =>
-    c.name.toLowerCase().includes(searchTerm.toLowerCase())
+    (c.name || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleAddNewCustomer = () => {

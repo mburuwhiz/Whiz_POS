@@ -3,10 +3,10 @@ name: Build Whiz Pos APK
 on:
   push:
     branches:
-      - main
-      - 'feat/**'
-      - 'apk/**'
-      - feat*
+      - 'main*'
+      - 'feat*'
+      - 'fix*'
+      - 'apk*'
 
 jobs:
   build:

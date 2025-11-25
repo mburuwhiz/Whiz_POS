@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@capacitor/android": "^7.4.0",
+    "@capacitor/camera": "^7.0.2",
     "@capacitor/core": "^7.4.0",
     "@capacitor/ios": "^7.4.0",
     "@tailwindcss/postcss": "^4.1.17",

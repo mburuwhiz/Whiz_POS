@@ -3,13 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { QrCode, Zap } from 'lucide-react';
 import { useStore } from '../store/store';
 import QrScanner from '../components/QrScanner';
+import Notification from '../components/Notification';
+import { Camera } from '@capacitor/camera';
 import './ConnectionScreen.css';
 import '../components/QrScanner.css';
+import '../components/Notification.css';
 
 const ConnectionScreen = () => {
   const [serverUrl, setServerUrl] = useState('');
   const [syncKey, setSyncKey] = useState('');
   const [isScannerOpen, setScannerOpen] = useState(false);
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const setConnectionDetails = useStore((state) => state.setConnectionDetails);
   const navigate = useNavigate();
 
@@ -29,7 +33,7 @@ const ConnectionScreen = () => {
       navigate('/login');
     } catch (error) {
       console.error('Connection failed:', error);
-      alert('Connection failed. Please check the URL and sync key.');
+      setNotification({ message: 'Connection failed. Please check the URL and sync key.', type: 'error' });
     }
   };
 
@@ -41,12 +45,29 @@ const ConnectionScreen = () => {
       setScannerOpen(false);
     } catch (error) {
       console.error('Failed to parse QR code:', error);
-      alert('Invalid QR code format.');
+      setNotification({ message: 'Invalid QR code format.', type: 'error' });
+    }
+  };
+
+  const openScanner = async () => {
+    try {
+      await Camera.requestPermissions();
+      setScannerOpen(true);
+    } catch (error) {
+      console.error('Camera permission denied:', error);
+      setNotification({ message: 'Camera permission is required to scan QR codes.', type: 'error' });
     }
   };
 
   return (
     <div className="connection-screen">
+      {notification && (
+        <Notification
+          message={notification.message}
+          type={notification.type}
+          onClose={() => setNotification(null)}
+        />
+      )}
       <div className="connection-card">
         <h1>Connect to Desktop</h1>
         <input
@@ -61,7 +82,7 @@ const ConnectionScreen = () => {
           value={syncKey}
           onChange={(e) => setSyncKey(e.target.value)}
         />
-        <button onClick={() => setScannerOpen(true)}>
+        <button onClick={openScanner}>
           <QrCode size={16} />
           <span>Scan QR Code</span>
         </button>

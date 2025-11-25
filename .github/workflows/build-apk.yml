@@ -1,0 +1,40 @@
+name: Build Whiz Pos APK
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install root dependencies
+        run: npm install
+
+      - name: Install APK dependencies
+        run: npm install --prefix apk
+
+      - name: Build APK
+        run: |
+          cd apk
+          npm run build
+          npx cap add android
+          npx cap sync
+          cd android
+          ./gradlew assembleDebug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: whizpos-apk
+          path: apk/android/app/build/outputs/apk/debug/app-debug.apk

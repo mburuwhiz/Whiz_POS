@@ -37,7 +37,8 @@ jobs:
         run: |
           cd apk
           npm run build
-          npx cap sync
+          rm -rf android
+          npx cap add android
           cd android
           ./gradlew assembleDebug
 

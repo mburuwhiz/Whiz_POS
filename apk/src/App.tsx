@@ -1,15 +1,17 @@
 import React from 'react';
+import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
+import ConnectionScreen from './pages/ConnectionScreen';
+import LoginScreen from './pages/LoginScreen';
 import './App.css';
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src="/cart.svg" className="App-logo" alt="logo" />
-        <p>Whiz Pos APK</p>
-        <p>This cart icon should be loaded from the root /assets directory.</p>
-      </header>
-    </div>
+    <Router>
+      <Routes>
+        <Route path="/" element={<ConnectionScreen />} />
+        <Route path="/login" element={<LoginScreen />} />
+      </Routes>
+    </Router>
   );
 }
 

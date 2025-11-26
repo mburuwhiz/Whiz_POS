@@ -32,8 +32,9 @@ const ConnectionScreen = () => {
       setConnectionDetails(serverUrl, syncKey);
       navigate('/login');
     } catch (error) {
-      console.error('Connection failed:', error);
-      setNotification({ message: 'Connection failed. Please check the URL and sync key.', type: 'error' });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Connection failed:', errorMessage);
+      setNotification({ message: `Connection failed: ${errorMessage}`, type: 'error' });
     }
   };
 

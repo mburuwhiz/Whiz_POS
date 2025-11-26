@@ -19,9 +19,10 @@ const ConnectionScreen = () => {
 
   const handleConnect = async () => {
     try {
+      // The server expects the API key in the 'Authorization' header with 'Bearer '.
       const response = await fetch(`${serverUrl}/api/sync`, {
         headers: {
-          'X-API-KEY': syncKey,
+          'Authorization': `Bearer ${syncKey}`,
         },
       });
 

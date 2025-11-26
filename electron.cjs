@@ -154,18 +154,28 @@ function startApiServer() {
     apiApp.use(express.json({ limit: '50mb' }));
     apiApp.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-    // Enable CORS for all routes
-    apiApp.use(cors());
+    // Enable CORS for all routes, allowing specific headers for mobile sync
+    apiApp.use(cors({
+      origin: '*',
+      methods: ['GET', 'POST'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-API-KEY'],
+    }));
 
     // Serve product images statically
     apiApp.use('/assets', express.static(productImagesPath));
 
     const authMiddleware = (req, res, next) => {
         const authHeader = req.headers['authorization'];
-        if (!authHeader || authHeader !== `Bearer ${apiKey}`) {
-            return res.status(401).json({ error: 'Unauthorized' });
+        const xApiKey = req.headers['x-api-key'];
+
+        if (xApiKey && xApiKey === apiKey) {
+            return next();
         }
-        next();
+        if (authHeader && authHeader === `Bearer ${apiKey}`) {
+            return next();
+        }
+
+        return res.status(401).json({ error: 'Unauthorized' });
     };
 
     apiApp.get('/api/status', (req, res) => {

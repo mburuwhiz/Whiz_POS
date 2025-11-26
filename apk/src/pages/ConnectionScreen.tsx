@@ -5,6 +5,7 @@ import { useStore } from '../store/store';
 import QrScanner from '../components/QrScanner';
 import Notification from '../components/Notification';
 import { Camera } from '@capacitor/camera';
+import logo from '../../../assets/logo.png';
 import './ConnectionScreen.css';
 import '../components/QrScanner.css';
 import '../components/Notification.css';
@@ -70,6 +71,10 @@ const ConnectionScreen = () => {
         />
       )}
       <div className="connection-card">
+        <div className="connection-header">
+          <img src={logo} alt="Whiz POS Logo" className="logo" />
+          <h2 className="title">Whiz POS</h2>
+        </div>
         <h1>Connect to Desktop</h1>
         <input
           type="text"

@@ -14,7 +14,8 @@ apiClient.interceptors.request.use((config) => {
     config.baseURL = connection.apiUrl;
   }
 
-  if (connection.apiKey) {
+  // Skip auth headers for the public status endpoint to avoid CORS preflight issues on simple checks
+  if (config.url !== '/api/status' && connection.apiKey) {
     config.headers['X-API-KEY'] = connection.apiKey;
     config.headers['Authorization'] = `Bearer ${connection.apiKey}`;
   }
@@ -43,8 +44,10 @@ export const api = {
           response: error.response?.status,
           data: error.response?.data
         });
+        // Re-throw with a more user-friendly message or the original error
+        throw new Error(error.message || 'Connection failed');
       }
-      return false;
+      throw error;
     }
   },
 

@@ -32,6 +32,7 @@ export default function ConnectionScreen() {
   const handleConnect = async (url: string, key: string) => {
     setIsLoading(true);
     setStatus('idle');
+    setStatusMessage('');
 
     let formattedUrl = url.trim();
     if (!formattedUrl.startsWith('http')) {
@@ -42,26 +43,34 @@ export default function ConnectionScreen() {
     setConnection({ apiUrl: formattedUrl, apiKey: key.trim() });
 
     try {
+      // api.checkConnection now throws an error if it fails
       const isConnected = await api.checkConnection();
+
       if (isConnected) {
         setStatus('success');
         setConnection({ isConnected: true, apiUrl: formattedUrl, apiKey: key.trim() });
+        setStatusMessage('Connected successfully!');
 
-        const data = await api.syncPull();
-        if (data) {
-           if (data.products) setProducts(data.products);
-           if (data.categories) setCategories(data.categories);
-           if (data.users) setUsers(data.users);
+        try {
+            const data = await api.syncPull();
+            if (data) {
+               if (data.products) setProducts(data.products);
+               if (data.categories) setCategories(data.categories);
+               if (data.users) setUsers(data.users);
+            }
+        } catch (syncError) {
+            console.error('Initial sync failed but connection was good:', syncError);
+            // We don't block login if sync fails but connection was good
         }
 
         setTimeout(() => navigate('/login'), 500);
-      } else {
-        throw new Error('Could not connect to server');
       }
-    } catch (error) {
-      console.error(error);
+    } catch (error: any) {
+      console.error('Connection error:', error);
       setStatus('error');
-      setStatusMessage('Connection failed. Check URL/Network.');
+      // Display the specific error message to help debugging
+      const errorMsg = error.message || 'Unknown connection error';
+      setStatusMessage(`Error: ${errorMsg}`);
       setConnection({ isConnected: false });
     } finally {
       setIsLoading(false);
@@ -234,9 +243,9 @@ export default function ConnectionScreen() {
           </button>
 
           {statusMessage && (
-            <p className={cn("text-center text-sm", status === 'error' ? "text-red-400" : "text-emerald-400")}>
+            <div className={cn("text-center text-sm p-2 rounded-lg bg-black/20 break-words", status === 'error' ? "text-red-400 border border-red-500/20" : "text-emerald-400 border border-emerald-500/20")}>
               {statusMessage}
-            </p>
+            </div>
           )}
         </div>
       </div>

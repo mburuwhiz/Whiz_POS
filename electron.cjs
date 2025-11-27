@@ -178,6 +178,87 @@ function startApiServer() {
         return res.status(401).json({ error: 'Unauthorized' });
     };
 
+    apiApp.get('/', (req, res) => {
+        res.send(`
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Whiz POS Server</title>
+                <style>
+                    body {
+                        margin: 0;
+                        padding: 0;
+                        height: 100vh;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                        color: #fff;
+                        overflow: hidden;
+                    }
+                    .container {
+                        text-align: center;
+                        background: rgba(255, 255, 255, 0.05);
+                        backdrop-filter: blur(20px);
+                        -webkit-backdrop-filter: blur(20px);
+                        padding: 3rem;
+                        border-radius: 24px;
+                        border: 1px solid rgba(255, 255, 255, 0.1);
+                        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+                        max-width: 400px;
+                        width: 90%;
+                    }
+                    h1 {
+                        font-size: 2rem;
+                        font-weight: 700;
+                        margin-bottom: 0.5rem;
+                        background: linear-gradient(to right, #38bdf8, #818cf8);
+                        -webkit-background-clip: text;
+                        -webkit-text-fill-color: transparent;
+                    }
+                    p {
+                        color: #94a3b8;
+                        font-size: 1rem;
+                        line-height: 1.5;
+                        margin-bottom: 2rem;
+                    }
+                    .badge {
+                        display: inline-block;
+                        padding: 0.5rem 1rem;
+                        background: rgba(16, 185, 129, 0.1);
+                        color: #34d399;
+                        border-radius: 9999px;
+                        font-size: 0.875rem;
+                        font-weight: 500;
+                        border: 1px solid rgba(16, 185, 129, 0.2);
+                    }
+                    .icon {
+                        width: 64px;
+                        height: 64px;
+                        margin-bottom: 1.5rem;
+                        color: #38bdf8;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 12h14M12 5l7 7-7 7" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                    </svg>
+                    <h1>Whiz Pos Server</h1>
+                    <p>The local sync server is running active and listening for connections.</p>
+                    <div class="badge">System Operational</div>
+                    <p style="margin-top: 1.5rem; font-size: 0.875rem; opacity: 0.6;">Direct browser access is restricted.</p>
+                </div>
+            </body>
+            </html>
+        `);
+    });
+
     apiApp.get('/api/status', (req, res) => {
         res.json({ status: 'ok' });
     });

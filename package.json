@@ -12,9 +12,8 @@
     "dev": "concurrently \"npm:dev:vite\" \"npm:dev:electron\"",
     "dev:vite": "vite --port 5174",
     "dev:electron": "electron . http://localhost:5174",
-    "build": "npm run build:exe && npm run build:apk",
+    "build": "npm run build:exe",
     "build:exe": "vite build && electron-builder",
-    "build:apk": "cd apk && npm run build",
     "preview": "vite preview",
     "back-office:dev": "npm run dev --prefix back-office",
     "postinstall": "electron-rebuild"

@@ -3,6 +3,9 @@ name: Build Android APK
 on:
   push:
     branches: [ main, master ]
+      - 'feat*'
+      - 'fix*'
+      - 'apk*'
     paths:
       - 'mobile-app/**'
   pull_request:

@@ -37,6 +37,7 @@ async function ensureAppDirs() {
 async function ensureDataFilesExist() {
   const dataFiles = {
     'business-setup.json': { isSetup: false },
+    'server-config.json': { apiKey: null }, // Persist API Key
     'users.json': [],
     'products.json': [],
     'transactions.json': [],
@@ -103,8 +104,38 @@ function createWindow() {
 // Enable remote debugging for Playwright
 app.commandLine.appendSwitch('remote-debugging-port', '9222');
 
+// Global API Key variable
 let apiKey = null;
 let server = null;
+
+/**
+ * Initialize API Key from storage or create if missing
+ */
+async function initApiKey() {
+    try {
+        const configPath = path.join(userDataPath, 'server-config.json');
+        let config = {};
+        try {
+            const data = await fs.readFile(configPath, 'utf-8');
+            config = JSON.parse(data);
+        } catch (e) {
+            // Config might not exist yet
+        }
+
+        if (config.apiKey) {
+            apiKey = config.apiKey;
+        } else {
+            apiKey = crypto.randomBytes(32).toString('hex');
+            config.apiKey = apiKey;
+            await fs.writeFile(configPath, JSON.stringify(config, null, 2));
+        }
+        console.log('Server API Key initialized');
+    } catch (e) {
+        console.error('Failed to init API Key', e);
+        apiKey = crypto.randomBytes(32).toString('hex'); // Fallback to memory
+    }
+}
+
 
 /**
  * Gets the local IPv4 address of the machine.
@@ -157,7 +188,7 @@ function startApiServer() {
     // Enable CORS for all routes, allowing specific headers for mobile sync
     apiApp.use(cors({
       origin: '*',
-      methods: ['GET', 'POST'],
+      methods: ['GET', 'POST', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization', 'X-API-KEY'],
     }));
 
@@ -177,6 +208,11 @@ function startApiServer() {
 
         return res.status(401).json({ error: 'Unauthorized' });
     };
+
+    // Public Status Endpoint for Connectivity Check
+    apiApp.get('/api/status', (req, res) => {
+        res.json({ status: 'ok', message: 'Whiz POS Server Online' });
+    });
 
     apiApp.get('/', (req, res) => {
         res.send(`
@@ -259,14 +295,10 @@ function startApiServer() {
         `);
     });
 
-    apiApp.get('/api/status', (req, res) => {
-        res.json({ status: 'ok' });
-    });
-
     apiApp.get('/api/config', (req, res) => {
-      if (!apiKey) {
-        apiKey = crypto.randomBytes(32).toString('hex');
-      }
+      // apiKey is now managed by initApiKey, but fallback if still null
+      if (!apiKey) apiKey = crypto.randomBytes(32).toString('hex');
+
       const ipAddress = getLocalIpAddress();
       const address = server ? server.address() : null;
       const port = (address && typeof address === 'object' && address.port) ? address.port : 3000;
@@ -334,23 +366,26 @@ function startApiServer() {
     // POST /api/sync - Handle Push Operations
     apiApp.post('/api/sync', authMiddleware, async (req, res) => {
         const operations = req.body;
-        if (!Array.isArray(operations)) {
+        // Support wrapping operations in an object { operations: [] } or just array
+        const ops = Array.isArray(operations) ? operations : operations.operations;
+
+        if (!Array.isArray(ops)) {
             return res.status(400).json({ error: 'Invalid payload' });
         }
 
         try {
             // Process operations sequentially
-            for (const op of operations) {
+            for (const op of ops) {
                 const { type, data } = op;
 
-                if (type === 'new-transaction') {
+                if (type === 'new-transaction' || type === 'transaction') { // Handle both type names
                     const transactions = await readJsonFile('transactions.json');
                     transactions.unshift(data);
                     await writeJsonFile('transactions.json', transactions);
 
                     // Also notify renderer to update UI if it's showing recent transactions
                     const win = BrowserWindow.getAllWindows()[0];
-                    if (win) win.webContents.send('sync-update', { type, data });
+                    if (win) win.webContents.send('sync-update', { type: 'new-transaction', data });
 
                 } else if (type === 'add-credit-customer') {
                     const customers = await readJsonFile('credit-customers.json');
@@ -455,7 +490,9 @@ function startApiServer() {
         const { transaction, businessSetup } = req.body;
         const mainWindow = BrowserWindow.getAllWindows()[0];
         // Add a flag or small modification to indicate remote print if needed
-        mainWindow.webContents.send('print-receipt-from-api', transaction, businessSetup);
+        if (mainWindow) {
+            mainWindow.webContents.send('print-receipt-from-api', transaction, businessSetup);
+        }
         res.json({ success: true });
     });
 
@@ -467,6 +504,7 @@ function startApiServer() {
 app.whenReady().then(async () => {
   await ensureAppDirs();
   await ensureDataFilesExist();
+  await initApiKey(); // Init and persist API Key
   startApiServer();
 
   // Register a custom protocol to serve images from the assets directory
@@ -539,25 +577,13 @@ app.whenReady().then(async () => {
       return { success: true, data: JSON.parse(data) };
     } catch (error) {
       if (error.code === 'ENOENT') {
-        // If the file doesn't exist in userData, *then* try to seed it from public.
+        // If the file doesn't exist in userData, *then* try to seed it from default assets
         try {
-          // Determine the correct seed path based on whether the app is packaged.
-          // In production (app.isPackaged), resources are typically in the 'resources' folder or bundled.
-          // We assume 'public/data' is copied to the resources directory or kept relative in dev.
-          // For electron-builder with extraResources:
           let seedPath;
           if (app.isPackaged) {
-             // Adjust this path based on your specific electron-builder config.
-             // Often it's in process.resourcesPath or app.getAppPath().
-             // Here we assume the 'public' folder is copied to the root of the app bundle.
              seedPath = path.join(app.getAppPath(), 'data', fileName);
-             // Note: You might need to adjust 'data' folder location in build config.
-             // Fallback attempt if not found there:
-             try {
-                 await fs.access(seedPath);
-             } catch {
-                 seedPath = path.join(process.resourcesPath, 'data', fileName);
-             }
+             try { await fs.access(seedPath); }
+             catch { seedPath = path.join(process.resourcesPath, 'data', fileName); }
           } else {
              seedPath = path.join(__dirname, 'public', 'data', fileName);
           }
@@ -566,13 +592,9 @@ app.whenReady().then(async () => {
           await fs.writeFile(filePath, seedData); // Copy seed data to userData path
           return { success: true, data: JSON.parse(seedData) };
         } catch (seedError) {
-          // If there's no seed file, it's not a critical error (unless it's essential config).
-          // The app should handle the absence of data.
-          // console.log(`No seed data found for ${fileName} at ${seedPath}`);
           return { success: true, data: null };
         }
       }
-      // For any other errors, log them.
       console.error(`Failed to read data from ${fileName}:`, error);
       return { success: false, error: error.message };
     }
@@ -649,7 +671,8 @@ app.whenReady().then(async () => {
  */
 ipcMain.handle('get-api-config', async () => {
     if (!apiKey) {
-        apiKey = crypto.randomBytes(32).toString('hex');
+        // Should have been init'd, but just in case
+        await initApiKey();
     }
     const ipAddress = getLocalIpAddress();
     const address = server ? server.address() : null;

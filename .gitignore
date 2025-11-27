@@ -25,3 +25,6 @@ yarn-error.log*
 .cache
 .tmp
 *.swp
+mobile-app/node_modules/
+mobile-app/dist/
+mobile-app/android/

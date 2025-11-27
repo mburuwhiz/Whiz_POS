@@ -37,6 +37,7 @@ async function ensureAppDirs() {
 async function ensureDataFilesExist() {
   const dataFiles = {
     'business-setup.json': { isSetup: false },
+    'server-config.json': { apiKey: null }, // Persist API Key
     'users.json': [],
     'products.json': [],
     'transactions.json': [],
@@ -103,8 +104,38 @@ function createWindow() {
 // Enable remote debugging for Playwright
 app.commandLine.appendSwitch('remote-debugging-port', '9222');
 
+// Global API Key variable
 let apiKey = null;
 let server = null;
+
+/**
+ * Initialize API Key from storage or create if missing
+ */
+async function initApiKey() {
+    try {
+        const configPath = path.join(userDataPath, 'server-config.json');
+        let config = {};
+        try {
+            const data = await fs.readFile(configPath, 'utf-8');
+            config = JSON.parse(data);
+        } catch (e) {
+            // Config might not exist yet
+        }
+
+        if (config.apiKey) {
+            apiKey = config.apiKey;
+        } else {
+            apiKey = crypto.randomBytes(32).toString('hex');
+            config.apiKey = apiKey;
+            await fs.writeFile(configPath, JSON.stringify(config, null, 2));
+        }
+        console.log('Server API Key initialized');
+    } catch (e) {
+        console.error('Failed to init API Key', e);
+        apiKey = crypto.randomBytes(32).toString('hex'); // Fallback to memory
+    }
+}
+
 
 /**
  * Gets the local IPv4 address of the machine.
@@ -157,7 +188,7 @@ function startApiServer() {
     // Enable CORS for all routes, allowing specific headers for mobile sync
     apiApp.use(cors({
       origin: '*',
-      methods: ['GET', 'POST'],
+      methods: ['GET', 'POST', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization', 'X-API-KEY'],
     }));
 
@@ -178,7 +209,15 @@ function startApiServer() {
         return res.status(401).json({ error: 'Unauthorized' });
     };
 
+    // Public Status Endpoint for Connectivity Check
+    // IMPORTANT: Defined before other routes to ensure availability
+    apiApp.get('/api/status', (req, res) => {
+        console.log(`[API] Status check received from ${req.ip}`);
+        res.json({ status: 'ok', message: 'Whiz POS Server Online' });
+    });
+
     apiApp.get('/', (req, res) => {
+        console.log(`[API] Root accessed from ${req.ip}`);
         res.send(`
             <!DOCTYPE html>
             <html lang="en">
@@ -187,86 +226,26 @@ function startApiServer() {
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>Whiz POS Server</title>
                 <style>
-                    body {
-                        margin: 0;
-                        padding: 0;
-                        height: 100vh;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                        color: #fff;
-                        overflow: hidden;
-                    }
-                    .container {
-                        text-align: center;
-                        background: rgba(255, 255, 255, 0.05);
-                        backdrop-filter: blur(20px);
-                        -webkit-backdrop-filter: blur(20px);
-                        padding: 3rem;
-                        border-radius: 24px;
-                        border: 1px solid rgba(255, 255, 255, 0.1);
-                        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-                        max-width: 400px;
-                        width: 90%;
-                    }
-                    h1 {
-                        font-size: 2rem;
-                        font-weight: 700;
-                        margin-bottom: 0.5rem;
-                        background: linear-gradient(to right, #38bdf8, #818cf8);
-                        -webkit-background-clip: text;
-                        -webkit-text-fill-color: transparent;
-                    }
-                    p {
-                        color: #94a3b8;
-                        font-size: 1rem;
-                        line-height: 1.5;
-                        margin-bottom: 2rem;
-                    }
-                    .badge {
-                        display: inline-block;
-                        padding: 0.5rem 1rem;
-                        background: rgba(16, 185, 129, 0.1);
-                        color: #34d399;
-                        border-radius: 9999px;
-                        font-size: 0.875rem;
-                        font-weight: 500;
-                        border: 1px solid rgba(16, 185, 129, 0.2);
-                    }
-                    .icon {
-                        width: 64px;
-                        height: 64px;
-                        margin-bottom: 1.5rem;
-                        color: #38bdf8;
-                    }
+                    body { background: #0f172a; color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+                    .container { text-align: center; padding: 2rem; border: 1px solid rgba(255,255,255,0.1); border-radius: 1rem; background: rgba(255,255,255,0.05); }
+                    h1 { color: #38bdf8; }
                 </style>
             </head>
             <body>
                 <div class="container">
-                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 12h14M12 5l7 7-7 7" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                    </svg>
-                    <h1>Whiz Pos Server</h1>
-                    <p>The local sync server is running active and listening for connections.</p>
-                    <div class="badge">System Operational</div>
-                    <p style="margin-top: 1.5rem; font-size: 0.875rem; opacity: 0.6;">Direct browser access is restricted.</p>
+                    <h1>Whiz POS Server</h1>
+                    <p>Status: Online</p>
+                    <p><small>Checking connections...</small></p>
                 </div>
             </body>
             </html>
         `);
     });
 
-    apiApp.get('/api/status', (req, res) => {
-        res.json({ status: 'ok' });
-    });
-
     apiApp.get('/api/config', (req, res) => {
-      if (!apiKey) {
-        apiKey = crypto.randomBytes(32).toString('hex');
-      }
+      // apiKey is now managed by initApiKey, but fallback if still null
+      if (!apiKey) apiKey = crypto.randomBytes(32).toString('hex');
+
       const ipAddress = getLocalIpAddress();
       const address = server ? server.address() : null;
       const port = (address && typeof address === 'object' && address.port) ? address.port : 3000;
@@ -334,23 +313,26 @@ function startApiServer() {
     // POST /api/sync - Handle Push Operations
     apiApp.post('/api/sync', authMiddleware, async (req, res) => {
         const operations = req.body;
-        if (!Array.isArray(operations)) {
+        // Support wrapping operations in an object { operations: [] } or just array
+        const ops = Array.isArray(operations) ? operations : operations.operations;
+
+        if (!Array.isArray(ops)) {
             return res.status(400).json({ error: 'Invalid payload' });
         }
 
         try {
             // Process operations sequentially
-            for (const op of operations) {
+            for (const op of ops) {
                 const { type, data } = op;
 
-                if (type === 'new-transaction') {
+                if (type === 'new-transaction' || type === 'transaction') { // Handle both type names
                     const transactions = await readJsonFile('transactions.json');
                     transactions.unshift(data);
                     await writeJsonFile('transactions.json', transactions);
 
                     // Also notify renderer to update UI if it's showing recent transactions
                     const win = BrowserWindow.getAllWindows()[0];
-                    if (win) win.webContents.send('sync-update', { type, data });
+                    if (win) win.webContents.send('sync-update', { type: 'new-transaction', data });
 
                 } else if (type === 'add-credit-customer') {
                     const customers = await readJsonFile('credit-customers.json');
@@ -455,18 +437,31 @@ function startApiServer() {
         const { transaction, businessSetup } = req.body;
         const mainWindow = BrowserWindow.getAllWindows()[0];
         // Add a flag or small modification to indicate remote print if needed
-        mainWindow.webContents.send('print-receipt-from-api', transaction, businessSetup);
+        if (mainWindow) {
+            mainWindow.webContents.send('print-receipt-from-api', transaction, businessSetup);
+        }
         res.json({ success: true });
     });
 
     server = apiApp.listen(3000, '0.0.0.0', () => {
         console.log('API server started on port 3000');
     });
+
+    server.on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+            console.error('CRITICAL: Port 3000 is already in use. The API server could not start. Please close other instances of Whiz POS.');
+            // We can't exit the whole app as the user might want to use it offline, but we should alert
+            // For now, logging to console which might be seen in DevTools
+        } else {
+            console.error('API Server error:', err);
+        }
+    });
 }
 
 app.whenReady().then(async () => {
   await ensureAppDirs();
   await ensureDataFilesExist();
+  await initApiKey(); // Init and persist API Key
   startApiServer();
 
   // Register a custom protocol to serve images from the assets directory
@@ -539,25 +534,13 @@ app.whenReady().then(async () => {
       return { success: true, data: JSON.parse(data) };
     } catch (error) {
       if (error.code === 'ENOENT') {
-        // If the file doesn't exist in userData, *then* try to seed it from public.
+        // If the file doesn't exist in userData, *then* try to seed it from default assets
         try {
-          // Determine the correct seed path based on whether the app is packaged.
-          // In production (app.isPackaged), resources are typically in the 'resources' folder or bundled.
-          // We assume 'public/data' is copied to the resources directory or kept relative in dev.
-          // For electron-builder with extraResources:
           let seedPath;
           if (app.isPackaged) {
-             // Adjust this path based on your specific electron-builder config.
-             // Often it's in process.resourcesPath or app.getAppPath().
-             // Here we assume the 'public' folder is copied to the root of the app bundle.
              seedPath = path.join(app.getAppPath(), 'data', fileName);
-             // Note: You might need to adjust 'data' folder location in build config.
-             // Fallback attempt if not found there:
-             try {
-                 await fs.access(seedPath);
-             } catch {
-                 seedPath = path.join(process.resourcesPath, 'data', fileName);
-             }
+             try { await fs.access(seedPath); }
+             catch { seedPath = path.join(process.resourcesPath, 'data', fileName); }
           } else {
              seedPath = path.join(__dirname, 'public', 'data', fileName);
           }
@@ -566,13 +549,9 @@ app.whenReady().then(async () => {
           await fs.writeFile(filePath, seedData); // Copy seed data to userData path
           return { success: true, data: JSON.parse(seedData) };
         } catch (seedError) {
-          // If there's no seed file, it's not a critical error (unless it's essential config).
-          // The app should handle the absence of data.
-          // console.log(`No seed data found for ${fileName} at ${seedPath}`);
           return { success: true, data: null };
         }
       }
-      // For any other errors, log them.
       console.error(`Failed to read data from ${fileName}:`, error);
       return { success: false, error: error.message };
     }
@@ -649,7 +628,8 @@ app.whenReady().then(async () => {
  */
 ipcMain.handle('get-api-config', async () => {
     if (!apiKey) {
-        apiKey = crypto.randomBytes(32).toString('hex');
+        // Should have been init'd, but just in case
+        await initApiKey();
     }
     const ipAddress = getLocalIpAddress();
     const address = server ? server.address() : null;

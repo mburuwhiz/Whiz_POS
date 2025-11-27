@@ -151,12 +151,7 @@ Since the connection is HTTP (unencrypted local traffic), Android requires expli
 - Content:
   ```xml
   <network-security-config>
-      <domain-config cleartextTrafficPermitted="true">
-          <domain includeSubdomains="true">192.168.0.0</domain> <!-- Common Subnet -->
-          <domain includeSubdomains="true">192.168.1.0</domain> <!-- Common Subnet -->
-          <domain includeSubdomains="true">192.168.100.0</domain> <!-- Common Subnet -->
-          <domain includeSubdomains="true">10.0.2.2</domain> <!-- Emulator -->
-      </domain-config>
+      <base-config cleartextTrafficPermitted="true" />
   </network-security-config>
   ```
 - Manifest: `<application android:networkSecurityConfig="@xml/network_security_config" ...>`

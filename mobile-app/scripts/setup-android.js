@@ -22,13 +22,7 @@ if (!fs.existsSync(resXmlPath)) {
 
 const networkConfig = `<?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">192.168.0.0</domain>
-        <domain includeSubdomains="true">192.168.1.0</domain>
-        <domain includeSubdomains="true">192.168.100.0</domain>
-        <domain includeSubdomains="true">10.0.2.2</domain>
-        <domain includeSubdomains="true">localhost</domain>
-    </domain-config>
+    <base-config cleartextTrafficPermitted="true" />
 </network-security-config>`;
 
 fs.writeFileSync(path.join(resXmlPath, 'network_security_config.xml'), networkConfig);

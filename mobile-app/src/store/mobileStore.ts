@@ -66,6 +66,16 @@ interface Expense {
   cashierName?: string;
 }
 
+interface Salary {
+  id: string;
+  employeeName: string;
+  amount: number;
+  date: string;
+  type: 'advance' | 'full';
+  notes?: string;
+  recordedBy?: string;
+}
+
 interface CreditCustomer {
   id: string;
   name: string;
@@ -97,16 +107,19 @@ interface MobileStore {
   categories: string[];
   transactions: Transaction[];
   expenses: Expense[];
+  salaries: Salary[];
   creditCustomers: CreditCustomer[];
 
   setProducts: (products: Product[]) => void;
   setCategories: (categories: string[]) => void;
   setTransactions: (transactions: Transaction[]) => void;
   setExpenses: (expenses: Expense[]) => void;
+  setSalaries: (salaries: Salary[]) => void;
   setCreditCustomers: (customers: CreditCustomer[]) => void;
 
   addTransaction: (transaction: Transaction) => void;
   addExpense: (expense: Expense) => void;
+  addSalary: (salary: Salary) => void;
   addCreditCustomer: (customer: CreditCustomer) => void;
   updateCreditCustomer: (id: string, updates: Partial<CreditCustomer>) => void;
 
@@ -150,6 +163,7 @@ export const useMobileStore = create<MobileStore>()(
       categories: [],
       transactions: [],
       expenses: [],
+      salaries: [],
       creditCustomers: [],
 
       setProducts: (products) => set({
@@ -174,6 +188,13 @@ export const useMobileStore = create<MobileStore>()(
          set({ expenses: [...localPending, ...serverExpenses] });
       },
 
+      setSalaries: (serverSalaries) => {
+         const state = get();
+         const queuedIds = new Set(state.syncQueue.filter(op => op.type === 'salary' || op.type === 'add-salary').map(op => op.data.id));
+         const localPending = state.salaries.filter(s => queuedIds.has(s.id) && !serverSalaries.some(ss => ss.id === s.id));
+         set({ salaries: [...localPending, ...serverSalaries] });
+      },
+
       setCreditCustomers: (serverCustomers) => {
          const state = get();
          // For customers, we might have 'add-credit-customer' or 'update-credit-customer'
@@ -189,6 +210,7 @@ export const useMobileStore = create<MobileStore>()(
 
       addTransaction: (transaction) => set((state) => ({ transactions: [transaction, ...state.transactions] })),
       addExpense: (expense) => set((state) => ({ expenses: [expense, ...state.expenses] })),
+      addSalary: (salary) => set((state) => ({ salaries: [salary, ...state.salaries] })),
       addCreditCustomer: (customer) => set((state) => ({ creditCustomers: [...state.creditCustomers, customer] })),
       updateCreditCustomer: (id, updates) => set((state) => ({
         creditCustomers: state.creditCustomers.map(c => c.id === id ? { ...c, ...updates } : c)
@@ -252,6 +274,7 @@ export const useMobileStore = create<MobileStore>()(
         users: state.users,
         transactions: state.transactions,
         expenses: state.expenses,
+        salaries: state.salaries,
         creditCustomers: state.creditCustomers
       }),
       onRehydrateStorage: () => (state) => {

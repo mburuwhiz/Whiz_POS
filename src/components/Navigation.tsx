@@ -98,6 +98,12 @@ const Navigation = () => {
             <DollarSign className="w-5 h-5" />
             <span>Expenses</span>
           </NavLink>
+          {isAdminOrManager && (
+            <NavLink to="/salaries" className={navLinkClasses}>
+              <DollarSign className="w-5 h-5" />
+              <span>Salaries</span>
+            </NavLink>
+          )}
           <NavLink to="/loyalty" className={navLinkClasses}>
             <Gift className="w-5 h-5" />
             <span>Loyalty</span>

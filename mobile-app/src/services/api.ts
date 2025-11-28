@@ -77,7 +77,8 @@ export const api = {
   // Print Receipt (Remote)
   printReceipt: async (transactionData: any) => {
     try {
-      const response = await apiClient.post('/api/print-receipt', transactionData);
+      // Wrap in object as expected by electron.cjs endpoint
+      const response = await apiClient.post('/api/print-receipt', { transaction: transactionData });
       return response.data;
     } catch (error) {
       console.error('Print receipt failed:', error);

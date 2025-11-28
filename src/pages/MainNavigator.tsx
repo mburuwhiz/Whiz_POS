@@ -20,6 +20,7 @@ import LoginScreen from '../components/LoginScreen';
 import AppLayout from '../components/AppLayout';
 import PreviousReceiptsPage from '../components/PreviousReceiptsPage';
 import MobileReceiptsPage from './MobileReceiptsPage';
+import SalariesPage from './SalariesPage';
 
 const MainNavigator = () => {
   const { businessSetup, users } = usePosStore();
@@ -69,6 +70,7 @@ const MainNavigator = () => {
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/customers" element={<CreditCustomersPage />} />
         <Route path="/expenses" element={<ExpenseTracker />} />
+        <Route path="/salaries" element={<SalariesPage />} />
         <Route path="/closing" element={<DailyClosingScreen />} />
         <Route path="/sync" element={<OfflineSyncStatus />} />
         <Route path="/settings" element={<SettingsPage />} />

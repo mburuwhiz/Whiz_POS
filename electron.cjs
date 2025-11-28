@@ -61,6 +61,7 @@ async function ensureDataFilesExist() {
     'products.json': [],
     'transactions.json': [],
     'expenses.json': [],
+    'salaries.json': [], // New file for salaries
     'credit-customers.json': [],
     'mobile-receipts.json': [], // New file for queuing mobile receipts
   };
@@ -268,10 +269,11 @@ function startApiServer() {
     // GET /api/sync - Full state for Mobile Pull
     apiApp.get('/api/sync', authMiddleware, async (req, res) => {
         try {
-            const [products, users, expenses, creditCustomers, businessSetup, transactions] = await Promise.all([
+            const [products, users, expenses, salaries, creditCustomers, businessSetup, transactions] = await Promise.all([
                 readJsonFile('products.json'),
                 readJsonFile('users.json'),
                 readJsonFile('expenses.json'),
+                readJsonFile('salaries.json'),
                 readJsonFile('credit-customers.json'),
                 readJsonFile('business-setup.json').then(d => Array.isArray(d) ? d[0] : d), // Handle potential array wrapper
                 readJsonFile('transactions.json')
@@ -301,6 +303,7 @@ function startApiServer() {
                 products: productsWithUrls,
                 users,
                 expenses,
+                salaries,
                 creditCustomers,
                 businessSetup,
                 transactions: limitedTransactions
@@ -352,6 +355,16 @@ function startApiServer() {
                     }
                     expenses.unshift(data);
                     await writeJsonFile('expenses.json', expenses);
+
+                } else if (type === 'add-salary') {
+                    const salaries = await readJsonFile('salaries.json');
+                    salaries.unshift(data);
+                    await writeJsonFile('salaries.json', salaries);
+
+                } else if (type === 'delete-salary') {
+                    const salaries = await readJsonFile('salaries.json');
+                    const newSalaries = salaries.filter(s => s.id !== data.id);
+                    await writeJsonFile('salaries.json', newSalaries);
 
                 } else if (type === 'add-product') {
                     const products = await readJsonFile('products.json');

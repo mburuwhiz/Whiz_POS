@@ -9,6 +9,7 @@ const creditController = require('../controllers/creditController');
 const reportsController = require('../controllers/reportsController');
 const usersController = require('../controllers/usersController');
 const settingsController = require('../controllers/settingsController');
+const salariesController = require('../controllers/salariesController');
 
 /**
  * Middleware to require authentication for protected routes.
@@ -124,6 +125,24 @@ router.post('/credit/payment/:id', creditController.recordPayment);
  * Deletes a credit customer.
  */
 router.post('/credit/delete/:id', creditController.deleteCustomer);
+
+/**
+ * GET /salaries
+ * Renders the salaries management page.
+ */
+router.get('/salaries', salariesController.getSalaries);
+
+/**
+ * POST /salaries/add
+ * Adds a new salary record.
+ */
+router.post('/salaries/add', salariesController.addSalary);
+
+/**
+ * POST /salaries/delete/:id
+ * Deletes a salary record.
+ */
+router.post('/salaries/delete/:id', salariesController.deleteSalary);
 
 /**
  * GET /reports

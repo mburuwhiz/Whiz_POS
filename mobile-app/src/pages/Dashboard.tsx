@@ -305,6 +305,11 @@ export default function Dashboard() {
                <button onClick={() => handleNavigate('/credit-customers')} className="w-full flex items-center gap-3 p-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-colors">
                  <Users className="w-5 h-5" /> Credit Customers
                </button>
+               {currentUser?.role === 'admin' && (
+                 <button onClick={() => handleNavigate('/salaries')} className="w-full flex items-center gap-3 p-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-colors">
+                   <DollarSign className="w-5 h-5" /> Salaries
+                 </button>
+               )}
                <button onClick={() => handleNavigate('/pending-sync')} className="w-full flex items-center gap-3 p-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-colors">
                  <RefreshCw className="w-5 h-5" /> Sync Status
                  {syncQueue.length > 0 && <span className="ml-auto bg-sky-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{syncQueue.length}</span>}

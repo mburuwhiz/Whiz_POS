@@ -88,6 +88,7 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
       timestamp: new Date().toISOString(),
       cashierId: currentUser?.id,
       cashierName: currentUser?.name,
+      cashier: currentUser?.name, // Added for compatibility with Desktop/Print templates
       creditCustomerId: selectedCustomer?.id,
       creditCustomerName: selectedCustomer?.name,
       status: 'completed'

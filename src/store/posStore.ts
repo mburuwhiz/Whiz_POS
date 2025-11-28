@@ -155,6 +155,15 @@ export interface Expense {
   receipt?: string;
 }
 
+export interface Salary {
+  id: string;
+  employeeName: string;
+  amount: number;
+  date: string;
+  type: 'advance' | 'full';
+  notes?: string;
+}
+
 export interface BusinessSetup {
   businessName: string;
   businessId?: string;
@@ -217,6 +226,7 @@ interface PosState {
   creditCustomers: CreditCustomer[];
   users: User[];
   expenses: Expense[];
+  salaries: Salary[];
   businessSetup: BusinessSetup | null;
   mobileReceipts: any[];
   
@@ -270,6 +280,8 @@ interface PosState {
   updateCreditCustomer: (id: string, updates: Partial<CreditCustomer>) => void;
   deleteCreditCustomer: (id: string) => void;
   saveExpense: (expense: Expense) => void;
+  addSalary: (salary: Salary) => void;
+  deleteSalary: (id: string) => void;
   saveBusinessSetup: (setup: BusinessSetup) => void;
   addUser: (user: User) => void;
   updateUser: (id: string, updates: Partial<User>) => void;
@@ -322,6 +334,7 @@ export const usePosStore = create<PosState>()(
       creditCustomers: [],
       users: [],
       expenses: [],
+      salaries: [],
       businessSetup: null,
       currentCashier: null,
       isDataLoaded: false,
@@ -594,6 +607,24 @@ export const usePosStore = create<PosState>()(
         });
       },
 
+      addSalary: (salary) => {
+        set((state) => {
+          const updatedSalaries = [salary, ...state.salaries];
+          saveDataToFile('salaries.json', updatedSalaries);
+          state.addToSyncQueue({ type: 'add-salary', data: salary });
+          return { salaries: updatedSalaries };
+        });
+      },
+
+      deleteSalary: (id) => {
+        set((state) => {
+          const updatedSalaries = state.salaries.filter(s => s.id !== id);
+          saveDataToFile('salaries.json', updatedSalaries);
+          state.addToSyncQueue({ type: 'delete-salary', data: { id } });
+          return { salaries: updatedSalaries };
+        });
+      },
+
       saveBusinessSetup: (setup) => {
         saveDataToFile('business-setup.json', setup);
         set((state) => {
@@ -704,6 +735,7 @@ export const usePosStore = create<PosState>()(
           const newProducts = mergeData(state.products, serverData.products || []);
           const newUsers = mergeData(state.users, serverData.users || []);
           const newExpenses = mergeData(state.expenses, serverData.expenses || []);
+          const newSalaries = mergeData(state.salaries, serverData.salaries || []);
           const newCreditCustomers = mergeData(state.creditCustomers, serverData.creditCustomers || []);
 
           let newBusinessSetup = state.businessSetup;
@@ -719,6 +751,7 @@ export const usePosStore = create<PosState>()(
             products: newProducts,
             users: newUsers,
             expenses: newExpenses,
+            salaries: newSalaries,
             creditCustomers: newCreditCustomers,
             businessSetup: newBusinessSetup,
           });
@@ -726,6 +759,7 @@ export const usePosStore = create<PosState>()(
           saveDataToFile('products.json', newProducts);
           saveDataToFile('users.json', newUsers);
           saveDataToFile('expenses.json', newExpenses);
+          saveDataToFile('salaries.json', newSalaries);
           saveDataToFile('credit-customers.json', newCreditCustomers);
           saveDataToFile('business-setup.json', newBusinessSetup);
 
@@ -996,13 +1030,14 @@ export const usePosStore = create<PosState>()(
               set({ businessSetup: prefillSetup });
           }
 
-          const fileNames = ['products.json', 'users.json', 'transactions.json', 'credit-customers.json', 'expenses.json'];
+          const fileNames = ['products.json', 'users.json', 'transactions.json', 'credit-customers.json', 'expenses.json', 'salaries.json'];
           const dataMap = {
             'products.json': 'products',
             'users.json': 'users',
             'transactions.json': 'transactions',
             'credit-customers.json': 'creditCustomers',
-            'expenses.json': 'expenses'
+            'expenses.json': 'expenses',
+            'salaries.json': 'salaries'
           };
 
           for (const fileName of fileNames) {
@@ -1059,6 +1094,7 @@ export const usePosStore = create<PosState>()(
           products: [],
           transactions: [],
           expenses: [],
+          salaries: [],
           creditCustomers: [],
         });
 
@@ -1101,6 +1137,7 @@ export const usePosStore = create<PosState>()(
                 products: state.products,
                 users: state.users,
                 expenses: state.expenses,
+                salaries: state.salaries,
                 customers: state.creditCustomers,
                 transactions: state.transactions,
                 businessSetup: state.businessSetup

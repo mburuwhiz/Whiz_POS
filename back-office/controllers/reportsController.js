@@ -1,5 +1,6 @@
 const Transaction = require('../models/Transaction');
 const Expense = require('../models/Expense');
+const Salary = require('../models/Salary');
 const CreditCustomer = require('../models/Customer'); // Assuming this is the model name
 
 exports.index = async (req, res) => {
@@ -23,6 +24,11 @@ exports.index = async (req, res) => {
         // Fetch Expenses
         const expenses = await Expense.find({
             timestamp: { $gte: start.toISOString(), $lte: end.toISOString() }
+        });
+
+        // Fetch Salaries
+        const salaries = await Salary.find({
+            date: { $gte: start, $lte: end }
         });
 
         // Calculate Sales Summary
@@ -58,6 +64,7 @@ exports.index = async (req, res) => {
             .slice(0, 10);
 
         const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+        const totalSalaries = salaries.reduce((sum, s) => sum + s.amount, 0);
 
         res.render('pages/reports', {
             title: 'Reports',
@@ -65,7 +72,8 @@ exports.index = async (req, res) => {
             salesSummary,
             topProducts,
             totalExpenses,
-            netProfit: salesSummary.totalSales - totalExpenses,
+            totalSalaries,
+            netProfit: salesSummary.totalSales - totalExpenses - totalSalaries,
             transactions: transactions.slice(0, 50), // Limit to recent 50 for display
             expenses
         });

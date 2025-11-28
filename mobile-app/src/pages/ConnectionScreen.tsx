@@ -52,6 +52,13 @@ export default function ConnectionScreen() {
         setStatusMessage('Connected successfully!');
 
         try {
+            // Fetch users immediately to ensure login screen works
+            const users = await api.getUsers();
+            if (users && Array.isArray(users)) {
+                setUsers(users);
+            }
+
+            // Try full sync in background
             const data = await api.syncPull();
             if (data) {
                if (data.products) setProducts(data.products);

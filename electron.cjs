@@ -119,19 +119,21 @@ async function initApiKey() {
             const data = await fs.readFile(configPath, 'utf-8');
             config = JSON.parse(data);
         } catch (e) {
-            // Config might not exist yet
+            console.warn('Config file missing or invalid, creating new one.');
         }
 
-        if (config.apiKey) {
+        if (config.apiKey && typeof config.apiKey === 'string' && config.apiKey.length > 0) {
             apiKey = config.apiKey;
+            console.log('Server API Key loaded from persistence.');
         } else {
+            console.log('Generating new Server API Key...');
             apiKey = crypto.randomBytes(32).toString('hex');
             config.apiKey = apiKey;
             await fs.writeFile(configPath, JSON.stringify(config, null, 2));
+            console.log('Server API Key persisted to storage.');
         }
-        console.log('Server API Key initialized');
     } catch (e) {
-        console.error('Failed to init API Key', e);
+        console.error('CRITICAL: Failed to init API Key', e);
         apiKey = crypto.randomBytes(32).toString('hex'); // Fallback to memory
     }
 }
@@ -262,6 +264,88 @@ function startApiServer() {
     apiApp.get('/api/users', authMiddleware, async (req, res) => {
         const users = await readJsonFile('users.json');
         res.json(users);
+    });
+
+    // GET /api/credit-customers
+    apiApp.get('/api/credit-customers', authMiddleware, async (req, res) => {
+        const customers = await readJsonFile('credit-customers.json');
+        res.json(customers);
+    });
+
+    // GET /api/expenses
+    apiApp.get('/api/expenses', authMiddleware, async (req, res) => {
+        const expenses = await readJsonFile('expenses.json');
+        res.json(expenses);
+    });
+
+    // POST /api/users
+    apiApp.post('/api/users', authMiddleware, async (req, res) => {
+        const newUser = req.body;
+        try {
+            const users = await readJsonFile('users.json');
+            // Basic validation or duplication check could go here
+            // Ensure userId is present
+            if (!newUser.userId && !newUser.id) {
+                 newUser.userId = crypto.randomUUID();
+            }
+            const finalUser = { ...newUser, userId: newUser.userId || newUser.id };
+            delete finalUser.id; // Normalize to userId
+
+            users.push(finalUser);
+            await writeJsonFile('users.json', users);
+            res.json({ success: true, user: finalUser });
+        } catch (error) {
+             console.error('Failed to save user:', error);
+             res.status(500).json({ error: 'Failed to save user' });
+        }
+    });
+
+    // POST /api/products
+    apiApp.post('/api/products', authMiddleware, async (req, res) => {
+        const newProduct = req.body;
+        try {
+            const products = await readJsonFile('products.json');
+            if (!newProduct.productId && !newProduct.id) {
+                 newProduct.productId = crypto.randomUUID();
+            }
+            const finalProduct = { ...newProduct, productId: newProduct.productId || newProduct.id };
+            delete finalProduct.id;
+
+            products.push(finalProduct);
+            await writeJsonFile('products.json', products);
+            res.json({ success: true, product: finalProduct });
+        } catch (error) {
+             console.error('Failed to save product:', error);
+             res.status(500).json({ error: 'Failed to save product' });
+        }
+    });
+
+    // POST /api/expenses
+    apiApp.post('/api/expenses', authMiddleware, async (req, res) => {
+        const newExpense = req.body;
+        try {
+            const expenses = await readJsonFile('expenses.json');
+            expenses.unshift(newExpense);
+            await writeJsonFile('expenses.json', expenses);
+            res.json({ success: true });
+        } catch (error) {
+             console.error('Failed to save expense:', error);
+             res.status(500).json({ error: 'Failed to save expense' });
+        }
+    });
+
+    // POST /api/credit-customers
+    apiApp.post('/api/credit-customers', authMiddleware, async (req, res) => {
+        const newCustomer = req.body;
+        try {
+            const customers = await readJsonFile('credit-customers.json');
+            customers.push(newCustomer);
+            await writeJsonFile('credit-customers.json', customers);
+            res.json({ success: true });
+        } catch (error) {
+             console.error('Failed to save credit customer:', error);
+             res.status(500).json({ error: 'Failed to save credit customer' });
+        }
     });
 
     // GET /api/sync - Full state for Mobile Pull

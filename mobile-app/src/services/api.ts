@@ -54,12 +54,38 @@ export const api = {
   // Full sync (Pull)
   syncPull: async () => {
     try {
+      // Try granular fetch first (more robust if one fails, others might succeed, or parallelize)
+      // But for now, stick to the composite endpoint if available, OR fetch individually if requested.
+      // Given the user wants "independently", we can try fetching them separately and merging.
+      // However, /api/sync still returns everything efficiently.
+      // Let's add methods for individual fetches to support the "independent" requirement.
       const response = await apiClient.get('/api/sync');
       return response.data;
     } catch (error) {
       console.error('Sync pull failed:', error);
       throw error;
     }
+  },
+
+  // Granular Fetches
+  getUsers: async () => {
+    const response = await apiClient.get('/api/users');
+    return response.data;
+  },
+
+  getProducts: async () => {
+    const response = await apiClient.get('/api/products');
+    return response.data;
+  },
+
+  getCreditCustomers: async () => {
+    const response = await apiClient.get('/api/credit-customers');
+    return response.data;
+  },
+
+  getExpenses: async () => {
+      const response = await apiClient.get('/api/expenses');
+      return response.data;
   },
 
   // Push sync queue

@@ -7,7 +7,7 @@ import { api } from '../services/api';
 
 export default function TransactionsPage() {
   const navigate = useNavigate();
-  const { transactions, api: storeApi } = useMobileStore(); // storeApi not actually there, use api directly
+  const { transactions } = useMobileStore();
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredTransactions = transactions.filter(t =>

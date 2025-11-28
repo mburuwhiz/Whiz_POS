@@ -45,6 +45,35 @@ interface ConnectionSettings {
   isConnected: boolean;
 }
 
+interface Transaction {
+  id: string;
+  items: CartItem[];
+  total: number;
+  paymentMethod: string;
+  timestamp: string;
+  cashierId?: string;
+  cashierName?: string;
+  status: string;
+}
+
+interface Expense {
+  id: string;
+  description: string;
+  amount: number;
+  category: string;
+  date: string;
+  cashierId?: string;
+  cashierName?: string;
+}
+
+interface CreditCustomer {
+  id: string;
+  name: string;
+  phone: string;
+  balance: number;
+  notes?: string;
+}
+
 interface MobileStore {
   // Hydration State
   isHydrated: boolean;
@@ -56,16 +85,30 @@ interface MobileStore {
 
   // Auth
   currentUser: User | null;
+  lastLoggedUserId: string | null;
   users: User[]; // Synced users list for login
   login: (user: User) => void;
   logout: () => void;
   setUsers: (users: User[]) => void;
+  clearLastLoggedUser: () => void;
 
   // Data
   products: Product[];
   categories: string[];
+  transactions: Transaction[];
+  expenses: Expense[];
+  creditCustomers: CreditCustomer[];
+
   setProducts: (products: Product[]) => void;
   setCategories: (categories: string[]) => void;
+  setTransactions: (transactions: Transaction[]) => void;
+  setExpenses: (expenses: Expense[]) => void;
+  setCreditCustomers: (customers: CreditCustomer[]) => void;
+
+  addTransaction: (transaction: Transaction) => void;
+  addExpense: (expense: Expense) => void;
+  addCreditCustomer: (customer: CreditCustomer) => void;
+  updateCreditCustomer: (id: string, updates: Partial<CreditCustomer>) => void;
 
   // Cart
   cart: CartItem[];
@@ -96,15 +139,31 @@ export const useMobileStore = create<MobileStore>()(
         set((state) => ({ connection: { ...state.connection, ...settings } })),
 
       currentUser: null,
+      lastLoggedUserId: null,
       users: [],
-      login: (user) => set({ currentUser: user }),
+      login: (user) => set({ currentUser: user, lastLoggedUserId: user.id }),
       logout: () => set({ currentUser: null }),
+      clearLastLoggedUser: () => set({ lastLoggedUserId: null }),
       setUsers: (users) => set({ users }),
 
       products: [],
       categories: [],
+      transactions: [],
+      expenses: [],
+      creditCustomers: [],
+
       setProducts: (products) => set({ products }),
       setCategories: (categories) => set({ categories }),
+      setTransactions: (transactions) => set({ transactions }),
+      setExpenses: (expenses) => set({ expenses }),
+      setCreditCustomers: (creditCustomers) => set({ creditCustomers }),
+
+      addTransaction: (transaction) => set((state) => ({ transactions: [transaction, ...state.transactions] })),
+      addExpense: (expense) => set((state) => ({ expenses: [expense, ...state.expenses] })),
+      addCreditCustomer: (customer) => set((state) => ({ creditCustomers: [...state.creditCustomers, customer] })),
+      updateCreditCustomer: (id, updates) => set((state) => ({
+        creditCustomers: state.creditCustomers.map(c => c.id === id ? { ...c, ...updates } : c)
+      })),
 
       cart: [],
       addToCart: (product) => set((state) => {
@@ -157,10 +216,14 @@ export const useMobileStore = create<MobileStore>()(
       partialize: (state) => ({
         connection: state.connection,
         currentUser: state.currentUser,
+        lastLoggedUserId: state.lastLoggedUserId,
         syncQueue: state.syncQueue,
         products: state.products,
         categories: state.categories,
-        users: state.users
+        users: state.users,
+        transactions: state.transactions,
+        expenses: state.expenses,
+        creditCustomers: state.creditCustomers
       }),
       onRehydrateStorage: () => (state) => {
         state?.setIsHydrated(true);

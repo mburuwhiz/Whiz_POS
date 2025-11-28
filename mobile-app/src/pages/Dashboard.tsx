@@ -1,12 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { useMobileStore } from '../store/mobileStore';
 import { cn } from '../lib/utils';
-import { ShoppingCart, Search, Menu, LogOut, RefreshCw, X } from 'lucide-react';
+import { ShoppingCart, Search, Menu, LogOut, RefreshCw, X, Receipt, DollarSign, Users, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../services/api';
 import CheckoutModal from '../components/CheckoutModal';
+import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const {
     currentUser,
     products,
@@ -43,6 +45,11 @@ export default function Dashboard() {
     } catch (e) {
       console.error("Sync failed", e);
     }
+  };
+
+  const handleNavigate = (path: string) => {
+    setIsMenuOpen(false);
+    navigate(path);
   };
 
   return (
@@ -215,7 +222,7 @@ export default function Dashboard() {
             initial={{ x: "-100%" }}
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
-            className="fixed inset-y-0 left-0 w-3/4 max-w-xs bg-slate-900 border-r border-white/10 z-50 p-6 shadow-2xl"
+            className="fixed inset-y-0 left-0 w-3/4 max-w-xs bg-slate-900 border-r border-white/10 z-50 p-6 shadow-2xl flex flex-col"
           >
              <div className="flex items-center gap-4 mb-8">
                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-sky-400 to-indigo-500 flex items-center justify-center text-xl font-bold text-white">
@@ -227,14 +234,30 @@ export default function Dashboard() {
                </div>
              </div>
 
-             <nav className="space-y-2">
-               <button onClick={handleSync} className="w-full flex items-center gap-3 p-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-colors">
-                 <RefreshCw className="w-5 h-5" /> Sync Data
+             <nav className="space-y-2 flex-1">
+               <button onClick={() => handleNavigate('/transactions')} className="w-full flex items-center gap-3 p-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-colors">
+                 <Receipt className="w-5 h-5" /> Transactions
                </button>
-               <button onClick={logout} className="w-full flex items-center gap-3 p-3 rounded-xl text-red-400 hover:bg-red-500/10 transition-colors">
-                 <LogOut className="w-5 h-5" /> Logout
+               <button onClick={() => handleNavigate('/expenses')} className="w-full flex items-center gap-3 p-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-colors">
+                 <DollarSign className="w-5 h-5" /> Expenses
+               </button>
+               <button onClick={() => handleNavigate('/credit-customers')} className="w-full flex items-center gap-3 p-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-colors">
+                 <Users className="w-5 h-5" /> Credit Customers
+               </button>
+               <button onClick={() => handleNavigate('/pending-sync')} className="w-full flex items-center gap-3 p-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-colors">
+                 <RefreshCw className="w-5 h-5" /> Sync Status
+                 {syncQueue.length > 0 && <span className="ml-auto bg-sky-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{syncQueue.length}</span>}
                </button>
              </nav>
+
+             <div className="pt-4 border-t border-white/10 space-y-2">
+                <button onClick={() => handleNavigate('/settings')} className="w-full flex items-center gap-3 p-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-colors">
+                  <Settings className="w-5 h-5" /> Settings
+                </button>
+                <button onClick={() => { logout(); navigate('/login'); }} className="w-full flex items-center gap-3 p-3 rounded-xl text-red-400 hover:bg-red-500/10 transition-colors">
+                  <LogOut className="w-5 h-5" /> Logout
+                </button>
+             </div>
 
              <button onClick={() => setIsMenuOpen(false)} className="absolute top-4 right-4 p-2 text-slate-500">
                <X className="w-6 h-6" />

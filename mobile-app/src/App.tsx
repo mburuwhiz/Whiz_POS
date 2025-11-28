@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useMobileStore } from './store/mobileStore';
 import { api } from './services/api';
 import { Loader2 } from 'lucide-react';
@@ -8,6 +8,11 @@ import { Loader2 } from 'lucide-react';
 import ConnectionScreen from './pages/ConnectionScreen';
 import LoginScreen from './pages/LoginScreen';
 import Dashboard from './pages/Dashboard';
+import TransactionsPage from './pages/TransactionsPage';
+import ExpensesPage from './pages/ExpensesPage';
+import CreditCustomersPage from './pages/CreditCustomersPage';
+import SettingsPage from './pages/SettingsPage';
+import PendingSyncsPage from './pages/PendingSyncsPage';
 
 // Protected Route Wrapper
 const ProtectedRoute = () => {
@@ -28,32 +33,77 @@ const DashboardRoute = () => {
   return <Dashboard />;
 };
 
+// Wrapper to redirect if already connected
+const ConnectRoute = () => {
+  const { connection } = useMobileStore();
+  if (connection.isConnected && connection.apiUrl) {
+    return <Navigate to="/login" replace />;
+  }
+  return <ConnectionScreen />;
+};
+
 function App() {
-  const { syncQueue, connection, removeSyncedItems, isHydrated } = useMobileStore();
+  const {
+    syncQueue,
+    connection,
+    removeSyncedItems,
+    isHydrated,
+    setProducts,
+    setUsers,
+    setExpenses,
+    setCreditCustomers,
+    setCategories
+  } = useMobileStore();
 
   // Background Sync Logic
   useEffect(() => {
-    if (!connection.isConnected) return;
+    if (!connection.isConnected || !connection.apiUrl) return;
 
-    const interval = setInterval(async () => {
-      // 1. Push Queue - Copy queue to prevent modification during async op
-      const queueToSync = [...syncQueue];
-      if (queueToSync.length > 0) {
-         try {
-           const result = await api.syncPush(queueToSync);
-           if (result && result.success) {
-             // Only remove the specific items we sent
-             removeSyncedItems(queueToSync);
-           }
-         } catch (e) {
-           console.error("Sync push failed", e);
-         }
+    const syncLoop = async () => {
+      // 1. Push Queue
+      if (syncQueue.length > 0) {
+        const queueToSync = [...syncQueue]; // Copy to avoid mutation issues
+        try {
+          const result = await api.syncPush(queueToSync);
+          if (result && result.success) {
+            removeSyncedItems(queueToSync);
+            console.log('Sync push successful');
+          }
+        } catch (e) {
+          console.error("Sync push failed", e);
+        }
       }
-      // 2. We could also Pull here if needed for live inventory
-    }, 10000); // 10 seconds
+
+      // 2. Pull Updates (Products, Credit, Expenses, Users)
+      try {
+        const data = await api.syncPull();
+        if (data) {
+          if (data.products) setProducts(data.products);
+          if (data.users) setUsers(data.users);
+          if (data.expenses) setExpenses(data.expenses);
+          if (data.creditCustomers) setCreditCustomers(data.creditCustomers);
+          // Categories are usually derived or synced separately, but if API returns them:
+          if (data.categories) setCategories(data.categories);
+        }
+      } catch (e) {
+        console.error("Sync pull failed", e);
+      }
+    };
+
+    const interval = setInterval(syncLoop, 10000); // 10 seconds
 
     return () => clearInterval(interval);
-  }, [connection.isConnected, syncQueue, removeSyncedItems]);
+  }, [
+    connection.isConnected,
+    connection.apiUrl,
+    syncQueue,
+    removeSyncedItems,
+    setProducts,
+    setUsers,
+    setExpenses,
+    setCreditCustomers,
+    setCategories
+  ]);
 
   if (!isHydrated) {
     return (
@@ -66,11 +116,16 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/connect" element={<ConnectionScreen />} />
+        <Route path="/connect" element={<ConnectRoute />} />
 
         <Route element={<ProtectedRoute />}>
           <Route path="/login" element={<LoginScreen />} />
           <Route path="/dashboard" element={<DashboardRoute />} />
+          <Route path="/transactions" element={<TransactionsPage />} />
+          <Route path="/expenses" element={<ExpensesPage />} />
+          <Route path="/credit-customers" element={<CreditCustomersPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/pending-sync" element={<PendingSyncsPage />} />
         </Route>
 
         <Route path="/" element={<Navigate to="/connect" replace />} />

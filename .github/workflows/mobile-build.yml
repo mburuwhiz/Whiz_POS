@@ -2,13 +2,15 @@ name: Build Android APK
 
 on:
   push:
-    branches: [ main, master, 'feat*', 'fix*', 'apk*', 'mobile*' ]
+    branches: [ main, master, 'feat*', 'fix*', 'apk*', 'mobile*', 'delete*', 'chore*', 'ci*' ]
     paths:
       - 'mobile-app/**'
+      - '.github/workflows/mobile-build.yml'
   pull_request:
-    branches: [ main, master, 'feat*', 'fix*', 'apk*', 'mobile*' ]
+    branches: [ main, master, 'feat*', 'fix*', 'apk*', 'mobile*', 'delete*', 'chore*', 'ci*' ]
     paths:
       - 'mobile-app/**'
+      - '.github/workflows/mobile-build.yml'
   workflow_dispatch:
 
 jobs:

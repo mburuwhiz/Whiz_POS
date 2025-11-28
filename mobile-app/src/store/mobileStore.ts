@@ -158,9 +158,34 @@ export const useMobileStore = create<MobileStore>()(
         categories: [...new Set(products.map(p => p.category).filter(Boolean))]
       }),
       setCategories: (categories) => set({ categories }),
-      setTransactions: (transactions) => set({ transactions }),
-      setExpenses: (expenses) => set({ expenses }),
-      setCreditCustomers: (creditCustomers) => set({ creditCustomers }),
+
+      setTransactions: (serverTransactions) => {
+         const state = get();
+         // Keep local transactions that are pending in the sync queue
+         const queuedIds = new Set(state.syncQueue.filter(op => op.type === 'transaction' || op.type === 'new-transaction').map(op => op.data.id));
+         const localPending = state.transactions.filter(t => queuedIds.has(t.id) && !serverTransactions.some(st => st.id === t.id));
+         set({ transactions: [...localPending, ...serverTransactions] }); // Local pending on top? Or merged. Order might matter for UI.
+      },
+
+      setExpenses: (serverExpenses) => {
+         const state = get();
+         const queuedIds = new Set(state.syncQueue.filter(op => op.type === 'expense' || op.type === 'add-expense').map(op => op.data.id));
+         const localPending = state.expenses.filter(e => queuedIds.has(e.id) && !serverExpenses.some(se => se.id === e.id));
+         set({ expenses: [...localPending, ...serverExpenses] });
+      },
+
+      setCreditCustomers: (serverCustomers) => {
+         const state = get();
+         // For customers, we might have 'add-credit-customer' or 'update-credit-customer'
+         const addedIds = new Set(state.syncQueue.filter(op => op.type === 'add-credit-customer' || op.type === 'credit-customer').map(op => op.data.id));
+         const localPending = state.creditCustomers.filter(c => addedIds.has(c.id) && !serverCustomers.some(sc => sc.id === c.id));
+
+         // Note: If we have 'update' ops, the server version might be older than local.
+         // But merging updates is complex. We assume 'Server Wins' for existing IDs,
+         // unless we implement timestamp conflict resolution here too.
+         // For now, preserving NEW items is the critical fix for "disappearing" items.
+         set({ creditCustomers: [...localPending, ...serverCustomers] });
+      },
 
       addTransaction: (transaction) => set((state) => ({ transactions: [transaction, ...state.transactions] })),
       addExpense: (expense) => set((state) => ({ expenses: [expense, ...state.expenses] })),

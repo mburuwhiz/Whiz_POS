@@ -20,7 +20,7 @@ export default function ExpensesPage() {
     if (!description || !amount) return;
 
     const newExpense = {
-      id: crypto.randomUUID(),
+      id: `EXP${Date.now().toString().slice(-6)}`,
       description,
       amount: parseFloat(amount),
       category,

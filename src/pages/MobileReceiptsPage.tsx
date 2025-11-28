@@ -38,27 +38,31 @@ const MobileReceiptsPage = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {mobileReceipts.map((receipt) => (
-              <div key={receipt._printId} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
+              <div key={receipt._printId || Math.random()} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
                 <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-start">
                   <div>
                     <span className="text-xs font-bold text-gray-500 uppercase">Received</span>
-                    <div className="text-sm font-medium">{new Date(receipt._receivedAt).toLocaleTimeString()}</div>
+                    <div className="text-sm font-medium">
+                      {receipt._receivedAt ? new Date(receipt._receivedAt).toLocaleTimeString() : 'Unknown'}
+                    </div>
                   </div>
                   <div className="text-right">
                     <span className="text-xs font-bold text-gray-500 uppercase">Total</span>
-                    <div className="text-lg font-bold text-emerald-600">KES {receipt.total.toLocaleString()}</div>
+                    <div className="text-lg font-bold text-emerald-600">
+                      KES {(receipt.total || 0).toLocaleString()}
+                    </div>
                   </div>
                 </div>
 
                 <div className="p-4 flex-1 space-y-2">
                   <div className="text-sm text-gray-600">
-                    <span className="font-medium">Cashier:</span> {receipt.cashierName || 'Mobile User'}
+                    <span className="font-medium">Cashier:</span> {receipt.cashierName || receipt.cashierId || 'Mobile User'}
                   </div>
                   <div className="text-sm text-gray-600">
-                    <span className="font-medium">Items:</span> {receipt.items.length}
+                    <span className="font-medium">Items:</span> {(receipt.items || []).length}
                   </div>
                   <div className="text-xs text-gray-400 mt-2">
-                    ID: {receipt.id}
+                    ID: {receipt.id || 'N/A'}
                   </div>
                 </div>
 

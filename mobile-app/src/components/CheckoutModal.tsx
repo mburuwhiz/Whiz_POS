@@ -12,7 +12,7 @@ interface CheckoutModalProps {
 }
 
 export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalProps) {
-  const { cart, clearCart, addToSyncQueue, currentUser, creditCustomers, addCreditCustomer } = useMobileStore();
+  const { cart, clearCart, addToSyncQueue, currentUser, creditCustomers, addCreditCustomer, updateCreditCustomer } = useMobileStore();
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'mpesa' | 'credit' | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -71,9 +71,18 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
 
     setIsProcessing(true);
 
+    // Map items to match Desktop format { product: ..., quantity: ... }
+    const formattedItems = cart.map(item => ({
+        product: item,
+        quantity: item.quantity
+    }));
+
+    // Short ID format: MOBREC + last 6 digits of timestamp
+    const transactionId = `MOBREC${Date.now().toString().slice(-6)}`;
+
     const transaction = {
-      id: crypto.randomUUID(),
-      items: cart,
+      id: transactionId,
+      items: formattedItems,
       total,
       paymentMethod,
       timestamp: new Date().toISOString(),
@@ -84,17 +93,31 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
       status: 'completed'
     };
 
-    // 1. Add to sync queue
+    // 1. Add Transaction to sync queue
     addToSyncQueue({ type: 'transaction', data: transaction });
 
-    // 2. Try to print receipt remotely
+    // 2. Update Credit Balance if applicable
+    if (paymentMethod === 'credit' && selectedCustomer) {
+        const newBalance = (selectedCustomer.balance || 0) + total;
+
+        // Update local store immediately for UI reflection
+        updateCreditCustomer(selectedCustomer.id, { balance: newBalance });
+
+        // Queue sync operation for the balance update
+        addToSyncQueue({
+            type: 'update-credit-customer',
+            data: { id: selectedCustomer.id, updates: { balance: newBalance } }
+        });
+    }
+
+    // 3. Try to print receipt remotely (queue it on desktop)
     try {
       await api.printReceipt(transaction);
     } catch (e) {
       console.warn('Print failed or offline', e);
     }
 
-    // 3. Clear cart and show success
+    // 4. Clear cart and show success
     setTimeout(() => {
       setIsProcessing(false);
       setIsSuccess(true);

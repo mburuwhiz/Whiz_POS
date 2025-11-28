@@ -7,11 +7,15 @@ function run(command) {
   execSync(command, { stdio: 'inherit' });
 }
 
-// 1. Add Android Platform
-try {
-  run('npx cap add android');
-} catch (e) {
-  console.log('Android platform likely already exists or failed to add.');
+// 1. Add Android Platform (Only if not exists)
+if (!fs.existsSync('android')) {
+  try {
+    run('npx cap add android');
+  } catch (e) {
+    console.log('Android platform failed to add.');
+  }
+} else {
+  console.log('Android platform already exists, skipping add.');
 }
 
 // 2. Create network_security_config.xml
@@ -30,23 +34,27 @@ console.log('Created network_security_config.xml');
 
 // 3. Patch AndroidManifest.xml
 const manifestPath = path.join('android', 'app', 'src', 'main', 'AndroidManifest.xml');
-let manifest = fs.readFileSync(manifestPath, 'utf8');
+if (fs.existsSync(manifestPath)) {
+  let manifest = fs.readFileSync(manifestPath, 'utf8');
 
-// Add permissions if not present
-if (!manifest.includes('android.permission.CAMERA')) {
-  manifest = manifest.replace(
-    '<application',
-    '<uses-permission android:name="android.permission.CAMERA" />\n    <application'
-  );
+  // Add permissions if not present
+  if (!manifest.includes('android.permission.CAMERA')) {
+    manifest = manifest.replace(
+      '<application',
+      '<uses-permission android:name="android.permission.CAMERA" />\n    <application'
+    );
+  }
+
+  // Add networkSecurityConfig attribute
+  if (!manifest.includes('android:networkSecurityConfig')) {
+    manifest = manifest.replace(
+      '<application',
+      '<application android:networkSecurityConfig="@xml/network_security_config"'
+    );
+  }
+
+  fs.writeFileSync(manifestPath, manifest);
+  console.log('Patched AndroidManifest.xml');
+} else {
+  console.log('AndroidManifest.xml not found, skipping patch.');
 }
-
-// Add networkSecurityConfig attribute
-if (!manifest.includes('android:networkSecurityConfig')) {
-  manifest = manifest.replace(
-    '<application',
-    '<application android:networkSecurityConfig="@xml/network_security_config"'
-  );
-}
-
-fs.writeFileSync(manifestPath, manifest);
-console.log('Patched AndroidManifest.xml');

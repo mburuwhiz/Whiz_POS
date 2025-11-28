@@ -11,6 +11,7 @@ const qrcode = require('qrcode');
  * @returns {string} The formatted date string.
  */
 const formatDate = (timestamp) => {
+    if (!timestamp) return new Date().toLocaleString();
     const date = new Date(timestamp);
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -36,30 +37,40 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
         : path.join(__dirname, 'receipt-template.html');
     let template = await fs.readFile(templatePath, 'utf-8');
 
+    const total = transaction.total || 0;
+    const subtotal = transaction.subtotal || total;
+    const tax = transaction.tax || 0;
+    const paymentMethod = transaction.paymentMethod ? transaction.paymentMethod.toUpperCase() : 'CASH';
+
     template = template.replace('{{businessName}}', businessSetup?.businessName || 'WHIZ POS');
     template = template.replace('{{location}}', 'KAGWE TOWN');
     template = template.replace('{{address}}', businessSetup?.address || '');
     template = template.replace('{{phone}}', businessSetup?.phone || '');
     template = template.replace('{{receiptId}}', transaction.id + (isReprint ? ' (REPRINT)' : ''));
     template = template.replace('{{date}}', formatDate(transaction.timestamp));
-    template = template.replace('{{servedBy}}', transaction.cashier);
-    template = template.replace('{{paymentMethod}}', transaction.paymentMethod.toUpperCase());
-    template = template.replace('{{subtotal}}', `Ksh ${transaction.subtotal.toFixed(2)}`);
-    template = template.replace('{{tax}}', `Ksh ${transaction.tax.toFixed(2)}`);
-    template = template.replace('{{total}}', `Ksh ${transaction.total.toFixed(2)}`);
+    template = template.replace('{{servedBy}}', transaction.cashier || 'Cashier');
+    template = template.replace('{{paymentMethod}}', paymentMethod);
+    template = template.replace('{{subtotal}}', `Ksh ${subtotal.toFixed(2)}`);
+    template = template.replace('{{tax}}', `Ksh ${tax.toFixed(2)}`);
+    template = template.replace('{{total}}', `Ksh ${total.toFixed(2)}`);
 
     template = template.replace('{{receiptHeader}}', businessSetup?.receiptHeader || 'Thank you for your business!');
     template = template.replace('{{receiptFooter}}', businessSetup?.receiptFooter || 'Please come again!');
 
     // Generate Items HTML
-    const itemsHtml = transaction.items.map(item => `
+    const items = transaction.items || [];
+    const itemsHtml = items.map(item => {
+        const product = item.product || {};
+        const price = product.price || 0;
+        const quantity = item.quantity || 0;
+        return `
         <tr>
-            <td>${item.product.name}</td>
-            <td class="qty">${item.quantity}</td>
-            <td class="price">${item.product.price.toFixed(2)}</td>
-            <td class="total">${(item.quantity * item.product.price).toFixed(2)}</td>
+            <td>${product.name || 'Unknown Item'}</td>
+            <td class="qty">${quantity}</td>
+            <td class="price">${price.toFixed(2)}</td>
+            <td class="total">${(quantity * price).toFixed(2)}</td>
         </tr>
-    `).join('');
+    `}).join('');
     template = template.replace('{{itemsHtml}}', itemsHtml);
 
     // Generate M-Pesa Details HTML if applicable
@@ -106,10 +117,10 @@ async function generateClosingReport(reportData, businessSetup) {
     template = template.replace('{{businessAddress}}', businessSetup?.address || '');
     template = template.replace('{{businessPhone}}', businessSetup?.phone || '');
     template = template.replace('{{date}}', new Date(reportData.date).toDateString());
-    template = template.replace('{{totalCash}}', `Ksh. ${reportData.totalCash.toFixed(2)}`);
-    template = template.replace('{{totalMpesa}}', `Ksh. ${reportData.totalMpesa.toFixed(2)}`);
-    template = template.replace('{{totalCredit}}', `Ksh. ${reportData.totalCredit.toFixed(2)}`);
-    template = template.replace('{{grandTotal}}', `Ksh. ${reportData.grandTotal.toFixed(2)}`);
+    template = template.replace('{{totalCash}}', `Ksh. ${(reportData.totalCash || 0).toFixed(2)}`);
+    template = template.replace('{{totalMpesa}}', `Ksh. ${(reportData.totalMpesa || 0).toFixed(2)}`);
+    template = template.replace('{{totalCredit}}', `Ksh. ${(reportData.totalCredit || 0).toFixed(2)}`);
+    template = template.replace('{{grandTotal}}', `Ksh. ${(reportData.grandTotal || 0).toFixed(2)}`);
 
     const cashierReportsHtml = reportData.cashiers.map(cashier => {
         let creditTransactionsHtml = '';

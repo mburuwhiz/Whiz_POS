@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { usePosStore } from '../store/posStore';
-import { Store, Coffee, BarChart3, Users, Calendar, Settings, DollarSign, Database, Package, Gift, Camera, Activity, Building2, UserCheck, Printer } from 'lucide-react';
+import { Store, Coffee, BarChart3, Users, Calendar, Settings, DollarSign, Database, Package, Gift, Camera, Activity, Building2, UserCheck, Printer, Smartphone } from 'lucide-react';
 
 /**
  * Helper component to group navigation links with a title.
@@ -61,6 +61,10 @@ const Navigation = () => {
           <NavLink to="/" className={navLinkClasses}>
             <Coffee className="w-5 h-5" />
             <span>POS</span>
+          </NavLink>
+          <NavLink to="/mobile-receipts" className={navLinkClasses}>
+            <Smartphone className="w-5 h-5" />
+            <span>Mobile Receipts</span>
           </NavLink>
           <NavLink to="/customers" className={navLinkClasses}>
             <Users className="w-5 h-5" />

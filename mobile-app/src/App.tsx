@@ -13,6 +13,7 @@ import ExpensesPage from './pages/ExpensesPage';
 import CreditCustomersPage from './pages/CreditCustomersPage';
 import SettingsPage from './pages/SettingsPage';
 import PendingSyncsPage from './pages/PendingSyncsPage';
+import ReportsPage from './pages/ReportsPage';
 
 // Protected Route Wrapper
 const ProtectedRoute = () => {
@@ -78,12 +79,11 @@ function App() {
       try {
         const data = await api.syncPull();
         if (data) {
-          if (data.products) setProducts(data.products);
+          if (data.products) setProducts(data.products); // Categories derived automatically now
           if (data.users) setUsers(data.users);
           if (data.expenses) setExpenses(data.expenses);
           if (data.creditCustomers) setCreditCustomers(data.creditCustomers);
-          // Categories are usually derived or synced separately, but if API returns them:
-          if (data.categories) setCategories(data.categories);
+          // We can ignore explicit categories since they are derived from products
         }
       } catch (e) {
         console.error("Sync pull failed", e);
@@ -123,6 +123,7 @@ function App() {
           <Route path="/dashboard" element={<DashboardRoute />} />
           <Route path="/transactions" element={<TransactionsPage />} />
           <Route path="/expenses" element={<ExpensesPage />} />
+          <Route path="/reports" element={<ReportsPage />} />
           <Route path="/credit-customers" element={<CreditCustomersPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/pending-sync" element={<PendingSyncsPage />} />

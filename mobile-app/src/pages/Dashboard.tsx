@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useMobileStore } from '../store/mobileStore';
 import { cn } from '../lib/utils';
-import { ShoppingCart, Search, Menu, LogOut, RefreshCw, X, Receipt, DollarSign, Users, Settings } from 'lucide-react';
+import { ShoppingCart, Search, Menu, LogOut, RefreshCw, X, Receipt, DollarSign, Users, Settings, Trash2, Plus, Minus, BarChart3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../services/api';
 import CheckoutModal from '../components/CheckoutModal';
@@ -15,6 +15,8 @@ export default function Dashboard() {
     categories,
     cart,
     addToCart,
+    updateCartQuantity,
+    clearCart,
     connection,
     logout,
     syncQueue
@@ -25,6 +27,7 @@ export default function Dashboard() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
@@ -60,17 +63,48 @@ export default function Dashboard() {
           <button onClick={() => setIsMenuOpen(true)} className="p-2 -ml-2 rounded-full hover:bg-white/10">
             <Menu className="w-6 h-6 text-white" />
           </button>
-          <div className="flex flex-col">
-            <h1 className="text-sm font-bold text-white leading-none">Whiz Pos</h1>
-            <span className="text-[10px] text-emerald-400 font-medium flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Online
-            </span>
-          </div>
+          {!isSearchOpen && (
+            <div className="flex flex-col">
+              <h1 className="text-sm font-bold text-white leading-none">Whiz Pos</h1>
+              <span className="text-[10px] text-emerald-400 font-medium flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Online
+              </span>
+            </div>
+          )}
         </div>
 
+        {isSearchOpen ? (
+          <div className="flex-1 mx-4">
+            <div className="relative">
+              <input
+                autoFocus
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search products..."
+                className="w-full bg-white/10 border border-white/10 rounded-full py-2 pl-4 pr-10 text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+                onBlur={() => !searchQuery && setIsSearchOpen(false)}
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1" />
+        )}
+
         <div className="flex items-center gap-2">
-          <button className="p-2 rounded-full hover:bg-white/10 text-slate-400">
+          <button
+            onClick={() => setIsSearchOpen(!isSearchOpen)}
+            className={cn("p-2 rounded-full hover:bg-white/10 transition-colors", isSearchOpen ? "text-sky-400" : "text-slate-400")}
+          >
             <Search className="w-5 h-5" />
           </button>
         </div>
@@ -173,14 +207,23 @@ export default function Dashboard() {
             >
               <div className="p-4 border-b border-white/5 flex items-center justify-between">
                 <h2 className="text-lg font-bold text-white">Current Order</h2>
-                <button onClick={() => setIsCartOpen(false)} className="p-2 bg-white/5 rounded-full text-slate-400">
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { clearCart(); setIsCartOpen(false); }}
+                    className="p-2 bg-red-500/10 text-red-400 rounded-full hover:bg-red-500/20 transition-colors"
+                    title="Clear Cart"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                  <button onClick={() => setIsCartOpen(false)} className="p-2 bg-white/5 rounded-full text-slate-400 hover:text-white transition-colors">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {cart.map(item => (
-                  <div key={item.cartId} className="flex gap-4 items-center bg-white/5 p-3 rounded-xl">
+                  <div key={item.cartId} className="flex gap-4 items-center bg-white/5 p-3 rounded-xl border border-white/5">
                     <div className="w-16 h-16 rounded-lg bg-slate-800 overflow-hidden shrink-0">
                       <img
                         src={item.image ? `${connection.apiUrl}/assets/${item.image}` : '/cart.png'}
@@ -189,10 +232,25 @@ export default function Dashboard() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <h4 className="font-bold text-white truncate">{item.name}</h4>
-                      <div className="text-sky-400 text-sm mt-1">KES {item.price} x {item.quantity}</div>
+                      <div className="text-sky-400 text-sm mt-1">KES {item.price}</div>
                     </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <span className="font-bold text-white">{(item.price * item.quantity).toLocaleString()}</span>
+                    <div className="flex flex-col items-end gap-2">
+                      <div className="flex items-center gap-3 bg-slate-800 rounded-lg p-1">
+                        <button
+                          onClick={() => updateCartQuantity(item.cartId, item.quantity - 1)}
+                          className="p-1 rounded hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+                        <span className="text-sm font-bold text-white w-4 text-center">{item.quantity}</span>
+                        <button
+                          onClick={() => updateCartQuantity(item.cartId, item.quantity + 1)}
+                          className="p-1 rounded hover:bg-slate-700 text-emerald-400 hover:text-emerald-300 transition-colors"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <span className="font-bold text-white text-sm">{(item.price * item.quantity).toLocaleString()}</span>
                     </div>
                   </div>
                 ))}
@@ -240,6 +298,9 @@ export default function Dashboard() {
                </button>
                <button onClick={() => handleNavigate('/expenses')} className="w-full flex items-center gap-3 p-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-colors">
                  <DollarSign className="w-5 h-5" /> Expenses
+               </button>
+               <button onClick={() => handleNavigate('/reports')} className="w-full flex items-center gap-3 p-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-colors">
+                 <BarChart3 className="w-5 h-5" /> Reports
                </button>
                <button onClick={() => handleNavigate('/credit-customers')} className="w-full flex items-center gap-3 p-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-colors">
                  <Users className="w-5 h-5" /> Credit Customers

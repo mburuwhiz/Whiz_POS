@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, CheckCircle, Loader2 } from 'lucide-react';
+import { X, CheckCircle, Loader2, User, Search, Plus, Phone } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useMobileStore } from '../store/mobileStore';
 import { api } from '../services/api';
@@ -12,10 +12,59 @@ interface CheckoutModalProps {
 }
 
 export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalProps) {
-  const { cart, clearCart, addToSyncQueue, currentUser } = useMobileStore();
+  const { cart, clearCart, addToSyncQueue, currentUser, creditCustomers, addCreditCustomer } = useMobileStore();
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'mpesa' | 'credit' | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+
+  // Credit Customer Logic
+  const [isCreditSelectionOpen, setIsCreditSelectionOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isAddingCustomer, setIsAddingCustomer] = useState(false);
+  const [newCustomerName, setNewCustomerName] = useState('');
+  const [newCustomerPhone, setNewCustomerPhone] = useState('');
+
+  const filteredCustomers = useMemo(() => {
+    return creditCustomers.filter(c =>
+      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.phone.includes(searchQuery)
+    );
+  }, [creditCustomers, searchQuery]);
+
+  const handlePaymentSelect = (method: 'cash' | 'mpesa' | 'credit') => {
+    if (method === 'credit') {
+      setIsCreditSelectionOpen(true);
+    } else {
+      setPaymentMethod(method);
+      setSelectedCustomer(null);
+    }
+  };
+
+  const handleAddCustomer = () => {
+    if (!newCustomerName || !newCustomerPhone) return;
+    const newCustomer = {
+        id: crypto.randomUUID(),
+        name: newCustomerName,
+        phone: newCustomerPhone,
+        balance: 0,
+        createdAt: new Date().toISOString()
+    };
+    addCreditCustomer(newCustomer);
+    addToSyncQueue({ type: 'add-credit-customer', data: newCustomer });
+
+    // Auto-select
+    setSelectedCustomer(newCustomer);
+    setPaymentMethod('credit');
+    setIsCreditSelectionOpen(false);
+    setIsAddingCustomer(false);
+  };
+
+  const handleSelectCustomer = (customer: any) => {
+    setSelectedCustomer(customer);
+    setPaymentMethod('credit');
+    setIsCreditSelectionOpen(false);
+  };
 
   const handleCheckout = async () => {
     if (!paymentMethod) return;
@@ -23,13 +72,15 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
     setIsProcessing(true);
 
     const transaction = {
-      id: crypto.randomUUID(), // Or generate simpler ID
+      id: crypto.randomUUID(),
       items: cart,
       total,
       paymentMethod,
       timestamp: new Date().toISOString(),
       cashierId: currentUser?.id,
       cashierName: currentUser?.name,
+      creditCustomerId: selectedCustomer?.id,
+      creditCustomerName: selectedCustomer?.name,
       status: 'completed'
     };
 
@@ -50,7 +101,11 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
       clearCart();
       setTimeout(() => {
         onClose();
-        setIsSuccess(false); // Reset for next time
+        // Reset State
+        setIsSuccess(false);
+        setPaymentMethod(null);
+        setSelectedCustomer(null);
+        setIsCreditSelectionOpen(false);
       }, 2000);
     }, 1000);
   };
@@ -63,16 +118,86 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
-        className="bg-slate-900 w-full max-w-md rounded-t-3xl sm:rounded-3xl border-t sm:border border-white/10 p-6 shadow-2xl relative"
+        className="bg-slate-900 w-full max-w-md rounded-t-3xl sm:rounded-3xl border-t sm:border border-white/10 p-6 shadow-2xl relative max-h-[90vh] overflow-hidden flex flex-col"
       >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 bg-white/5 rounded-full text-slate-400 hover:text-white"
+          className="absolute top-4 right-4 p-2 bg-white/5 rounded-full text-slate-400 hover:text-white z-10"
         >
           <X className="w-5 h-5" />
         </button>
 
-        {!isSuccess ? (
+        {isCreditSelectionOpen ? (
+          <div className="flex-1 flex flex-col h-full">
+            <div className="flex items-center gap-3 mb-4">
+                <button onClick={() => setIsCreditSelectionOpen(false)} className="p-1 -ml-1 text-slate-400">
+                    <X className="w-5 h-5" />
+                </button>
+                <h3 className="font-bold text-lg">Select Customer</h3>
+            </div>
+
+            {isAddingCustomer ? (
+                <div className="flex-1 space-y-4">
+                    <input
+                        type="text"
+                        placeholder="Customer Name"
+                        value={newCustomerName}
+                        onChange={e => setNewCustomerName(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
+                    />
+                    <input
+                        type="tel"
+                        placeholder="Phone Number"
+                        value={newCustomerPhone}
+                        onChange={e => setNewCustomerPhone(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
+                    />
+                    <div className="flex gap-2">
+                        <button onClick={() => setIsAddingCustomer(false)} className="flex-1 py-3 rounded-xl bg-white/5">Cancel</button>
+                        <button onClick={handleAddCustomer} className="flex-1 py-3 rounded-xl bg-emerald-500 font-bold">Save</button>
+                    </div>
+                </div>
+            ) : (
+                <>
+                    <div className="relative mb-4">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                        <input
+                            type="text"
+                            placeholder="Search customers..."
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-sm"
+                        />
+                    </div>
+
+                    <button
+                        onClick={() => setIsAddingCustomer(true)}
+                        className="flex items-center justify-center gap-2 w-full py-3 bg-white/5 rounded-xl text-sky-400 mb-4 text-sm font-medium hover:bg-white/10"
+                    >
+                        <Plus className="w-4 h-4" /> Add New Customer
+                    </button>
+
+                    <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+                        {filteredCustomers.map(c => (
+                            <button
+                                key={c.id}
+                                onClick={() => handleSelectCustomer(c)}
+                                className="w-full text-left p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 flex justify-between items-center"
+                            >
+                                <div>
+                                    <div className="font-bold">{c.name}</div>
+                                    <div className="text-xs text-slate-400">{c.phone}</div>
+                                </div>
+                                {c.balance > 0 && (
+                                    <span className="text-xs text-red-400 font-medium">Due: {c.balance}</span>
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                </>
+            )}
+          </div>
+        ) : !isSuccess ? (
           <>
             <h2 className="text-2xl font-bold text-white mb-6">Checkout</h2>
 
@@ -85,7 +210,7 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
               <label className="text-sm font-medium text-slate-400 ml-1">Payment Method</label>
               <div className="grid grid-cols-1 gap-3">
                 <button
-                  onClick={() => setPaymentMethod('cash')}
+                  onClick={() => handlePaymentSelect('cash')}
                   className={cn(
                     "flex items-center gap-4 p-4 rounded-xl border transition-all active:scale-95",
                     paymentMethod === 'cash'
@@ -100,7 +225,7 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
                 </button>
 
                 <button
-                  onClick={() => setPaymentMethod('mpesa')}
+                  onClick={() => handlePaymentSelect('mpesa')}
                   className={cn(
                     "flex items-center gap-4 p-4 rounded-xl border transition-all active:scale-95",
                     paymentMethod === 'mpesa'
@@ -115,7 +240,7 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
                 </button>
 
                 <button
-                  onClick={() => setPaymentMethod('credit')}
+                  onClick={() => handlePaymentSelect('credit')}
                   className={cn(
                     "flex items-center gap-4 p-4 rounded-xl border transition-all active:scale-95",
                     paymentMethod === 'credit'
@@ -126,7 +251,10 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
                   <div className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center", paymentMethod === 'credit' ? "border-orange-500" : "border-slate-500")}>
                     {paymentMethod === 'credit' && <div className="w-2 h-2 bg-orange-500 rounded-full" />}
                   </div>
-                  <span className="font-bold">CREDIT</span>
+                  <div className="flex-1 text-left">
+                      <span className="font-bold block">CREDIT</span>
+                      {selectedCustomer && <span className="text-xs text-orange-300">Customer: {selectedCustomer.name}</span>}
+                  </div>
                 </button>
               </div>
             </div>

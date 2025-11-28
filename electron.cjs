@@ -31,6 +31,25 @@ async function ensureAppDirs() {
 }
 
 /**
+ * Helper to safely read JSON file
+ */
+async function readJsonFile(filename) {
+    try {
+        const data = await fs.readFile(path.join(userDataPath, filename), 'utf-8');
+        return JSON.parse(data);
+    } catch (e) {
+        return []; // Default to empty array or object depending on usage, but array is safer for lists
+    }
+}
+
+/**
+ * Helper to safely write JSON file
+ */
+async function writeJsonFile(filename, data) {
+    await fs.writeFile(path.join(userDataPath, filename), JSON.stringify(data, null, 2));
+}
+
+/**
  * Ensures that the initial JSON data files exist in the user data directory.
  * If a file is missing, it is created with a default empty structure.
  */
@@ -43,6 +62,7 @@ async function ensureDataFilesExist() {
     'transactions.json': [],
     'expenses.json': [],
     'credit-customers.json': [],
+    'mobile-receipts.json': [], // New file for queuing mobile receipts
   };
 
   for (const [fileName, content] of Object.entries(dataFiles)) {
@@ -153,25 +173,6 @@ function getLocalIpAddress() {
         }
     }
     return '127.0.0.1';
-}
-
-/**
- * Helper to safely read JSON file
- */
-async function readJsonFile(filename) {
-    try {
-        const data = await fs.readFile(path.join(userDataPath, filename), 'utf-8');
-        return JSON.parse(data);
-    } catch (e) {
-        return []; // Default to empty array or object depending on usage, but array is safer for lists
-    }
-}
-
-/**
- * Helper to safely write JSON file
- */
-async function writeJsonFile(filename, data) {
-    await fs.writeFile(path.join(userDataPath, filename), JSON.stringify(data, null, 2));
 }
 
 /**
@@ -330,10 +331,6 @@ function startApiServer() {
                     transactions.unshift(data);
                     await writeJsonFile('transactions.json', transactions);
 
-                    // Also notify renderer to update UI if it's showing recent transactions
-                    const win = BrowserWindow.getAllWindows()[0];
-                    if (win) win.webContents.send('sync-update', { type: 'new-transaction', data });
-
                 } else if (type === 'add-credit-customer') {
                     const customers = await readJsonFile('credit-customers.json');
                     customers.push(data);
@@ -414,6 +411,12 @@ function startApiServer() {
                 }
             }
 
+            // Notify Renderer to update state and push to Cloud
+            const mainWindow = BrowserWindow.getAllWindows()[0];
+            if (mainWindow) {
+                mainWindow.webContents.send('mobile-data-sync', ops);
+            }
+
             res.json({ success: true });
         } catch (error) {
             console.error('Sync POST error:', error);
@@ -433,14 +436,30 @@ function startApiServer() {
         }
     });
 
-    apiApp.post('/api/print-receipt', authMiddleware, (req, res) => {
+    apiApp.post('/api/print-receipt', authMiddleware, async (req, res) => {
         const { transaction, businessSetup } = req.body;
-        const mainWindow = BrowserWindow.getAllWindows()[0];
-        // Add a flag or small modification to indicate remote print if needed
-        if (mainWindow) {
-            mainWindow.webContents.send('print-receipt-from-api', transaction, businessSetup);
+
+        try {
+            // Instead of auto-printing, save to mobile-receipts.json
+            const receipts = await readJsonFile('mobile-receipts.json');
+            const newReceipt = {
+                ...transaction,
+                _printId: Date.now().toString(), // Unique ID for the print job
+                _receivedAt: new Date().toISOString()
+            };
+            receipts.push(newReceipt);
+            await writeJsonFile('mobile-receipts.json', receipts);
+
+            const mainWindow = BrowserWindow.getAllWindows()[0];
+            if (mainWindow) {
+                // Notify Renderer of new receipt
+                mainWindow.webContents.send('new-mobile-receipt', newReceipt);
+            }
+            res.json({ success: true });
+        } catch (e) {
+            console.error("Failed to queue mobile receipt", e);
+            res.status(500).json({ error: 'Failed to queue receipt' });
         }
-        res.json({ success: true });
     });
 
     server = apiApp.listen(3000, '0.0.0.0', () => {

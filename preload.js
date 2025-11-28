@@ -98,4 +98,14 @@ contextBridge.exposeInMainWorld('electron', {
 
     return await response.json();
   },
+
+  /**
+   * Listen for sync updates from the mobile app.
+   */
+  onMobileDataSync: (callback) => ipcRenderer.on('mobile-data-sync', callback),
+
+  /**
+   * Listen for new receipt requests from the mobile app.
+   */
+  onNewMobileReceipt: (callback) => ipcRenderer.on('new-mobile-receipt', callback),
 });

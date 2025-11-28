@@ -19,6 +19,7 @@ import BackOfficePage from './BackOfficePage';
 import LoginScreen from '../components/LoginScreen';
 import AppLayout from '../components/AppLayout';
 import PreviousReceiptsPage from '../components/PreviousReceiptsPage';
+import MobileReceiptsPage from './MobileReceiptsPage';
 
 const MainNavigator = () => {
   const { businessSetup, users } = usePosStore();
@@ -79,6 +80,7 @@ const MainNavigator = () => {
         <Route path="/scanner" element={<BarcodeScanner />} />
         <Route path="/status" element={<OfflineSyncStatus />} />
         <Route path="/previous-receipts" element={<PreviousReceiptsPage />} />
+        <Route path="/mobile-receipts" element={<MobileReceiptsPage />} />
         <Route path="/manage" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

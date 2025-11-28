@@ -152,7 +152,11 @@ export const useMobileStore = create<MobileStore>()(
       expenses: [],
       creditCustomers: [],
 
-      setProducts: (products) => set({ products }),
+      setProducts: (products) => set({
+        products,
+        // Automatically derive categories from products
+        categories: [...new Set(products.map(p => p.category).filter(Boolean))]
+      }),
       setCategories: (categories) => set({ categories }),
       setTransactions: (transactions) => set({ transactions }),
       setExpenses: (expenses) => set({ expenses }),

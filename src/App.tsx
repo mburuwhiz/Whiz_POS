@@ -25,6 +25,20 @@ function App() {
     init();
   }, [loadInitialData, autoPrintClosingReport]);
 
+  // Setup Electron IPC Listeners
+  useEffect(() => {
+    if (window.electron) {
+        window.electron.onMobileDataSync((event, payload) => {
+            console.log('Received mobile data sync:', payload);
+            usePosStore.getState().handleMobileDataSync(payload);
+        });
+        window.electron.onNewMobileReceipt((event, receipt) => {
+            console.log('Received new mobile receipt:', receipt);
+            usePosStore.getState().addMobileReceipt(receipt);
+        });
+    }
+  }, []);
+
   // Periodic Sync (Every 10 seconds)
   useEffect(() => {
     const syncInterval = setInterval(() => {

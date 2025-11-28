@@ -11,14 +11,11 @@ declare global {
     electron: {
       /**
        * Saves data to a local JSON file.
-       * @param fileName Name of the file (e.g., 'products.json').
-       * @param data The JSON data to save.
        */
       saveData: (fileName: string, data: any) => Promise<{ success: boolean; error?: any }>;
 
       /**
        * Reads data from a local JSON file.
-       * @param fileName Name of the file to read.
        */
       readData: (fileName: string) => Promise<{ success: boolean; data?: any; error?: any }>;
 
@@ -56,6 +53,16 @@ declare global {
        * Gets list of printers.
        */
       getPrinters: () => Promise<any[]>;
+
+      /**
+       * Listen for sync updates from mobile.
+       */
+      onMobileDataSync: (callback: (event: any, payload: any) => void) => void;
+
+      /**
+       * Listen for new mobile receipt requests.
+       */
+      onNewMobileReceipt: (callback: (event: any, receipt: any) => void) => void;
     };
   }
 }
@@ -211,6 +218,7 @@ interface PosState {
   users: User[];
   expenses: Expense[];
   businessSetup: BusinessSetup | null;
+  mobileReceipts: any[];
   
   // UI State
   isDataLoaded: boolean;
@@ -221,7 +229,7 @@ interface PosState {
   isKeyboardOpen: boolean;
   activeInput: HTMLInputElement | HTMLTextAreaElement | null;
   keyboardInput: string;
-  currentPage: 'pos' | 'reports' | 'customers' | 'settings' | 'closing' | 'dashboard' | 'inventory' | 'loyalty' | 'scanner' | 'sync' | 'register' | 'backoffice';
+  currentPage: 'pos' | 'reports' | 'customers' | 'settings' | 'closing' | 'dashboard' | 'inventory' | 'loyalty' | 'scanner' | 'sync' | 'register' | 'backoffice' | 'mobile-receipts';
   // Settings
   isOnline: boolean;
   syncQueue: any[];
@@ -272,6 +280,13 @@ interface PosState {
   processSyncQueue: () => void;
   syncFromServer: () => void;
   setOnlineStatus: (isOnline: boolean) => void;
+  handleMobileDataSync: (payload: any) => void;
+
+  // Mobile Receipts
+  loadMobileReceipts: () => Promise<void>;
+  printMobileReceipt: (receipt: any) => void;
+  deleteMobileReceipt: (receipt: any) => void;
+  addMobileReceipt: (receipt: any) => void;
 
   // Reports
   getDailySales: (date: string) => { cash: number; mpesa: number; credit: number; total: number };
@@ -321,6 +336,7 @@ export const usePosStore = create<PosState>()(
       syncQueue: [],
       lastSyncTime: null,
       lastClosingReportDate: null,
+      mobileReceipts: [],
 
       /**
        * Logs in a user and updates the session state.
@@ -656,14 +672,10 @@ export const usePosStore = create<PosState>()(
           }
 
           const serverData = await response.json();
-          console.debug("Sync data received:", {
-             products: serverData.products?.length,
-             users: serverData.users?.length
-          });
+          // ... (merge logic omitted for brevity, assumed same as before) ...
           const lastSync = state.lastSyncTime ? new Date(state.lastSyncTime) : new Date(0);
 
           const mergeData = (local, server) => {
-            // Filter out items with invalid IDs to prevent sync errors
             const validServerItems = server.filter(item => item.id != null);
             const serverDataById = new Map(validServerItems.map(item => [item.id, item]));
             const localDataById = new Map(local.map(item => [item.id, item]));
@@ -673,20 +685,14 @@ export const usePosStore = create<PosState>()(
               if (serverItem) {
                 const serverTimestamp = new Date(serverItem.updatedAt || serverItem.createdAt);
                 const localTimestamp = new Date(localItem.updatedAt || localItem.createdAt);
-
-                // Conflict Resolution:
-                // If Server data is strictly newer than Local data, accept Server data.
-                // This handles the case where Back Office makes a change (e.g. updates User PIN).
                 if (serverTimestamp.getTime() > localTimestamp.getTime()) {
                      return serverItem;
                 }
-                // Otherwise, keep local data (Client Wins / Unchanged)
                 return localItem;
               }
-              return localItem; // Exists locally but not on server (yet)
+              return localItem;
             });
 
-            // Add items that exist on Server but not Locally (Downstream Sync)
             validServerItems.forEach(serverItem => {
               if (!localDataById.has(serverItem.id)) {
                 merged.push(serverItem);
@@ -704,7 +710,6 @@ export const usePosStore = create<PosState>()(
           if (serverData.businessSetup) {
             const serverTimestamp = new Date(serverData.businessSetup.updatedAt || serverData.businessSetup.createdAt);
             const localTimestamp = state.businessSetup ? new Date(state.businessSetup.updatedAt || state.businessSetup.createdAt) : new Date(0);
-            // If server data is newer, update local
             if (serverTimestamp > localTimestamp) {
               newBusinessSetup = { ...state.businessSetup, ...serverData.businessSetup };
             }
@@ -737,8 +742,53 @@ export const usePosStore = create<PosState>()(
         }
       },
 
+      // Handle data synced from mobile (bridge)
+      handleMobileDataSync: (payload: any) => {
+        if (!Array.isArray(payload)) payload = [payload];
+
+        payload.forEach(item => {
+            const { type, data } = item;
+
+            // Add to sync queue for Back Office propagation
+            get().addToSyncQueue({ type, data });
+
+            // Update local state if needed (most updates handled by reload or standard actions,
+            // but immediate UI feedback is nice)
+            if (type === 'new-transaction' || type === 'transaction') {
+               set(state => ({ transactions: [data, ...state.transactions] }));
+            }
+            // ... add other types if critical for immediate display
+        });
+      },
+
+      // Mobile Receipts Logic
+      loadMobileReceipts: async () => {
+        const { data } = await readDataFromFile('mobile-receipts.json');
+        if (data) set({ mobileReceipts: data });
+      },
+
+      addMobileReceipt: (receipt) => {
+        set(state => ({ mobileReceipts: [...state.mobileReceipts, receipt] }));
+      },
+
+      printMobileReceipt: (receipt) => {
+        const state = get();
+        if (window.electron) {
+            window.electron.printReceipt(receipt, state.businessSetup, true);
+            state.deleteMobileReceipt(receipt);
+        }
+      },
+
+      deleteMobileReceipt: (receipt) => {
+        set(state => {
+            const newReceipts = state.mobileReceipts.filter(r => r._printId !== receipt._printId);
+            saveDataToFile('mobile-receipts.json', newReceipts);
+            return { mobileReceipts: newReceipts };
+        });
+      },
+
       // Reports
-      getDailySales: (date) => {
+      getDailySales: (date: string) => {
         const state = get();
         const dayTransactions = state.transactions.filter(t =>
           t.timestamp.startsWith(date) && t.status === 'completed'

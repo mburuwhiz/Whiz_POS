@@ -331,8 +331,11 @@ function startApiServer() {
 
                 if (type === 'new-transaction' || type === 'transaction') { // Handle both type names
                     const transactions = await readJsonFile('transactions.json');
-                    transactions.unshift(data);
-                    await writeJsonFile('transactions.json', transactions);
+                    // Check for duplicate transaction ID
+                    if (!transactions.some(t => t.id === data.id)) {
+                        transactions.unshift(data);
+                        await writeJsonFile('transactions.json', transactions);
+                    }
 
                 } else if (type === 'add-credit-customer') {
                     const customers = await readJsonFile('credit-customers.json');
@@ -441,8 +444,10 @@ function startApiServer() {
         const newTransaction = req.body;
         try {
             const transactions = await readJsonFile('transactions.json');
-            transactions.unshift(newTransaction);
-            await writeJsonFile('transactions.json', transactions);
+            if (!transactions.some(t => t.id === newTransaction.id)) {
+                transactions.unshift(newTransaction);
+                await writeJsonFile('transactions.json', transactions);
+            }
             res.json({ success: true });
         } catch (error) {
             res.status(500).json({ error: 'Failed to save transaction' });

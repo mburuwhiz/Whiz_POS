@@ -16,7 +16,7 @@ export default function ReportsPage() {
 
   const filteredExpenses = useMemo(() => {
     return expenses.filter(expense => {
-      const expenseDate = expense.timestamp.split('T')[0];
+      const expenseDate = (expense.timestamp || new Date().toISOString()).split('T')[0];
       return expenseDate >= dateRange.startDate && expenseDate <= dateRange.endDate;
     });
   }, [expenses, dateRange]);

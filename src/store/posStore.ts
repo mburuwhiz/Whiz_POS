@@ -789,7 +789,13 @@ export const usePosStore = create<PosState>()(
             // Update local state if needed (most updates handled by reload or standard actions,
             // but immediate UI feedback is nice)
             if (type === 'new-transaction' || type === 'transaction') {
-               set(state => ({ transactions: [data, ...state.transactions] }));
+               set(state => {
+                   // Deduplicate: Check if transaction already exists
+                   if (state.transactions.some(t => t.id === data.id)) {
+                       return {}; // No change
+                   }
+                   return { transactions: [data, ...state.transactions] };
+               });
             }
             // ... add other types if critical for immediate display
         });

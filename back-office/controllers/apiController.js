@@ -1,6 +1,7 @@
 const Transaction = require('../models/Transaction');
 const Product = require('../models/Product');
 const Expense = require('../models/Expense');
+const Salary = require('../models/Salary');
 const Customer = require('../models/Customer');
 const User = require('../models/User');
 const BusinessSettings = require('../models/BusinessSettings');
@@ -10,6 +11,7 @@ exports.getData = async (req, res) => {
         const products = await Product.find({});
         const users = await User.find({});
         const expenses = await Expense.find({});
+        const salaries = await Salary.find({});
         const creditCustomers = await Customer.find({});
         const businessSetup = await BusinessSettings.findOne({});
 
@@ -28,6 +30,11 @@ exports.getData = async (req, res) => {
             id: e.expenseId,
         });
 
+        const mapSalary = s => ({
+            ...s.toObject(),
+            id: s.salaryId,
+        });
+
         const mapCustomer = c => ({
             ...c.toObject(),
             id: c.customerId,
@@ -37,6 +44,7 @@ exports.getData = async (req, res) => {
             products: products.map(mapProduct),
             users: users.map(mapUser),
             expenses: expenses.map(mapExpense),
+            salaries: salaries.map(mapSalary),
             creditCustomers: creditCustomers.map(mapCustomer),
             businessSetup: businessSetup ? businessSetup.toObject() : null
         });
@@ -91,6 +99,11 @@ exports.fullSync = async (req, res) => {
         if (expenses) {
             for (const e of expenses) {
                 await processOperation({ type: 'add-expense', data: e });
+            }
+        }
+        if (req.body.salaries) {
+            for (const s of req.body.salaries) {
+                await processOperation({ type: 'add-salary', data: s });
             }
         }
         if (customers) {
@@ -197,6 +210,22 @@ async function processOperation(op) {
                     { $set: expenseData },
                     { upsert: true }
                 );
+                break;
+
+            case 'add-salary':
+                const salaryData = { ...op.data, salaryId: op.data.id };
+                delete salaryData.id;
+                delete salaryData._id;
+
+                await Salary.updateOne(
+                    { salaryId: op.data.id },
+                    { $set: salaryData },
+                    { upsert: true }
+                );
+                break;
+
+            case 'delete-salary':
+                await Salary.deleteOne({ salaryId: op.data.id });
                 break;
 
             case 'add-user':

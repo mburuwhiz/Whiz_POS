@@ -51,6 +51,16 @@ jobs:
       - name: Initialize Android Platform & Config
         run: npm run setup:android
 
+      - name: Setup Icon Resources
+        run: |
+          mkdir -p resources
+          cp ../assets/logo.png resources/logo.png
+          cp ../assets/logo.png resources/icon.png
+          cp ../assets/logo.png resources/splash.png
+
+      - name: Generate Icons and Splash
+        run: npx @capacitor/assets generate --android
+
       - name: Sync Capacitor
         run: npx cap sync android
 

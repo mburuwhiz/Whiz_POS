@@ -1,19 +1,9 @@
 import React from 'react';
 import { usePosStore } from '../store/posStore';
 import { Plus } from 'lucide-react';
-// The cart image is in the root assets folder, but for Vite to bundle it, it's better to move it to src/assets
-// or reference it via absolute public path if it's in public/.
-// However, based on previous file listings, assets/cart.png is in root.
-// Let's try using the one from 'public' if available, or assume it will be copied.
-// Since we cannot import from outside src easily in Vite without configuration,
-// I will use a relative path that assumes the assets are served statically or I will fix the import.
+import cartPlaceholder from '../assets/cart.png';
 
-// Ideally, we should move cart.png to src/assets or public/assets.
-// Checking file list: assets/cart.png exists in root.
-// I will copy it to public/assets so it can be referenced as /assets/cart.png
-// For now, I'll use a direct string path which avoids the import error, assuming it is served correctly at runtime.
-
-const CART_PLACEHOLDER = '/assets/cart.png';
+const CART_PLACEHOLDER = cartPlaceholder;
 
 /**
  * Component for displaying the grid of products.

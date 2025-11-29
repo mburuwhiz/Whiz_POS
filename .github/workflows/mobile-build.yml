@@ -36,6 +36,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install Capacitor Assets
+        run: npm install @capacitor/assets --save-dev
+
       - name: Build Web Assets
         run: npm run build
 
@@ -50,6 +53,9 @@ jobs:
 
       - name: Initialize Android Platform & Config
         run: npm run setup:android
+
+      - name: Generate Icons and Splash Screens
+        run: npx @capacitor/assets generate --android
 
       - name: Sync Capacitor
         run: npx cap sync android

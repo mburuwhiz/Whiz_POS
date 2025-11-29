@@ -19,21 +19,25 @@ export default function ExpensesPage() {
   const handleAddExpense = () => {
     if (!description || !amount) return;
 
+    const isoDate = new Date().toISOString();
     const newExpense = {
       id: `EXP${Date.now().toString().slice(-6)}`,
       description,
       amount: parseFloat(amount),
       category,
-      date: new Date().toISOString(),
+      date: isoDate,
+      timestamp: isoDate, // Desktop expects 'timestamp'
       cashierId: currentUser?.id,
-      cashierName: currentUser?.name
+      cashierName: currentUser?.name,
+      cashier: currentUser?.name // Desktop/BackOffice expects 'cashier'
     };
 
     // Add to local store
     addExpense(newExpense);
 
     // Add to sync queue
-    addToSyncQueue({ type: 'expense', data: newExpense });
+    // Type must be 'add-expense' to be processed correctly by Desktop and Back Office
+    addToSyncQueue({ type: 'add-expense', data: newExpense });
 
     // Reset form
     setDescription('');

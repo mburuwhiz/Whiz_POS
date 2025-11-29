@@ -855,10 +855,10 @@ export const usePosStore = create<PosState>()(
           t.timestamp.startsWith(date) && t.status === 'completed'
         );
 
-        const cashierNames = [...new Set(dayTransactions.map(t => t.cashier))];
+        const cashierNames = [...new Set(dayTransactions.map(t => t.cashier || 'Unknown'))];
 
         const cashiers: CashierReport[] = cashierNames.map(name => {
-          const transactions = dayTransactions.filter(t => t.cashier === name);
+          const transactions = dayTransactions.filter(t => (t.cashier || 'Unknown') === name);
           const cashTotal = transactions.filter(t => t.paymentMethod === 'cash').reduce((sum, t) => sum + t.total, 0);
           const mpesaTotal = transactions.filter(t => t.paymentMethod === 'mpesa').reduce((sum, t) => sum + t.total, 0);
           const creditTotal = transactions.filter(t => t.paymentMethod === 'credit').reduce((sum, t) => sum + t.total, 0);

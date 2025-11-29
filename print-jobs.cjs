@@ -49,6 +49,16 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
     template = template.replace('{{receiptId}}', transaction.id + (isReprint ? ' (REPRINT)' : ''));
     template = template.replace('{{date}}', formatDate(transaction.timestamp));
     template = template.replace('{{servedBy}}', transaction.cashier || 'Cashier');
+
+    let customerName = 'Walk Through Customer';
+    if (paymentMethod === 'CREDIT' && transaction.creditCustomer) {
+        customerName = transaction.creditCustomer;
+    }
+    // If user specifically requested actual names for M-Pesa/Cash, they are usually N/A
+    // But if we wanted to support it, we'd need a customer field on transaction.
+    // For now, adhere to "Walk Through Customer" for Cash/Mpesa vs Actual for Credit.
+    template = template.replace('{{customer}}', customerName);
+
     template = template.replace('{{paymentMethod}}', paymentMethod);
     template = template.replace('{{subtotal}}', `Ksh ${subtotal.toFixed(2)}`);
     template = template.replace('{{tax}}', `Ksh ${tax.toFixed(2)}`);
@@ -142,7 +152,7 @@ async function generateClosingReport(reportData, businessSetup) {
 
         return `
             <div class="cashier-section">
-                <p class="bold">CASHIER: ${cashier.cashierName.toUpperCase()}</p>
+                <p class="bold">CASHIER: ${(cashier.cashierName || 'Unknown').toUpperCase()}</p>
                 <hr>
                 <table class="table">
                     <tbody>

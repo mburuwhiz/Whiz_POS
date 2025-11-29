@@ -90,6 +90,7 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
       cashierName: currentUser?.name,
       cashier: currentUser?.name, // Added for compatibility with Desktop/Print templates
       creditCustomerId: selectedCustomer?.id,
+      creditCustomer: selectedCustomer?.name, // Fix: Changed to creditCustomer to match Desktop store property
       creditCustomerName: selectedCustomer?.name,
       status: 'completed'
     };

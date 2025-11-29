@@ -103,6 +103,7 @@
     <div class="info">
         <p>Receipt #: {{receiptId}}</p>
         <p>Date: {{date}}</p>
+        <p>Customer: {{customer}}</p>
     </div>
 
     <div class="separator"></div>
@@ -143,10 +144,11 @@
     <div class="info">
         <p>Payment: {{paymentMethod}}</p>
         <p>Served By: {{servedBy}}</p>
-        <p>Customer: {{customer}}</p>
     </div>
 
-    {{mpesaDetails}}
+    <div style="text-align: center;">
+        {{mpesaDetails}}
+    </div>
 
     <div class="separator"></div>
 

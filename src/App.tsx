@@ -7,15 +7,28 @@ import BusinessRegistrationPage from './pages/BusinessRegistrationPage';
 import LoginScreen from './components/LoginScreen';
 import OnScreenKeyboard from './components/OnScreenKeyboard';
 import ErrorBoundary from './components/ErrorBoundary';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { useIdle } from 'react-use';
 
 function App() {
-  const { businessSetup, loadInitialData, autoPrintClosingReport, isDataLoaded } = usePosStore(state => ({
+  const { businessSetup, loadInitialData, autoPrintClosingReport, isDataLoaded, logout } = usePosStore(state => ({
     businessSetup: state.businessSetup,
     loadInitialData: state.loadInitialData,
     autoPrintClosingReport: state.autoPrintClosingReport,
     isDataLoaded: state.isDataLoaded,
+    logout: state.logout
   }));
+
+  // Auto-logoff Logic
+  // 30 seconds = 30000 ms
+  const isIdle = useIdle(30e3);
+
+  useEffect(() => {
+    if (isIdle && businessSetup?.isLoggedIn) {
+      console.log("User inactive for 30s. Auto-logging off.");
+      logout();
+    }
+  }, [isIdle, businessSetup?.isLoggedIn, logout]);
 
   useEffect(() => {
     const init = async () => {

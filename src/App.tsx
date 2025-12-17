@@ -7,6 +7,7 @@ import BusinessRegistrationPage from './pages/BusinessRegistrationPage';
 import LoginScreen from './components/LoginScreen';
 import OnScreenKeyboard from './components/OnScreenKeyboard';
 import ErrorBoundary from './components/ErrorBoundary';
+import AutoLogoutModal from './components/AutoLogoutModal';
 import { useEffect, useRef } from 'react';
 import { useIdle } from 'react-use';
 
@@ -20,15 +21,10 @@ function App() {
   }));
 
   // Auto-logoff Logic
-  // 30 seconds = 30000 ms
-  const isIdle = useIdle(30e3);
-
-  useEffect(() => {
-    if (isIdle && businessSetup?.isLoggedIn) {
-      console.log("User inactive for 30s. Auto-logging off.");
-      logout();
-    }
-  }, [isIdle, businessSetup?.isLoggedIn, logout]);
+  // Trigger idle state after 20 seconds of inactivity.
+  // The AutoLogoutModal will then show a 10-second countdown.
+  // Total inactivity time before logout = 20s + 10s = 30s.
+  const isIdle = useIdle(20e3);
 
   useEffect(() => {
     const init = async () => {
@@ -115,6 +111,11 @@ function App() {
           {/* Global Modals */}
           <CheckoutModal />
           <OnScreenKeyboard />
+
+          {/* Auto Logoff Warning Modal */}
+          {businessSetup.isLoggedIn && isIdle && (
+            <AutoLogoutModal onLogout={logout} />
+          )}
         </div>
       </Router>
     </ErrorBoundary>

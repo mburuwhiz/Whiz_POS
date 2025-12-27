@@ -1,77 +1,207 @@
-# Whiz POS Website
+---
 
-The official website for Whiz POS, built with **Node.js**, **Express**, and **EJS**.
+<p align="center">
+  <img src="./assets/logo.png" width="160" />
+</p>
 
-## Features
+<h1 align="center">✨ WHIZ POS ✨</h1>
 
-- **Landing Page**: Modern, responsive design (Light Theme).
-- **Windows POS**: Protected download (Admin verification required).
-- **Mobile App**: Public APK download with connection guide.
-- **Back Office**: Login and dashboard information.
-- **Admin Dashboard**: Manage user access requests.
-- **Authentication**: Secure login/register flow using JWT.
+<p align="center">
+  <strong>A modern, offline-first, full-feature Point of Sale ecosystem for cafés, restaurants & retail.</strong><br/>
+  Desktop POS • Back Office Web Dashboard • Mobile Ordering App
+</p>
 
-## Prerequisites
+<p align="center">
+  <img alt="Node" src="https://img.shields.io/badge/Node.js-18%2B-43853D?style=for-the-badge&logo=node.js&logoColor=white"/>
+  <img alt="Electron" src="https://img.shields.io/badge/Electron-App-2C2E3B?style=for-the-badge&logo=electron&logoColor=white"/>
+  <img alt="MongoDB" src="https://img.shields.io/badge/MongoDB-Database-4DB33D?style=for-the-badge&logo=mongodb&logoColor=white"/>
+</p>
 
-- Node.js (v14+)
-- MongoDB (Running locally or cloud URI)
+---
 
-## Installation
+## 🌟 Overview
 
-1.  Clone the repository.
-2.  Install dependencies:
-    ```bash
-    npm install
-    ```
-3.  Configure environment variables:
-    - Copy `.env.example` to `.env`:
-        ```bash
-        cp .env.example .env
-        ```
-    - Update `MONGODB_URI` and other variables in `.env`.
+**WHIZ POS** is a complete POS ecosystem built for real-world business workflows.
+It is **fast**, **offline-ready**, and designed for cafés, restaurants, and retail shops.
 
-## Environment Variables
+### System Components
 
-Ensure your `.env` file contains the following keys:
+| Component           | Tech                              | Purpose                                        |
+| ------------------- | --------------------------------- | ---------------------------------------------- |
+| **Desktop POS**     | Electron + React + TypeScript     | Offline-first cashier system, receipt printing |
+| **Back Office Web** | Node.js + Express + MongoDB + EJS | Inventory, analytics, expenses, admin          |
+| **Mobile App**      | Android (APK)                     | Remote order taking & syncing                  |
 
-```ini
-# Database Connection
+---
+
+## 🚀 Core Features
+
+### 🛒 Point of Sale
+
+* Fast checkout
+* Cash / M-Pesa / Credit payments
+* Receipt printing
+
+### 📦 Inventory
+
+* Live stock tracking
+* Low-stock alerts
+* Bulk product updates
+
+### 💸 Expenses
+
+* Category-based expenses
+* Daily / Monthly summaries
+
+### 👥 Customer Credit
+
+* Credit limits
+* Partial payments
+* Transaction history
+
+### 📊 Reports
+
+* Daily sales
+* Closing summaries
+* Product performance
+
+### 🔌 Offline-First
+
+* Works fully offline
+* Auto-sync when internet returns
+
+### 📱 Mobile Integration
+
+* Remote order sending
+* Local printing support
+
+---
+
+## 🧱 Architecture
+
+```
+ ┌───────────────────────┐
+ │    Mobile App         │
+ └───────────┬───────────┘
+             │
+             ▼
+ ┌───────────────────────┐
+ │ Desktop POS (Electron)│
+ │ - Offline queueing    │
+ └───────────┬───────────┘
+             │ Sync API
+             ▼
+ ┌────────────────────────┐
+ │ Back Office (Node.js)  │
+ │ - MongoDB              │
+ │ - API & Dashboard     │
+ └────────────────────────┘
+```
+
+---
+
+## ⚙️ Installation & Setup
+
+## 📌 Prerequisites
+
+* Node.js **v18+**
+* MongoDB (Local or Atlas)
+
+---
+
+## 🌐 Back Office Website Setup
+
+### Installation
+
+```bash
+git clone <repo>
+cd back-office
+npm install
+```
+
+### Environment Variables
+
+Create `.env` from `.env.example`:
+
+```env
+# Server
+PORT=3000
+
+# Database
 MONGODB_URI=mongodb://localhost:27017/whizpos
 
 # Security
 JWT_SECRET=your_secure_random_secret_key
 
-# Download Links
-DOWNLOAD_LINK_WINDOWS=https://example.com/download/windows-installer.exe
-NEXT_PUBLIC_DOWNLOAD_LINK_APK=https://example.com/download/mobile-app.apk
+# Downloads
+DOWNLOAD_LINK_WINDOWS=https://example.com/windows-installer.exe
+NEXT_PUBLIC_DOWNLOAD_LINK_APK=https://example.com/mobile-app.apk
 
-# Admin Configuration (Auto-seeded on startup)
+# Admin (auto-seeded)
 ADMIN_EMAIL=admin@whizpos.com
 ADMIN_NAME=System Admin
 ADMIN_PASSWORD=secure_password
 NEXT_PUBLIC_ADMIN_PHONE=0740841168
-
-# Server
-PORT=3000
 ```
 
-## Running the Application
+### Run
 
-### Development
 ```bash
+# Development
 npm run dev
-```
 
-### Production
-```bash
+# Production
 npm start
 ```
 
-The server will start on `http://localhost:3000`.
+App runs at:
+👉 **[http://localhost:3000](http://localhost:3000)**
 
-## Tech Stack
+---
 
-- **Backend**: Node.js, Express.js
-- **Frontend**: EJS (Embedded JavaScript Templates), Tailwind CSS (via CDN)
-- **Database**: MongoDB, Mongoose
-- **Auth**: JWT, bcryptjs
+## 🖥️ Desktop POS Setup
+
+```bash
+cd desktop-pos
+npm install
+npm run dev
+```
+
+Runs Electron + React locally.
+
+---
+
+## 🔗 Connect POS to Back Office
+
+1. Open **Desktop POS**
+2. Go to **Manage → Devices & Connections**
+3. Enter:
+
+   * Back Office URL
+   * API Key
+4. Save and **Sync Local Data**
+
+---
+
+## 🛠️ Tech Stack
+
+* **Backend**: Node.js, Express.js
+* **Frontend Web**: EJS, Tailwind CSS (CDN)
+* **Desktop**: Electron, React, TypeScript
+* **Database**: MongoDB, Mongoose
+* **Auth**: JWT, bcryptjs
+
+---
+
+## 📄 License
+
+**Proprietary Software — Whiz Tech**
+
+📞 Phone: **0740-841-168**
+📧 Email: **[whiz.techke@gmail.com](mailto:whiz.techke@gmail.com)**
+
+---
+
+<p align="center">
+  Made with ❤️ by <strong>Whiz Tech</strong>
+</p>

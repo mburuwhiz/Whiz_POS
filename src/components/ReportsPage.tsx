@@ -6,15 +6,32 @@ import autoTable from 'jspdf-autotable';
 
 export default function ReportsPage() {
   const { transactions, expenses, getDailySales, getTransactionsByDateRange, setCurrentPage, businessSetup } = usePosStore();
+
+  // Initialize range with today.
+  // We use current time for endDate to capture everything up to now.
   const [dateRange, setDateRange] = useState({
-    startDate: new Date().toISOString().split('T')[0],
+    startDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD
     endDate: new Date().toISOString().split('T')[0]
   });
   const [reportType, setReportType] = useState<'sales' | 'expenses' | 'credits'>('sales');
 
   const filteredTransactions = useMemo(() => {
+    // Custom filtering logic to handle "Today" correctly (00:00:00 to Now)
+    // The store's getTransactionsByDateRange typically compares strings 'YYYY-MM-DD'
+    // which effectively does start <= date <= end.
+    // If we want exact time precision for "Today", we might need to filter manually here.
+
+    // Check if the range is a single day (Start == End)
+    if (dateRange.startDate === dateRange.endDate) {
+        const targetDate = dateRange.startDate;
+        return transactions.filter(t => {
+            const tDate = t.timestamp.split('T')[0]; // Extract YYYY-MM-DD part of ISO string
+            return tDate === targetDate;
+        });
+    }
+
     return getTransactionsByDateRange(dateRange.startDate, dateRange.endDate);
-  }, [dateRange, getTransactionsByDateRange]);
+  }, [dateRange, transactions, getTransactionsByDateRange]);
 
   const filteredExpenses = useMemo(() => {
     return expenses.filter(expense => {

@@ -1,0 +1,11 @@
+
+> whiz-pos@5.2.0 dev:vite
+> vite --port 5174
+
+
+  VITE v4.5.14  ready in 328 ms
+
+  ➜  Local:   http://localhost:5174/
+  ➜  Network: use --host to expose
+8:44:20 PM [vite] hmr update /src/components/Dashboard.tsx, /src/index.css
+8:44:59 PM [vite] hmr update /src/components/ReportsPage.tsx, /src/index.css

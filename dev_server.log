@@ -1,0 +1,22 @@
+
+> whiz-pos@5.2.0 dev
+> concurrently "npm:dev:vite" "npm:dev:electron"
+
+[dev:electron]
+[dev:electron] > whiz-pos@5.2.0 dev:electron
+[dev:electron] > electron . http://localhost:5174
+[dev:electron]
+[dev:vite]
+[dev:vite] > whiz-pos@5.2.0 dev:vite
+[dev:vite] > vite --port 5174
+[dev:vite]
+[dev:vite]
+[dev:vite]   VITE v4.5.14  ready in 354 ms
+[dev:vite]
+[dev:vite]   ➜  Local:   http://localhost:5174/
+[dev:vite]   ➜  Network: use --host to expose
+[dev:electron] [2961:1227/203748.132173:ERROR:ozone_platform_x11.cc(245)] Missing X server or $DISPLAY
+[dev:electron] [2961:1227/203748.132225:ERROR:env.cc(258)] The platform failed to initialize.  Exiting.
+[dev:electron] /app/node_modules/electron/dist/electron exited with signal SIGSEGV
+[dev:electron] npm run dev:electron exited with code 1
+[dev:vite] npm run dev:vite exited with code SIGTERM

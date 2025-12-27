@@ -22,7 +22,7 @@ export default function Dashboard() {
   const [timeRange, setTimeRange] = useState<'today' | 'week' | 'month' | 'year'>('today');
   const [metrics, setMetrics] = useState<DashboardMetric[]>([]);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
-  const [recentTransactions, setRecentTransactions] = useState(transactions.slice(0, 5));
+  const [recentTransactions, setRecentTransactions] = useState(transactions.slice(0, 50));
 
   // Calculate date range filter
   const getDateFilter = () => {
@@ -156,7 +156,7 @@ export default function Dashboard() {
     setMetrics(newDashboardMetrics);
   }, [transactions, products, expenses, timeRange]);
 
-  // Calculate top products
+  // Calculate top products - Removed Slice to show full list as requested
   useEffect(() => {
     const filteredTransactions = getFilteredTransactions();
     const productSales = new Map<string, { quantity: number; revenue: number; name: string }>();
@@ -178,15 +178,15 @@ export default function Dashboard() {
 
     const top = Array.from(productSales.entries())
       .map(([id, data]) => ({ id, ...data }))
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 5);
+      .sort((a, b) => b.revenue - a.revenue);
+      // .slice(0, 5); // REMOVED LIMIT
 
     setTopProducts(top);
   }, [transactions, timeRange]);
 
   // Update recent transactions
   useEffect(() => {
-    setRecentTransactions(transactions.slice(0, 5));
+    setRecentTransactions(transactions.slice(0, 100)); // Increased limit
   }, [transactions]);
 
   const getMetricColor = (color: DashboardMetric['color']) => {
@@ -259,12 +259,12 @@ export default function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Top Products */}
-          <div className="bg-white rounded-lg shadow-sm">
+          {/* Top Products - Full List */}
+          <div className="bg-white rounded-lg shadow-sm flex flex-col max-h-[600px]">
             <div className="p-6 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-800">Top Products</h2>
+              <h2 className="text-lg font-semibold text-gray-800">Products Sold (Full List)</h2>
             </div>
-            <div className="p-6">
+            <div className="p-6 overflow-y-auto">
               {topProducts.length > 0 ? (
                 <div className="space-y-4">
                   {topProducts.map((product, index) => (
@@ -294,11 +294,11 @@ export default function Dashboard() {
           </div>
 
           {/* Recent Transactions */}
-          <div className="bg-white rounded-lg shadow-sm">
+          <div className="bg-white rounded-lg shadow-sm flex flex-col max-h-[600px]">
             <div className="p-6 border-b border-gray-200">
               <h2 className="text-lg font-semibold text-gray-800">Recent Transactions</h2>
             </div>
-            <div className="p-6">
+            <div className="p-6 overflow-y-auto">
               {recentTransactions.length > 0 ? (
                 <div className="space-y-4">
                   {recentTransactions.map((transaction) => (

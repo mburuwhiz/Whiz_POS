@@ -121,13 +121,9 @@ const Navigation = () => {
 
         {isAdminOrManager && (
           <NavGroup title="Administration">
-            <NavLink to="/backoffice" className={navLinkClasses}>
-              <UserCheck className="w-5 h-5" />
-              <span>Back Office</span>
-            </NavLink>
-            <NavLink to="/register" className={navLinkClasses}>
-              <Building2 className="w-5 h-5" />
-              <span>Register</span>
+            <NavLink to="/inventory" className={navLinkClasses}>
+              <Package className="w-5 h-5" />
+              <span>Inventory</span>
             </NavLink>
             <NavLink to="/sync" className={navLinkClasses}>
               <Database className="w-5 h-5" />

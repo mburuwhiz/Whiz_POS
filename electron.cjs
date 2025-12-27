@@ -937,7 +937,14 @@ app.whenReady().then(async () => {
     printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
 
     printWindow.webContents.on('did-finish-load', () => {
-        printWindow.webContents.print(options, (success, errorType) => {
+        // Force margins to 0 for better fit on thermal printers
+        // Unless specific margins were passed in options, we override them to 0
+        const printOptions = {
+             margins: { marginType: 'custom', top: 0, bottom: 0, left: 0, right: 0 },
+             ...options
+        };
+
+        printWindow.webContents.print(printOptions, (success, errorType) => {
             if (!success) console.error('Print failed:', errorType);
             else console.log('Print job sent successfully');
             printWindow.close();

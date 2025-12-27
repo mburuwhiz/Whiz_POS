@@ -21,10 +21,8 @@ function App() {
   }));
 
   // Auto-logoff Logic
-  // Trigger idle state after 20 seconds of inactivity.
-  // The AutoLogoutModal will then show a 10-second countdown.
-  // Total inactivity time before logout = 20s + 10s = 30s.
-  const isIdle = useIdle(20e3);
+  // Trigger idle state after 30 seconds of inactivity.
+  const isIdle = useIdle(30e3); // 30 seconds
 
   useEffect(() => {
     const init = async () => {
@@ -112,7 +110,7 @@ function App() {
           <CheckoutModal />
           <OnScreenKeyboard />
 
-          {/* Auto Logoff Warning Modal */}
+          {/* Auto Logoff Warning Modal - Replaced with Prompt */}
           {businessSetup.isLoggedIn && isIdle && (
             <AutoLogoutModal onLogout={logout} />
           )}

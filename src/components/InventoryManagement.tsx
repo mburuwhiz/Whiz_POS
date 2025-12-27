@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { usePosStore } from '../store/posStore';
 import { Product } from '../types';
 import { Package, AlertTriangle, TrendingUp, TrendingDown, Plus, Edit2, Trash2, Search, Filter } from 'lucide-react';
+import cartPlaceholder from '../assets/cart.png';
 
 export default function InventoryManagement() {
   const { products, updateProduct, addProduct, deleteProduct } = usePosStore();
@@ -251,7 +252,7 @@ export default function InventoryManagement() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center space-x-3">
                         <img
-                          src={product.image ? `local-asset://${product.image}` : `assets/cart.svg`}
+                          src={product.image ? `local-asset://${product.image}` : cartPlaceholder}
                           alt={product.name}
                           className="w-10 h-10 object-cover rounded-lg"
                         />
@@ -405,7 +406,7 @@ export default function InventoryManagement() {
 <label className="block text-sm font-medium text-gray-700 mb-2">Product Image</label>
 <div className="flex items-center space-x-4">
   <img
-    src={formData.image ? `local-asset://${formData.image}` : 'assets/cart.svg'}
+    src={formData.image ? `local-asset://${formData.image}` : cartPlaceholder}
     alt="Product Preview"
     className="w-20 h-20 object-cover rounded-lg"
   />

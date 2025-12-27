@@ -7,15 +7,24 @@ import BusinessRegistrationPage from './pages/BusinessRegistrationPage';
 import LoginScreen from './components/LoginScreen';
 import OnScreenKeyboard from './components/OnScreenKeyboard';
 import ErrorBoundary from './components/ErrorBoundary';
-import { useEffect } from 'react';
+import AutoLogoutModal from './components/AutoLogoutModal';
+import { useEffect, useRef } from 'react';
+import { useIdle } from 'react-use';
 
 function App() {
-  const { businessSetup, loadInitialData, autoPrintClosingReport, isDataLoaded } = usePosStore(state => ({
+  const { businessSetup, loadInitialData, autoPrintClosingReport, isDataLoaded, logout } = usePosStore(state => ({
     businessSetup: state.businessSetup,
     loadInitialData: state.loadInitialData,
     autoPrintClosingReport: state.autoPrintClosingReport,
     isDataLoaded: state.isDataLoaded,
+    logout: state.logout
   }));
+
+  // Auto-logoff Logic
+  // Trigger idle state after 20 seconds of inactivity.
+  // The AutoLogoutModal will then show a 10-second countdown.
+  // Total inactivity time before logout = 20s + 10s = 30s.
+  const isIdle = useIdle(20e3);
 
   useEffect(() => {
     const init = async () => {
@@ -102,6 +111,11 @@ function App() {
           {/* Global Modals */}
           <CheckoutModal />
           <OnScreenKeyboard />
+
+          {/* Auto Logoff Warning Modal */}
+          {businessSetup.isLoggedIn && isIdle && (
+            <AutoLogoutModal onLogout={logout} />
+          )}
         </div>
       </Router>
     </ErrorBoundary>

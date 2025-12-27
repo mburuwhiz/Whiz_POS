@@ -1,3 +1,5 @@
+---
+
 <p align="center">
   <img src="./assets/logo.png" width="160" />
 </p>
@@ -10,184 +12,193 @@
 </p>
 
 <p align="center">
-  <a href="#"><img alt="Node" src="https://img.shields.io/badge/Node.js-18%2B-43853D?style=for-the-badge&logo=node.js&logoColor=white"/></a>
-  <a href="#"><img alt="Electron" src="https://img.shields.io/badge/Electron-App-2C2E3B?style=for-the-badge&logo=electron&logoColor=white"/></a>
-  <a href="#"><img alt="MongoDB" src="https://img.shields.io/badge/MongoDB-Database-4DB33D?style=for-the-badge&logo=mongodb&logoColor=white"/></a>
+  <img alt="Node" src="https://img.shields.io/badge/Node.js-18%2B-43853D?style=for-the-badge&logo=node.js&logoColor=white"/>
+  <img alt="Electron" src="https://img.shields.io/badge/Electron-App-2C2E3B?style=for-the-badge&logo=electron&logoColor=white"/>
+  <img alt="MongoDB" src="https://img.shields.io/badge/MongoDB-Database-4DB33D?style=for-the-badge&logo=mongodb&logoColor=white"/>
 </p>
 
 ---
 
 ## 🌟 Overview
 
-**WHIZ POS** is a complete ecosystem designed to streamline business operations for cafés, restaurants, shops, and retail outlets.
-It is **fast**, **beautiful**, **offline-ready**, and **built for real-world business workflows.**
+**WHIZ POS** is a complete POS ecosystem built for real-world business workflows.
+It is **fast**, **offline-ready**, and designed for cafés, restaurants, and retail shops.
 
-The system consists of:
+### System Components
 
-| Component | Tech | Purpose |
-|----------|------|---------|
-| **Desktop POS (Electron/React)** | Electron + React + TypeScript | Fast cashier interface, offline-first transactions, receipt printing |
-| **Back Office Web (Node/Express)** | Node.js + MongoDB + EJS | Business analytics, inventory, expenses, credit management |
-| **Mobile App (Capacitor/React)** | Hybrid Android App | Take orders remotely, sync instantly with POS |
-
----
-
-## 🚀 Features
-
-### 🛒 **Point of Sale**
-- Lightning-fast checkout
-- Cash / M-Pesa / Credit payments
-- Instant receipt printing
-
-### 📦 **Inventory Management**
-- Live stock tracking
-- Automatic low-stock notifications
-- Bulk product management
-
-### 💸 **Expense Tracking**
-- Categorized expenses
-- Daily, weekly & monthly summaries
-
-### 👥 **Credit/Customer Management**
-- Customer credit limits
-- Partial payments
-- Transaction history
-
-### 📊 **Reporting & Analytics**
-- Daily sales
-- Closing summaries
-- Product performance
-
-### 🔌 **Offline-First Sync**
-- POS works 100% offline
-- Auto-sync to Back Office when reconnecting
-
-### 📱 **Mobile Integration**
-- Local API printing
-- Remote order sending
+| Component           | Tech                              | Purpose                                        |
+| ------------------- | --------------------------------- | ---------------------------------------------- |
+| **Desktop POS**     | Electron + React + TypeScript     | Offline-first cashier system, receipt printing |
+| **Back Office Web** | Node.js + Express + MongoDB + EJS | Inventory, analytics, expenses, admin          |
+| **Mobile App**      | Android (APK)                     | Remote order taking & syncing                  |
 
 ---
 
-## 🧱 Architecture Diagram
+## 🚀 Core Features
 
-<details>
-<summary><strong>Click to Expand 🖼️</strong></summary>
+### 🛒 Point of Sale
+
+* Fast checkout
+* Cash / M-Pesa / Credit payments
+* Receipt printing
+
+### 📦 Inventory
+
+* Live stock tracking
+* Low-stock alerts
+* Bulk product updates
+
+### 💸 Expenses
+
+* Category-based expenses
+* Daily / Monthly summaries
+
+### 👥 Customer Credit
+
+* Credit limits
+* Partial payments
+* Transaction history
+
+### 📊 Reports
+
+* Daily sales
+* Closing summaries
+* Product performance
+
+### 🔌 Offline-First
+
+* Works fully offline
+* Auto-sync when internet returns
+
+### 📱 Mobile Integration
+
+* Remote order sending
+* Local printing support
+
+---
+
+## 🧱 Architecture
 
 ```
  ┌───────────────────────┐
  │    Mobile App         │
- │  (Capacitor/React)    │
  └───────────┬───────────┘
              │
              ▼
  ┌───────────────────────┐
- │   Desktop POS (Electron)  
- │   - Offline queueing
- │   - Local JSON store
+ │ Desktop POS (Electron)│
+ │ - Offline queueing    │
  └───────────┬───────────┘
              │ Sync API
              ▼
  ┌────────────────────────┐
- │   Back Office (Node.js)
- │   - MongoDB Database
- │   - API & Dashboard
+ │ Back Office (Node.js)  │
+ │ - MongoDB              │
+ │ - API & Dashboard     │
  └────────────────────────┘
 ```
-
-</details>
 
 ---
 
 ## ⚙️ Installation & Setup
 
-### 📌 Prerequisites
-- Node.js **v18+**
-- MongoDB (Local or Atlas)
+## 📌 Prerequisites
+
+* Node.js **v18+**
+* MongoDB (Local or Atlas)
 
 ---
 
-### 🖥️ **1. Desktop POS Setup**
+## 🌐 Back Office Website Setup
+
+### Installation
 
 ```bash
 git clone <repo>
-npm install
-npm run dev
-```
-
-Starts both Vite (React) and Electron processes.
-
----
-
-### 🌐 **2. Back Office Setup**
-
-```bash
 cd back-office
 npm install
 ```
 
-Create **.env**:
+### Environment Variables
+
+Create `.env` from `.env.example`:
 
 ```env
-PORT=5000
+# Server
+PORT=3000
+
+# Database
 MONGODB_URI=mongodb://localhost:27017/whizpos
-SESSION_SECRET=your_secret_key
-API_KEY=your_secure_api_key
-BUSINESS_NAME=My Business
+
+# Security
+JWT_SECRET=your_secure_random_secret_key
+
+# Downloads
+DOWNLOAD_LINK_WINDOWS=https://example.com/windows-installer.exe
+NEXT_PUBLIC_DOWNLOAD_LINK_APK=https://example.com/mobile-app.apk
+
+# Admin (auto-seeded)
+ADMIN_EMAIL=admin@whizpos.com
+ADMIN_NAME=System Admin
+ADMIN_PASSWORD=secure_password
+NEXT_PUBLIC_ADMIN_PHONE=0740841168
 ```
 
-Start:
+### Run
+
 ```bash
+# Development
+npm run dev
+
+# Production
+npm start
+```
+
+App runs at:
+👉 **[http://localhost:3000](http://localhost:3000)**
+
+---
+
+## 🖥️ Desktop POS Setup
+
+```bash
+cd desktop-pos
+npm install
 npm run dev
 ```
 
----
-
-### 🔗 **3. Connect Desktop POS to Back Office**
-
-1. Open Desktop POS  
-2. Go to **Manage → Devices & Connections**  
-3. Enter Back Office URL + `API_KEY`  
-4. Save  
-5. Run **Sync Local Data to Cloud**
+Runs Electron + React locally.
 
 ---
 
-## 🧑‍💼 Usage Guide
+## 🔗 Connect POS to Back Office
 
-### 🛍️ Processing Sales
-- Tap items → Add to cart  
-- **Checkout → choose payment method**  
-- For credit: choose/add customer  
+1. Open **Desktop POS**
+2. Go to **Manage → Devices & Connections**
+3. Enter:
 
-### 📘 End-of-Day Closing
-- Go to **Closing**  
-- Review totals: Cash, M-Pesa, Credit  
-- Print **Closing Report**  
-
-### 🔄 Synchronization
-- Auto-sync runs in background  
-- If offline → queues locally  
-- Syncs the moment connection is restored  
+   * Back Office URL
+   * API Key
+4. Save and **Sync Local Data**
 
 ---
 
-## 🛠️ Development Notes
+## 🛠️ Tech Stack
 
-| Area | Path |
-|------|------|
-| Electron Main | `electron.cjs` |
-| Preload | `preload.js` |
-| Frontend (React) | `src/` |
-| Back Office (Node) | `back-office/` |
+* **Backend**: Node.js, Express.js
+* **Frontend Web**: EJS, Tailwind CSS (CDN)
+* **Desktop**: Electron, React, TypeScript
+* **Database**: MongoDB, Mongoose
+* **Auth**: JWT, bcryptjs
 
 ---
 
 ## 📄 License
 
-**Proprietary software — Whiz Tech**
+**Proprietary Software — Whiz Tech**
 
-📞 Contact: **0740-841-168**  
-📧 Email: whiz.techke@gmail.com
+📞 Phone: **0740-841-168**
+📧 Email: **[whiz.techke@gmail.com](mailto:whiz.techke@gmail.com)**
 
 ---
 

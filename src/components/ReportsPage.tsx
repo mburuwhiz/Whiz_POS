@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { usePosStore } from '../store/posStore';
 import { BarChart3, TrendingUp, DollarSign, CreditCard, Calendar, Download, Filter } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export default function ReportsPage() {
-  const { transactions, expenses, getDailySales, getTransactionsByDateRange, setCurrentPage } = usePosStore();
+  const { transactions, expenses, getDailySales, getTransactionsByDateRange, setCurrentPage, businessSetup } = usePosStore();
   const [dateRange, setDateRange] = useState({
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date().toISOString().split('T')[0]
@@ -70,24 +72,83 @@ export default function ReportsPage() {
   }, [filteredTransactions]);
 
   const downloadReport = () => {
-    const reportData = {
-      dateRange,
-      reportType,
-      generatedAt: new Date().toISOString(),
-      data: reportType === 'sales' ? salesSummary : 
-             reportType === 'expenses' ? filteredExpenses : 
-             { topProducts }
-    };
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.width;
+    const businessName = businessSetup?.businessName || 'Whiz POS';
+    const reportTitle = `${reportType.charAt(0).toUpperCase() + reportType.slice(1)} Report`;
+    const fileName = `whiz-pos-report-${reportType}-${dateRange.startDate}.pdf`;
 
-    const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `whiz-pos-report-${reportType}-${dateRange.startDate}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    // Header
+    doc.setFontSize(20);
+    doc.text(businessName, pageWidth / 2, 15, { align: 'center' });
+    doc.setFontSize(14);
+    doc.text(reportTitle, pageWidth / 2, 25, { align: 'center' });
+    doc.setFontSize(10);
+    doc.text(`Date Range: ${dateRange.startDate} to ${dateRange.endDate}`, pageWidth / 2, 32, { align: 'center' });
+    doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth / 2, 37, { align: 'center' });
+
+    let yPos = 45;
+
+    // Summary Section for Sales Report
+    if (reportType === 'sales') {
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Summary Metric', 'Amount']],
+        body: [
+          ['Total Sales', `KES ${salesSummary.totalSales.toFixed(2)}`],
+          ['Cash Sales', `KES ${salesSummary.cash.toFixed(2)}`],
+          ['M-Pesa Sales', `KES ${salesSummary.mpesa.toFixed(2)}`],
+          ['Credit Sales', `KES ${salesSummary.credit.toFixed(2)}`],
+          ['Total Expenses', `KES ${salesSummary.totalExpenses.toFixed(2)}`],
+          ['Net Profit', `KES ${salesSummary.netProfit.toFixed(2)}`],
+          ['Transaction Count', salesSummary.transactionCount.toString()],
+        ],
+        theme: 'striped',
+        headStyles: { fillColor: [66, 66, 66] },
+      });
+      yPos = (doc as any).lastAutoTable.finalY + 10;
+    }
+
+    // Main Data Table
+    if (reportType === 'sales') {
+      doc.text("Detailed Transactions", 14, yPos);
+      yPos += 5;
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Time', 'Cashier', 'Method', 'Total', 'Items']],
+        body: filteredTransactions.map(t => [
+          new Date(t.timestamp).toLocaleTimeString(),
+          t.cashier,
+          t.paymentMethod,
+          t.total.toFixed(2),
+          t.items.length
+        ]),
+        theme: 'striped',
+        headStyles: { fillColor: [41, 128, 185] },
+      });
+    } else if (reportType === 'expenses') {
+      doc.text("Detailed Expenses", 14, yPos);
+      yPos += 5;
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Time', 'Description', 'Category', 'Amount', 'By']],
+        body: filteredExpenses.map(e => [
+          new Date(e.timestamp || '').toLocaleDateString() + ' ' + new Date(e.timestamp || '').toLocaleTimeString(),
+          e.description,
+          e.category,
+          e.amount.toFixed(2),
+          e.cashier || 'N/A'
+        ]),
+        theme: 'striped',
+        headStyles: { fillColor: [192, 57, 43] },
+      });
+    } else if (reportType === 'credits') {
+      // Logic for Credit Report PDF if needed, but 'credits' reportType was just an option in select
+      // For now, reuse sales logic or implement credit specific table
+       doc.text("Credit Report implementation pending for PDF", 14, yPos);
+    }
+
+    doc.save(fileName);
   };
 
   return (
@@ -110,7 +171,7 @@ export default function ReportsPage() {
               className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
               <Download className="w-4 h-4" />
-              <span>Export Report</span>
+              <span>Export PDF Report</span>
             </button>
           </div>
         </div>

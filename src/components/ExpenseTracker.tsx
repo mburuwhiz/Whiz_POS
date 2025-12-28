@@ -8,6 +8,7 @@ export default function ExpenseTracker() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [quickAddAmount, setQuickAddAmount] = useState('');
   const [formData, setFormData] = useState({
     description: '',
     amount: '',
@@ -42,7 +43,7 @@ export default function ExpenseTracker() {
   })).filter(cat => cat.total > 0);
 
   const todayExpenses = expenses.filter(expense => 
-    (expense.timestamp || '').startsWith(new Date().toISOString().split('T')[0])
+    (expense.timestamp || '').startsWith(new Date().toLocaleDateString('en-CA')) // Use local date
   );
 
   const todayTotal = todayExpenses.reduce((sum, expense) => sum + expense.amount, 0);
@@ -68,6 +69,22 @@ export default function ExpenseTracker() {
       receipt: ''
     });
     setShowAddForm(false);
+  };
+
+  const handleQuickAdd = () => {
+    if (!quickAddAmount || !currentCashier) return;
+
+    const expense: Expense = {
+        id: `EXP${Date.now()}`,
+        description: 'Quick Expense',
+        amount: parseFloat(quickAddAmount),
+        category: 'other', // Default category for quick add
+        timestamp: new Date().toISOString(),
+        cashier: currentCashier.name
+    };
+
+    saveExpense(expense);
+    setQuickAddAmount('');
   };
 
   return (
@@ -100,6 +117,27 @@ export default function ExpenseTracker() {
       </div>
 
       <div className="container mx-auto px-4 py-6">
+        {/* Quick Add Section */}
+        <div className="bg-white rounded-lg shadow p-4 mb-6">
+             <h3 className="text-sm font-semibold text-gray-700 mb-2">Quick Add Expense (Amount Only)</h3>
+             <div className="flex gap-2">
+                 <input
+                    type="number"
+                    value={quickAddAmount}
+                    onChange={(e) => setQuickAddAmount(e.target.value)}
+                    placeholder="Enter amount"
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                 />
+                 <button
+                    onClick={handleQuickAdd}
+                    disabled={!quickAddAmount}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400"
+                 >
+                    Quick Add
+                 </button>
+             </div>
+        </div>
+
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div className="bg-white rounded-lg shadow p-6">

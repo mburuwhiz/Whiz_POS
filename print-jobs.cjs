@@ -54,9 +54,6 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
     if (paymentMethod === 'CREDIT' && transaction.creditCustomer) {
         customerName = transaction.creditCustomer;
     }
-    // If user specifically requested actual names for M-Pesa/Cash, they are usually N/A
-    // But if we wanted to support it, we'd need a customer field on transaction.
-    // For now, adhere to "Walk Through Customer" for Cash/Mpesa vs Actual for Credit.
     template = template.replace('{{customer}}', customerName);
 
     template = template.replace('{{paymentMethod}}', paymentMethod);
@@ -87,12 +84,10 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
     let mpesaDetailsHtml = '';
     let details = [];
 
-    // Check if Paybill details are present in business setup
     if (businessSetup?.mpesaPaybill) {
         details.push(`<p>Paybill No: <b>${businessSetup.mpesaPaybill}</b> | A/C No: <b>${businessSetup.mpesaAccountNumber || 'Business No'}</b></p>`);
     }
 
-    // Check if Till details are present in business setup
     if (businessSetup?.mpesaTill) {
         details.push(`<p style="text-align: center;">Pay By Till : <b>${businessSetup.mpesaTill}</b></p>`);
     }
@@ -115,9 +110,10 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
  *
  * @param {ClosingReportData} reportData - The aggregated report data.
  * @param {BusinessSetup} businessSetup - The business configuration.
+ * @param {boolean} detailed - Whether to include detailed transactions/expenses.
  * @returns {Promise<string>} The populated HTML string.
  */
-async function generateClosingReport(reportData, businessSetup) {
+async function generateClosingReport(reportData, businessSetup, detailed = true) {
     const templatePath = app.isPackaged
       ? path.join(app.getAppPath(), 'closing-report-template.html')
       : path.join(__dirname, 'closing-report-template.html');
@@ -132,7 +128,8 @@ async function generateClosingReport(reportData, businessSetup) {
     template = template.replace('{{totalCredit}}', `Ksh. ${(reportData.totalCredit || 0).toFixed(2)}`);
     template = template.replace('{{grandTotal}}', `Ksh. ${(reportData.grandTotal || 0).toFixed(2)}`);
 
-    const cashierReportsHtml = reportData.cashiers.map(cashier => {
+    // If detailed report is requested, generate cashier breakdowns. Otherwise empty string.
+    const cashierReportsHtml = detailed ? reportData.cashiers.map(cashier => {
         let creditTransactionsHtml = '';
         if (cashier.creditTransactions.length > 0) {
             creditTransactionsHtml = `
@@ -165,7 +162,8 @@ async function generateClosingReport(reportData, businessSetup) {
                 ${creditTransactionsHtml}
             </div>
         `;
-    }).join('');
+    }).join('') : '';
+
     template = template.replace('{{cashierReports}}', cashierReportsHtml);
 
     return template;

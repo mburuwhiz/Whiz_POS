@@ -1,12 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { usePosStore } from '../store/posStore';
-import { CreditCustomer } from '../store/posStore'; // Import from store directly
-import { Users, Phone, DollarSign, CheckCircle, Clock, Search, Plus, Edit, Trash2 } from 'lucide-react';
+import { CreditCustomer, CreditPayment, Transaction } from '../store/posStore';
+import { Users, Phone, DollarSign, CheckCircle, Clock, Search, Plus, Edit, Trash2, History, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 
 export default function CreditCustomersPage() {
   const { 
     creditCustomers, 
-    transactions, 
+    transactions,
+    creditPayments,
     setCurrentPage, 
     saveCreditCustomer, 
     updateCreditCustomer,
@@ -18,6 +19,7 @@ export default function CreditCustomersPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<CreditCustomer | null>(null);
+  const [historyCustomer, setHistoryCustomer] = useState<CreditCustomer | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -37,6 +39,27 @@ export default function CreditCustomersPage() {
   const totalUnpaid = useMemo(() => {
     return unpaidCredits.reduce((sum, customer) => sum + (customer.balance || 0), 0);
   }, [unpaidCredits]);
+
+  // Calculate daily summary
+  const dailyCreditSummary = useMemo(() => {
+      const today = new Date().toLocaleDateString('en-CA');
+
+      const newCredits = transactions.filter(t =>
+          new Date(t.timestamp).toLocaleDateString('en-CA') === today &&
+          t.paymentMethod === 'credit'
+      );
+      const newCreditTotal = newCredits.reduce((sum, t) => sum + t.total, 0);
+
+      const paymentsToday = creditPayments.filter(p =>
+          new Date(p.date).toLocaleDateString('en-CA') === today
+      );
+      const paymentsTotal = paymentsToday.reduce((sum, p) => sum + p.amount, 0);
+
+      return {
+          newCredit: newCreditTotal,
+          paidToday: paymentsTotal
+      };
+  }, [transactions, creditPayments]);
 
   const handleAddCustomer = () => {
     if (!formData.name.trim()) return;
@@ -97,6 +120,28 @@ export default function CreditCustomersPage() {
     return transactions.filter(t => customer.transactions.includes(t.id));
   };
 
+  const getCustomerHistory = (customer: CreditCustomer) => {
+      const sales = transactions.filter(t =>
+          (t.paymentMethod === 'credit' && t.creditCustomer === customer.name) ||
+          customer.transactions.includes(t.id)
+      ).map(t => ({
+          type: 'sale',
+          date: t.timestamp,
+          amount: t.total,
+          id: t.id
+      }));
+
+      const payments = creditPayments.filter(p => p.customerId === customer.id)
+          .map(p => ({
+              type: 'payment',
+              date: p.date,
+              amount: p.amount,
+              id: p.id
+          }));
+
+      return [...sales, ...payments].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
@@ -128,7 +173,7 @@ export default function CreditCustomersPage() {
 
       <div className="container mx-auto px-4 py-6">
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -152,10 +197,23 @@ export default function CreditCustomersPage() {
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Unpaid</p>
+                <p className="text-sm text-gray-600">Total Outstanding</p>
                 <p className="text-2xl font-bold text-gray-800">KES {totalUnpaid.toFixed(2)}</p>
               </div>
               <DollarSign className="w-8 h-8 text-red-500" />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center justify-between">
+                <div>
+                    <p className="text-sm text-gray-600">Today's Activity</p>
+                    <div className="text-xs">
+                        <p className="text-purple-600">Issued: +{dailyCreditSummary.newCredit.toFixed(0)}</p>
+                        <p className="text-green-600">Paid: -{dailyCreditSummary.paidToday.toFixed(0)}</p>
+                    </div>
+                </div>
+                <History className="w-8 h-8 text-purple-500" />
             </div>
           </div>
         </div>
@@ -247,6 +305,13 @@ export default function CreditCustomersPage() {
                             Pay
                           </button>
                         )}
+                        <button
+                            onClick={() => setHistoryCustomer(customer)}
+                            className="text-gray-600 hover:text-gray-800"
+                            title="View History"
+                        >
+                            <History className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => handleEditCustomer(customer)}
                           className="text-blue-600 hover:text-blue-800"
@@ -341,6 +406,67 @@ export default function CreditCustomersPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* History Modal */}
+      {historyCustomer && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[80vh] flex flex-col">
+                  <div className="p-6 border-b flex justify-between items-center">
+                      <h3 className="text-xl font-bold text-gray-800">{historyCustomer.name} - Transaction History</h3>
+                      <button onClick={() => setHistoryCustomer(null)} className="text-gray-500 hover:text-gray-700">
+                          <span className="text-2xl">&times;</span>
+                      </button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-6">
+                      <table className="w-full text-left">
+                          <thead>
+                              <tr className="border-b text-gray-500 text-sm">
+                                  <th className="py-2">Date</th>
+                                  <th className="py-2">Type</th>
+                                  <th className="py-2 text-right">Amount</th>
+                              </tr>
+                          </thead>
+                          <tbody>
+                              {getCustomerHistory(historyCustomer).map((item, index) => (
+                                  <tr key={index} className="border-b last:border-0 hover:bg-gray-50">
+                                      <td className="py-3">
+                                          <div className="text-sm font-medium">{new Date(item.date).toLocaleDateString()}</div>
+                                          <div className="text-xs text-gray-500">{new Date(item.date).toLocaleTimeString()}</div>
+                                      </td>
+                                      <td className="py-3">
+                                          <div className="flex items-center gap-2">
+                                              {item.type === 'sale' ? (
+                                                  <ArrowUpRight className="w-4 h-4 text-red-500" />
+                                              ) : (
+                                                  <ArrowDownLeft className="w-4 h-4 text-green-500" />
+                                              )}
+                                              <span className={item.type === 'sale' ? 'text-red-600 capitalize' : 'text-green-600 capitalize'}>
+                                                  {item.type}
+                                              </span>
+                                          </div>
+                                      </td>
+                                      <td className={`py-3 text-right font-bold ${item.type === 'sale' ? 'text-red-600' : 'text-green-600'}`}>
+                                          {item.type === 'sale' ? '-' : '+'} KES {item.amount.toFixed(2)}
+                                      </td>
+                                  </tr>
+                              ))}
+                              {getCustomerHistory(historyCustomer).length === 0 && (
+                                  <tr>
+                                      <td colSpan={3} className="py-4 text-center text-gray-500">No history found</td>
+                                  </tr>
+                              )}
+                          </tbody>
+                      </table>
+                  </div>
+                  <div className="p-4 bg-gray-50 border-t flex justify-between items-center">
+                      <span className="font-medium text-gray-600">Current Balance:</span>
+                      <span className={`text-xl font-bold ${historyCustomer.balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                          KES {historyCustomer.balance.toFixed(2)}
+                      </span>
+                  </div>
+              </div>
+          </div>
       )}
     </div>
   );

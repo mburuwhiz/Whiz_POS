@@ -1,0 +1,23 @@
+
+> whiz-pos@5.2.0 dev:vite
+> vite --port 5174
+
+Port 5174 is in use, trying another one...
+
+  VITE v4.5.14  ready in 334 ms
+
+  ➜  Local:   http://localhost:5175/
+  ➜  Network: use --host to expose
+10:23:37 AM [vite] hmr update /src/components/ExpenseTracker.tsx, /src/index.css
+10:24:22 AM [vite] hmr update /src/components/DailyClosingScreen.tsx, /src/index.css
+10:24:58 AM [vite] hmr update /src/components/Navigation.tsx, /src/index.css
+10:25:31 AM [vite] hmr update /src/components/PreviousReceiptsPage.tsx, /src/index.css
+10:27:19 AM [vite] hmr update /src/App.tsx, /src/index.css, /src/pages/MainNavigator.tsx, /src/components/CheckoutModal.tsx, /src/components/LoginScreen.tsx, /src/components/OnScreenKeyboard.tsx, /src/components/CreditCustomerModal.tsx, /src/components/ProductGrid.tsx, /src/components/OrderArea.tsx, /src/components/CreditCustomersPage.tsx, /src/components/ReportsPage.tsx, /src/components/DailyClosingScreen.tsx, /src/components/SettingsPage.tsx, /src/components/ExpenseTracker.tsx, /src/components/Dashboard.tsx, /src/components/InventoryManagement.tsx, /src/components/LoyaltyProgram.tsx, /src/components/BarcodeScanner.tsx, /src/components/OfflineSyncStatus.tsx, /src/components/PreviousReceiptsPage.tsx, /src/pages/MobileReceiptsPage.tsx, /src/pages/SalariesPage.tsx, /src/pages/DeveloperPage.tsx, /src/components/BusinessRegistration.tsx, /src/components/Navigation.tsx, /src/components/Header.tsx, /src/components/BackOfficeDashboard.tsx
+10:28:05 AM [vite] hmr update /src/components/CreditCustomersPage.tsx, /src/index.css
+10:32:15 AM [vite] hmr update /src/components/Dashboard.tsx, /src/index.css
+10:33:13 AM [vite] hmr update /src/components/DailyClosingScreen.tsx, /src/index.css
+10:49:17 AM [vite] hmr update /src/App.tsx, /src/index.css, /src/pages/MainNavigator.tsx, /src/components/CheckoutModal.tsx, /src/components/LoginScreen.tsx, /src/components/OnScreenKeyboard.tsx, /src/components/CreditCustomerModal.tsx, /src/components/ProductGrid.tsx, /src/components/OrderArea.tsx, /src/components/CreditCustomersPage.tsx, /src/components/ReportsPage.tsx, /src/components/DailyClosingScreen.tsx, /src/components/SettingsPage.tsx, /src/components/ExpenseTracker.tsx, /src/components/Dashboard.tsx, /src/components/InventoryManagement.tsx, /src/components/LoyaltyProgram.tsx, /src/components/BarcodeScanner.tsx, /src/components/OfflineSyncStatus.tsx, /src/components/PreviousReceiptsPage.tsx, /src/pages/MobileReceiptsPage.tsx, /src/pages/SalariesPage.tsx, /src/pages/DeveloperPage.tsx, /src/components/BusinessRegistration.tsx, /src/components/Navigation.tsx, /src/components/Header.tsx, /src/components/BackOfficeDashboard.tsx
+10:49:46 AM [vite] hmr update /src/components/CreditCustomersPage.tsx, /src/index.css
+10:50:44 AM [vite] hmr update /src/components/InventoryManagement.tsx, /src/index.css
+10:56:10 AM [vite] hmr update /src/components/DailyClosingScreen.tsx, /src/index.css
+10:57:40 AM [vite] hmr update /src/App.tsx, /src/index.css, /src/pages/MainNavigator.tsx, /src/components/CheckoutModal.tsx, /src/components/LoginScreen.tsx, /src/components/OnScreenKeyboard.tsx, /src/components/CreditCustomerModal.tsx, /src/components/ProductGrid.tsx, /src/components/OrderArea.tsx, /src/components/CreditCustomersPage.tsx, /src/components/ReportsPage.tsx, /src/components/DailyClosingScreen.tsx, /src/components/SettingsPage.tsx, /src/components/ExpenseTracker.tsx, /src/components/Dashboard.tsx, /src/components/InventoryManagement.tsx, /src/components/LoyaltyProgram.tsx, /src/components/BarcodeScanner.tsx, /src/components/OfflineSyncStatus.tsx, /src/components/PreviousReceiptsPage.tsx, /src/pages/MobileReceiptsPage.tsx, /src/pages/SalariesPage.tsx, /src/pages/DeveloperPage.tsx, /src/components/BusinessRegistration.tsx, /src/components/Navigation.tsx, /src/components/Header.tsx, /src/components/BackOfficeDashboard.tsx

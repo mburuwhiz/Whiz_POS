@@ -5,8 +5,16 @@ import { Calendar, Printer, Download, User, Hash, Clock, CreditCard as CreditCar
 export default function DailyClosingScreen() {
   const { getDailyClosingReport, setCurrentPage, businessSetup } = usePosStore();
   
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(new Date().toLocaleDateString('en-CA'));
   const [report, setReport] = useState<ClosingReportData | null>(null);
+  const [showDetailed, setShowDetailed] = useState(true);
+
+  // Cash Reconciliation State
+  const [cashDenominations, setCashDenominations] = useState({
+      '1000': 0, '500': 0, '200': 0, '100': 0, '50': 0, '40': 0, '20': 0, '10': 0, '5': 0, '1': 0
+  });
+  const [mpesaTotalInput, setMpesaTotalInput] = useState('');
+  const [reconciliationVisible, setReconciliationVisible] = useState(false);
 
   useEffect(() => {
     const generatedReport = getDailyClosingReport(selectedDate);
@@ -15,8 +23,19 @@ export default function DailyClosingScreen() {
 
   const handlePrint = () => {
     if (report && businessSetup && window.electron) {
-      window.electron.printClosingReport(report, businessSetup);
+        window.electron.printClosingReport(report, businessSetup, showDetailed);
     }
+  };
+
+  const calculateCashTotal = () => {
+      return Object.entries(cashDenominations).reduce((sum, [denom, count]) => {
+          return sum + (parseInt(denom) * count);
+      }, 0);
+  };
+
+  const handleDenominationChange = (denom: string, value: string) => {
+      const count = parseInt(value) || 0;
+      setCashDenominations(prev => ({ ...prev, [denom]: count }));
   };
 
   if (!report) {
@@ -26,6 +45,14 @@ export default function DailyClosingScreen() {
       </div>
     );
   }
+
+  const calculatedCash = calculateCashTotal();
+  const systemCash = report.totalCash;
+  const cashDifference = calculatedCash - systemCash;
+
+  const enteredMpesa = parseFloat(mpesaTotalInput) || 0;
+  const systemMpesa = report.totalMpesa;
+  const mpesaDifference = enteredMpesa - systemMpesa;
 
   return (
     <div className="p-4 sm:p-6 bg-gray-100 min-h-screen">
@@ -39,13 +66,29 @@ export default function DailyClosingScreen() {
               </button>
               <h1 className="text-2xl font-bold text-gray-800">Closing Report</h1>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                  <label className="text-sm font-medium text-gray-700">Detailed Report</label>
+                  <input
+                    type="checkbox"
+                    checked={showDetailed}
+                    onChange={(e) => setShowDetailed(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                  />
+              </div>
               <input
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+              <button
+                 onClick={() => setReconciliationVisible(!reconciliationVisible)}
+                 className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+              >
+                  <Briefcase size={18} />
+                  <span>{reconciliationVisible ? 'Hide Rec.' : 'Reconcile'}</span>
+              </button>
               <button
                 onClick={handlePrint}
                 className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -57,6 +100,90 @@ export default function DailyClosingScreen() {
           </div>
         </div>
 
+        {/* Reconciliation Section */}
+        {reconciliationVisible && (
+            <div className="bg-white p-6 rounded-lg shadow-lg mb-6 border border-purple-200">
+                <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Cashier Reconciliation</h2>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* Cash Notes & Coins */}
+                    <div>
+                        <h3 className="font-semibold text-gray-700 mb-3">Cash Breakdown</h3>
+                        <div className="grid grid-cols-2 gap-4">
+                            {['1000', '500', '200', '100', '50', '40', '20', '10', '5', '1'].map((denom) => (
+                                <div key={denom} className="flex items-center space-x-2">
+                                    <span className="w-12 text-sm font-medium text-gray-600">{denom}</span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        placeholder="0"
+                                        className="w-full px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-purple-500"
+                                        value={cashDenominations[denom as keyof typeof cashDenominations] || ''}
+                                        onChange={(e) => handleDenominationChange(denom, e.target.value)}
+                                    />
+                                    <span className="w-16 text-xs text-gray-500 text-right">
+                                        {(parseInt(denom) * (cashDenominations[denom as keyof typeof cashDenominations] || 0)).toLocaleString()}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="mt-4 pt-2 border-t flex justify-between items-center font-bold">
+                            <span>Total Counted Cash:</span>
+                            <span className="text-lg">Ksh {calculatedCash.toLocaleString()}</span>
+                        </div>
+                    </div>
+
+                    {/* Summary & Differences */}
+                    <div>
+                         <h3 className="font-semibold text-gray-700 mb-3">Reconciliation Summary</h3>
+
+                         <div className="space-y-4">
+                             <div className="bg-gray-50 p-4 rounded-lg">
+                                 <div className="flex justify-between mb-2">
+                                     <span className="text-gray-600">System Expected Cash:</span>
+                                     <span className="font-semibold">Ksh {systemCash.toLocaleString()}</span>
+                                 </div>
+                                 <div className="flex justify-between mb-2">
+                                     <span className="text-gray-600">Actual Counted Cash:</span>
+                                     <span className="font-semibold text-blue-600">Ksh {calculatedCash.toLocaleString()}</span>
+                                 </div>
+                                 <div className="flex justify-between pt-2 border-t">
+                                     <span className="font-bold text-gray-800">Difference:</span>
+                                     <span className={`font-bold ${cashDifference >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                         {cashDifference > 0 ? '+' : ''}{cashDifference.toLocaleString()}
+                                     </span>
+                                 </div>
+                             </div>
+
+                             <div className="bg-gray-50 p-4 rounded-lg">
+                                 <h4 className="text-sm font-semibold text-gray-700 mb-2">M-Pesa Verification</h4>
+                                 <div className="flex items-center space-x-2 mb-2">
+                                     <span className="text-sm text-gray-600 w-24">Entered Total:</span>
+                                     <input
+                                        type="number"
+                                        className="flex-1 px-2 py-1 border border-gray-300 rounded"
+                                        placeholder="Enter M-Pesa Total"
+                                        value={mpesaTotalInput}
+                                        onChange={(e) => setMpesaTotalInput(e.target.value)}
+                                     />
+                                 </div>
+                                 <div className="flex justify-between mb-2">
+                                     <span className="text-gray-600">System Expected:</span>
+                                     <span className="font-semibold">Ksh {systemMpesa.toLocaleString()}</span>
+                                 </div>
+                                 <div className="flex justify-between pt-2 border-t">
+                                     <span className="font-bold text-gray-800">Difference:</span>
+                                     <span className={`font-bold ${mpesaDifference >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                         {mpesaDifference > 0 ? '+' : ''}{mpesaDifference.toLocaleString()}
+                                     </span>
+                                 </div>
+                             </div>
+                         </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
         {/* Report Content */}
         <div className="bg-white p-6 sm:p-8 rounded-lg shadow-lg printable-area">
           {/* Report Header */}
@@ -65,8 +192,8 @@ export default function DailyClosingScreen() {
             <p className="text-gray-600">End of Day Report for {new Date(selectedDate).toDateString()}</p>
           </div>
 
-          {/* Cashier Breakdown */}
-          {report.cashiers.map((cashier) => (
+          {/* Cashier Breakdown - Conditionally Rendered */}
+          {showDetailed && report.cashiers.map((cashier) => (
             <div key={cashier.cashierName} className="mb-8 last:mb-0">
               <div className="bg-gray-50 p-4 rounded-lg mb-4">
                 <h3 className="text-xl font-semibold flex items-center">

@@ -32,7 +32,7 @@ declare global {
       /**
        * Prints the daily closing report.
        */
-      printClosingReport: (reportData: ClosingReportData, businessSetup: BusinessSetup) => void;
+      printClosingReport: (reportData: ClosingReportData, businessSetup: BusinessSetup, detailed?: boolean) => void;
 
       /**
        * Prints the initial business setup sheet.
@@ -147,6 +147,15 @@ export interface CreditCustomer {
   lastUpdated: string;
 }
 
+// New Interface for Payment History
+export interface CreditPayment {
+    id: string;
+    customerId: string;
+    amount: number;
+    date: string;
+    cashierId?: string;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -203,6 +212,7 @@ export interface BusinessSetup {
   mpesaAccountNumber: string;
   tax: number;
   subtotal: number;
+  locationName?: string;
 }
 
 export interface CreditTransaction {
@@ -230,12 +240,26 @@ export interface ClosingReportData {
   totalCredit: number;
 }
 
+export interface InventoryLog {
+    id: string;
+    productId: number;
+    productName: string;
+    oldStock: number;
+    newStock: number;
+    variance: number;
+    cashierName: string;
+    timestamp: string;
+    reason?: string;
+}
+
 interface PosState {
   // Data
   products: Product[];
   cart: CartItem[];
   transactions: Transaction[];
   creditCustomers: CreditCustomer[];
+  creditPayments: CreditPayment[];
+  inventoryLogs: InventoryLog[];
   users: User[];
   expenses: Expense[];
   salaries: Salary[];
@@ -287,6 +311,7 @@ interface PosState {
 
   completeTransaction: (paymentMethod: 'cash' | 'mpesa' | 'credit', creditCustomer?: string) => void;
   reprintTransaction: (transactionId: string) => void;
+  reverseTransaction: (transactionId: string) => void;
   saveTransaction: (transaction: Transaction) => void;
   saveCreditCustomer: (customer: CreditCustomer) => void;
   updateCreditCustomer: (id: string, updates: Partial<CreditCustomer>) => void;
@@ -329,6 +354,8 @@ interface PosState {
   autoPrintClosingReport: () => void;
   finishSetup: (businessData: Omit<BusinessSetup, 'createdAt'>, adminUser: Omit<User, 'createdAt' | 'isActive'>) => Promise<void>;
   pushDataToServer: () => Promise<void>;
+  addCreditPayment: (customerId: string, amount: number) => void;
+  addInventoryLog: (log: InventoryLog) => void;
 }
 
 /**
@@ -344,6 +371,8 @@ export const usePosStore = create<PosState>()(
       cart: [],
       transactions: [],
       creditCustomers: [],
+      creditPayments: [],
+      inventoryLogs: [],
       users: [],
       expenses: [],
       salaries: [],
@@ -512,6 +541,17 @@ export const usePosStore = create<PosState>()(
         state.saveTransaction(transaction);
         state.addToSyncQueue({ type: 'new-transaction', data: transaction });
 
+        // Update Stock
+        transaction.items.forEach(item => {
+           if (item.product.id) {
+               // Decrease local stock if managed
+               const product = state.products.find(p => p.id === item.product.id);
+               if (product && typeof product.stock === 'number') {
+                   state.updateProduct(product.id, { stock: Math.max(0, product.stock - item.quantity) });
+               }
+           }
+        });
+
         // Handle credit customer
         if (paymentMethod === 'credit' && creditCustomerName) {
             const existingCustomer = state.creditCustomers.find(c => c.name === creditCustomerName);
@@ -559,6 +599,58 @@ export const usePosStore = create<PosState>()(
         }
       },
 
+      reverseTransaction: (transactionId) => {
+         set((state) => {
+             const transaction = state.transactions.find(t => t.id === transactionId);
+             if (!transaction) return {};
+
+             const updatedTransactions = state.transactions.filter(t => t.id !== transactionId);
+
+             // Re-map products to restore stock
+             const updatedProducts = state.products.map(p => {
+                 const item = transaction.items.find(i => i.product.id === p.id);
+                 if (item) {
+                     return { ...p, stock: (p.stock || 0) + item.quantity };
+                 }
+                 return p;
+             });
+
+             // Handle Credit Reversal if applicable
+             let updatedCreditCustomers = state.creditCustomers;
+             if (transaction.paymentMethod === 'credit' && transaction.creditCustomer) {
+                 updatedCreditCustomers = state.creditCustomers.map(c => {
+                     if (c.name === transaction.creditCustomer) {
+                         return {
+                             ...c,
+                             totalCredit: Math.max(0, (c.totalCredit || 0) - transaction.total),
+                             balance: Math.max(0, (c.balance || 0) - transaction.total),
+                             transactions: c.transactions.filter(tid => tid !== transactionId),
+                             lastUpdated: new Date().toISOString()
+                         };
+                     }
+                     return c;
+                 });
+             }
+
+             // Save changes
+             saveDataToFile('transactions.json', updatedTransactions);
+             saveDataToFile('products.json', updatedProducts);
+             saveDataToFile('credit-customers.json', updatedCreditCustomers);
+
+             // Sync deletion/updates
+             state.addToSyncQueue({ type: 'delete-transaction', data: { id: transactionId } });
+             transaction.items.forEach(item => {
+                 state.addToSyncQueue({ type: 'update-product', data: { id: item.product.id, updates: { stock: (item.product.stock || 0) + item.quantity } } });
+             });
+
+             return {
+                 transactions: updatedTransactions,
+                 products: updatedProducts,
+                 creditCustomers: updatedCreditCustomers
+             };
+         });
+      },
+
       saveTransaction: (transaction) => {
         set((state) => {
           const updatedTransactions = [transaction, ...state.transactions];
@@ -588,17 +680,47 @@ export const usePosStore = create<PosState>()(
       },
 
       addCreditPayment: (customerId: string, amount: number) => {
-        const state = get();
-        const customer = state.creditCustomers.find(c => c.id === customerId);
-        if (!customer) return;
+        set((state) => {
+            const customer = state.creditCustomers.find(c => c.id === customerId);
+            if (!customer) return {};
 
-        const newPaidAmount = (customer.paidAmount || 0) + amount;
-        const newBalance = (customer.balance || 0) - amount;
+            const newPaidAmount = (customer.paidAmount || 0) + amount;
+            const newBalance = (customer.balance || 0) - amount;
 
-        state.updateCreditCustomer(customerId, {
-            paidAmount: newPaidAmount,
-            balance: Math.max(0, newBalance), // Ensure balance doesn't go negative
+            const payment: CreditPayment = {
+                id: `CP${Date.now()}`,
+                customerId,
+                amount,
+                date: new Date().toISOString(),
+                cashierId: state.currentCashier?.id
+            };
+
+            const updatedPayments = [...state.creditPayments, payment];
+            saveDataToFile('credit-payments.json', updatedPayments);
+            state.addToSyncQueue({ type: 'add-credit-payment', data: payment });
+
+            const updatedCustomers = state.creditCustomers.map(c =>
+                c.id === customerId
+                ? { ...c, paidAmount: newPaidAmount, balance: Math.max(0, newBalance) }
+                : c
+            );
+            saveDataToFile('credit-customers.json', updatedCustomers);
+            state.addToSyncQueue({ type: 'update-credit-customer', data: { id: customerId, updates: { paidAmount: newPaidAmount, balance: newBalance } } });
+
+            return {
+                creditPayments: updatedPayments,
+                creditCustomers: updatedCustomers
+            };
         });
+      },
+
+      addInventoryLog: (log: InventoryLog) => {
+          set((state) => {
+              const updatedLogs = [log, ...state.inventoryLogs];
+              saveDataToFile('inventory-logs.json', updatedLogs);
+              state.addToSyncQueue({ type: 'add-inventory-log', data: log });
+              return { inventoryLogs: updatedLogs };
+          });
       },
 
       deleteCreditCustomer: (id) => {
@@ -808,6 +930,9 @@ export const usePosStore = create<PosState>()(
           const newExpenses = mergeData(state.expenses, serverData.expenses || []);
           const newSalaries = mergeData(state.salaries, serverData.salaries || []);
           const newCreditCustomers = mergeData(state.creditCustomers, serverData.creditCustomers || []);
+
+          // Assuming we don't sync back logs/payments for now unless model updated,
+          // but keeping local state safe.
 
           let newBusinessSetup = state.businessSetup;
           if (serverData.businessSetup) {
@@ -1125,14 +1250,16 @@ export const usePosStore = create<PosState>()(
               set({ businessSetup: prefillSetup });
           }
 
-          const fileNames = ['products.json', 'users.json', 'transactions.json', 'credit-customers.json', 'expenses.json', 'salaries.json'];
+          const fileNames = ['products.json', 'users.json', 'transactions.json', 'credit-customers.json', 'expenses.json', 'salaries.json', 'credit-payments.json', 'inventory-logs.json'];
           const dataMap = {
             'products.json': 'products',
             'users.json': 'users',
             'transactions.json': 'transactions',
             'credit-customers.json': 'creditCustomers',
             'expenses.json': 'expenses',
-            'salaries.json': 'salaries'
+            'salaries.json': 'salaries',
+            'credit-payments.json': 'creditPayments',
+            'inventory-logs.json': 'inventoryLogs'
           };
 
           for (const fileName of fileNames) {
@@ -1291,6 +1418,8 @@ export const usePosStore = create<PosState>()(
         currentCashier: state.currentCashier,
         transactions: state.transactions ? state.transactions.slice(-100) : [],
         creditCustomers: state.creditCustomers,
+        creditPayments: state.creditPayments,
+        inventoryLogs: state.inventoryLogs, // Persist inventory logs
         users: state.users,
         expenses: state.expenses ? state.expenses.slice(-50) : [],
         lastSyncTime: state.lastSyncTime,

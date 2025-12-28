@@ -12,12 +12,13 @@ import { useEffect, useRef } from 'react';
 import { useIdle } from 'react-use';
 
 function App() {
-  const { businessSetup, loadInitialData, autoPrintClosingReport, isDataLoaded, logout } = usePosStore(state => ({
+  const { businessSetup, loadInitialData, autoPrintClosingReport, isDataLoaded, logout, currentCashier } = usePosStore(state => ({
     businessSetup: state.businessSetup,
     loadInitialData: state.loadInitialData,
     autoPrintClosingReport: state.autoPrintClosingReport,
     isDataLoaded: state.isDataLoaded,
-    logout: state.logout
+    logout: state.logout,
+    currentCashier: state.currentCashier
   }));
 
   // Auto-logoff Logic
@@ -112,7 +113,7 @@ function App() {
 
           {/* Auto Logoff Warning Modal - Replaced with Prompt */}
           {businessSetup.isLoggedIn && isIdle && (
-            <AutoLogoutModal onLogout={logout} />
+            <AutoLogoutModal onLogout={logout} userName={currentCashier?.name} />
           )}
         </div>
       </Router>

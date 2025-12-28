@@ -4,9 +4,10 @@ import { LogOut, Activity } from 'lucide-react';
 
 interface AutoLogoutModalProps {
   onLogout: () => void;
+  userName?: string;
 }
 
-export default function AutoLogoutModal({ onLogout }: AutoLogoutModalProps) {
+export default function AutoLogoutModal({ onLogout, userName }: AutoLogoutModalProps) {
   // We removed the countdown timer here.
   // The purpose of this modal is now just to prompt the user.
 
@@ -29,7 +30,9 @@ export default function AutoLogoutModal({ onLogout }: AutoLogoutModalProps) {
           <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-red-500/20 rounded-full blur-3xl pointer-events-none" />
 
           <div className="flex flex-col items-center text-center relative z-10">
-            <h2 className="text-xl font-bold text-gray-800 mb-2">Are you still there?</h2>
+            <h2 className="text-xl font-bold text-gray-800 mb-2">
+              {userName ? `Hi ${userName}, are you still here?` : 'Are you still there?'}
+            </h2>
             <p className="text-gray-500 mb-8">
               You have been idle for a while. Would you like to stay logged in or log out?
             </p>

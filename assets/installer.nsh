@@ -15,11 +15,14 @@
 ; but typically NSIS just installs files. We can add a DetailPrint.
 
 Section "Main"
-  DetailPrint "Checking for previous versions..."
-  ; (Logic handles this automatically)
+  DetailPrint "Initializing installation..."
+  DetailPrint "Checking system requirements..."
+  DetailPrint "Preparing destination folder..."
 
-  DetailPrint "Copying installation files..."
+  DetailPrint "Copying application files..."
   ; (Files are copied here)
 
+  DetailPrint "Configuring system settings..."
+  DetailPrint "Creating shortcuts..."
   DetailPrint "Finalizing installation..."
 SectionEnd

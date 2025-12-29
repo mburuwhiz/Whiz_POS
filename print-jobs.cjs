@@ -134,23 +134,6 @@ async function generateClosingReport(reportData, businessSetup, detailed = true)
 
     // If detailed report is requested, generate cashier breakdowns. Otherwise empty string.
     const cashierReportsHtml = detailed ? reportData.cashiers.map(cashier => {
-        let creditTransactionsHtml = '';
-        if (cashier.creditTransactions.length > 0) {
-            creditTransactionsHtml = `
-                <p class="bold">Credit Transactions:</p>
-                <table class="table">
-                    <tbody>
-                        ${cashier.creditTransactions.map(t => `
-                            <tr>
-                                <td class="label">${t.customerName}</td>
-                                <td class="value">${t.status}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
-        }
-
         return `
             <div class="cashier-section">
                 <p class="bold">CASHIER: ${(cashier.cashierName || 'Unknown').toUpperCase()}</p>
@@ -163,7 +146,6 @@ async function generateClosingReport(reportData, businessSetup, detailed = true)
                         <tr><td class="label">Total Sales:</td><td class="value">Ksh. ${cashier.totalSales.toFixed(2)}</td></tr>
                     </tbody>
                 </table>
-                ${creditTransactionsHtml}
             </div>
         `;
     }).join('') : '';

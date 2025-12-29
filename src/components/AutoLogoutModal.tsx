@@ -8,8 +8,22 @@ interface AutoLogoutModalProps {
 }
 
 export default function AutoLogoutModal({ onLogout, userName }: AutoLogoutModalProps) {
-  // We removed the countdown timer here.
-  // The purpose of this modal is now just to prompt the user.
+  const [secondsRemaining, setSecondsRemaining] = useState(30);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSecondsRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          onLogout();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [onLogout]);
 
   return (
     <AnimatePresence>
@@ -30,11 +44,26 @@ export default function AutoLogoutModal({ onLogout, userName }: AutoLogoutModalP
           <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-red-500/20 rounded-full blur-3xl pointer-events-none" />
 
           <div className="flex flex-col items-center text-center relative z-10">
+            <div className="mb-4 relative">
+              <div className="w-20 h-20 rounded-full border-4 border-gray-200 flex items-center justify-center">
+                <span className="text-3xl font-bold text-blue-600">{secondsRemaining}</span>
+              </div>
+              <svg className="absolute top-0 left-0 w-20 h-20 -rotate-90 pointer-events-none">
+                 <circle
+                   cx="40" cy="40" r="38"
+                   stroke="currentColor" strokeWidth="4" fill="transparent"
+                   className="text-blue-500 transition-all duration-1000 ease-linear"
+                   strokeDasharray="239"
+                   strokeDashoffset={239 - (239 * secondsRemaining) / 30}
+                 />
+              </svg>
+            </div>
+
             <h2 className="text-xl font-bold text-gray-800 mb-2">
               {userName ? `Hi ${userName}, are you still here?` : 'Are you still there?'}
             </h2>
             <p className="text-gray-500 mb-8">
-              You have been idle for a while. Would you like to stay logged in or log out?
+              Logging out due to inactivity...
             </p>
 
             <div className="w-full space-y-3">

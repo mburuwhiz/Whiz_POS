@@ -20,3 +20,5 @@
 [dev:electron] /app/node_modules/electron/dist/electron exited with signal SIGSEGV
 [dev:electron] npm run dev:electron exited with code 1
 [dev:vite] 8:21:09 AM [vite] page reload receipt-template.html
+[dev:vite] 8:42:25 AM [vite] page reload receipt-template.html
+[dev:vite] 9:08:50 AM [vite] page reload receipt-template.html

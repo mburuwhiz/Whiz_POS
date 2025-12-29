@@ -62,7 +62,11 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
     template = template.replace('{{total}}', `Ksh ${total.toFixed(2)}`);
 
     template = template.replace('{{receiptHeader}}', businessSetup?.receiptHeader || 'Thank you for your business!');
-    template = template.replace('{{receiptFooter}}', businessSetup?.receiptFooter || 'Please come again!');
+
+    // Conditionally include footer paragraph only if content exists
+    const footerText = businessSetup?.receiptFooter;
+    const footerHtml = footerText ? `<p>${footerText}</p>` : '';
+    template = template.replace('{{receiptFooter}}', footerHtml);
 
     // Generate Items HTML
     const items = transaction.items || [];

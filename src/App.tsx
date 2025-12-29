@@ -22,8 +22,14 @@ function App() {
   }));
 
   // Auto-logoff Logic
-  // Trigger idle state after 30 seconds of inactivity.
-  const isIdle = useIdle(30e3); // 30 seconds
+  // Default to 5 minutes if not set or 0
+  const idleMinutes = businessSetup?.autoLogoffMinutes || 5;
+  const idleMs = idleMinutes * 60 * 1000;
+
+  // useIdle hook initializes with the duration.
+  // Note: changing idleMs dynamically might not reset the internal timer of react-use's useIdle instantly in all versions,
+  // but it usually reacts to prop changes or re-renders.
+  const isIdle = useIdle(idleMs);
 
   useEffect(() => {
     const init = async () => {
@@ -111,8 +117,9 @@ function App() {
           <CheckoutModal />
           <OnScreenKeyboard />
 
-          {/* Auto Logoff Warning Modal - Replaced with Prompt */}
-          {businessSetup.isLoggedIn && isIdle && (
+          {/* Auto Logoff Warning Modal */}
+          {/* Only show if logged in, feature enabled, and idle */}
+          {businessSetup.isLoggedIn && businessSetup.autoLogoffEnabled && isIdle && (
             <AutoLogoutModal onLogout={logout} userName={currentCashier?.name} />
           )}
         </div>

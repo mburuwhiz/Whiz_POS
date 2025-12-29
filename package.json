@@ -1,7 +1,7 @@
 {
   "name": "whiz-pos",
   "private": true,
-  "version": "5.2.0",
+  "version": "5.2.0.1",
   "type": "module",
   "main": "electron.cjs",
   "homepage": ".",
@@ -102,6 +102,7 @@
       "allowToChangeInstallationDirectory": true,
       "deleteAppDataOnUninstall": true,
       "include": "assets/installer.nsh",
+      "runAfterFinish": true,
       "installerIcon": "assets/logo.ico",
       "uninstallerIcon": "assets/logo.ico"
     }

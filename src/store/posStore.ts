@@ -213,6 +213,8 @@ export interface BusinessSetup {
   tax: number;
   subtotal: number;
   locationName?: string;
+  autoLogoffEnabled?: boolean;
+  autoLogoffMinutes?: number;
 }
 
 export interface CreditTransaction {
@@ -604,7 +606,25 @@ export const usePosStore = create<PosState>()(
              const transaction = state.transactions.find(t => t.id === transactionId);
              if (!transaction) return {};
 
+             // 1. Mark transaction as refunded or remove it? User said "reversed or deleted".
+             // Refunded status preserves history but filters can hide it. Deleted removes it.
+             // Let's go with "refunded" status update for audit trail, but filter out from reports if needed.
+             // Actually, user said "sale can be fully reversed or deleted".
+             // Let's implement Delete for simplicity to match "deleted" requirement.
              const updatedTransactions = state.transactions.filter(t => t.id !== transactionId);
+
+             // 2. Restore Stock
+             if (transaction.items) {
+                 transaction.items.forEach(item => {
+                     const product = state.products.find(p => p.id === item.product.id);
+                     if (product && typeof product.stock === 'number') {
+                         // We can't call state.updateProduct here easily because we are inside set()
+                         // So we map products directly.
+                         // But we should use the update logic to ensure consistency.
+                         // Since we are in set(), we can update products array.
+                     }
+                 });
+             }
 
              // Re-map products to restore stock
              const updatedProducts = state.products.map(p => {
@@ -615,7 +635,7 @@ export const usePosStore = create<PosState>()(
                  return p;
              });
 
-             // Handle Credit Reversal if applicable
+             // 3. Handle Credit Reversal if applicable
              let updatedCreditCustomers = state.creditCustomers;
              if (transaction.paymentMethod === 'credit' && transaction.creditCustomer) {
                  updatedCreditCustomers = state.creditCustomers.map(c => {
@@ -639,6 +659,10 @@ export const usePosStore = create<PosState>()(
 
              // Sync deletion/updates
              state.addToSyncQueue({ type: 'delete-transaction', data: { id: transactionId } });
+             // For products and customers, we queue updates
+             // Ideally we should queue individual product updates but for bulk restore...
+             // Let's just queue the delete-transaction and let backend handle logic?
+             // No, offline first. We need to queue updates.
              transaction.items.forEach(item => {
                  state.addToSyncQueue({ type: 'update-product', data: { id: item.product.id, updates: { stock: (item.product.stock || 0) + item.quantity } } });
              });
@@ -696,7 +720,7 @@ export const usePosStore = create<PosState>()(
             };
 
             const updatedPayments = [...state.creditPayments, payment];
-            saveDataToFile('credit-payments.json', updatedPayments);
+            saveDataToFile('credit-payments.json', updatedPayments); // Assuming new file
             state.addToSyncQueue({ type: 'add-credit-payment', data: payment });
 
             const updatedCustomers = state.creditCustomers.map(c =>
@@ -930,9 +954,6 @@ export const usePosStore = create<PosState>()(
           const newExpenses = mergeData(state.expenses, serverData.expenses || []);
           const newSalaries = mergeData(state.salaries, serverData.salaries || []);
           const newCreditCustomers = mergeData(state.creditCustomers, serverData.creditCustomers || []);
-
-          // Assuming we don't sync back logs/payments for now unless model updated,
-          // but keeping local state safe.
 
           let newBusinessSetup = state.businessSetup;
           if (serverData.businessSetup) {

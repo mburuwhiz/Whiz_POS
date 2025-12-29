@@ -19,3 +19,4 @@
 [dev:electron] [3862:1228/101940.989674:ERROR:env.cc(258)] The platform failed to initialize.  Exiting.
 [dev:electron] /app/node_modules/electron/dist/electron exited with signal SIGSEGV
 [dev:electron] npm run dev:electron exited with code 1
+[dev:vite] 8:21:09 AM [vite] page reload receipt-template.html

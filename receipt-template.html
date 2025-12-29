@@ -6,36 +6,36 @@
     <style>
         body {
             font-family: Arial, sans-serif; /* Thicker font for thermal printers */
-            font-size: 12px;
+            font-size: 11px; /* Slightly smaller for compact fit */
             font-weight: bold; /* Force boldness */
             color: #000;
             margin: 0;
-            padding: 5px 5px 5px 10px; /* Increased left padding to 10px */
+            padding: 0 15px; /* Increase horizontal padding to prevent cut-off, reduce vertical */
             width: 100%;
             max-width: 300px;
             box-sizing: border-box;
         }
         .header {
             text-align: center;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }
         .header h1 {
-            font-size: 18px; /* Slightly larger */
-            margin: 0 0 5px 0;
+            font-size: 16px;
+            margin: 0 0 2px 0;
             text-transform: uppercase;
         }
         .header p {
-            margin: 2px 0;
+            margin: 1px 0;
         }
         .separator {
             border-top: 1px dashed #000;
-            margin: 8px 0;
+            margin: 5px 0;
         }
         .info {
-            margin-bottom: 8px;
+            margin-bottom: 5px;
         }
         .info p {
-            margin: 2px 0;
+            margin: 1px 0;
         }
         table {
             width: 100%;
@@ -44,10 +44,10 @@
         th {
             text-align: left;
             border-bottom: 1px dashed #000;
-            padding-bottom: 4px;
+            padding-bottom: 2px;
         }
         td {
-            padding: 4px 0;
+            padding: 2px 0;
             vertical-align: top;
         }
         .qty {
@@ -63,32 +63,32 @@
             text-align: right;
         }
         .totals {
-            margin-top: 8px;
+            margin-top: 5px;
         }
         .totals .row {
             display: flex;
             justify-content: space-between;
-            margin: 2px 0;
+            margin: 1px 0;
         }
         .totals .total-row {
             font-weight: 900; /* Extra bold */
-            font-size: 14px;
-            margin-top: 4px;
+            font-size: 13px;
+            margin-top: 2px;
             border-top: 1px dashed #000;
-            padding-top: 4px;
+            padding-top: 2px;
         }
         .footer {
             text-align: center;
-            margin-top: 15px;
-            font-size: 11px;
+            margin-top: 10px;
+            font-size: 10px;
         }
         .footer p {
-            margin: 2px 0;
+            margin: 1px 0;
         }
         .footer-dev {
             text-align: center;
-            margin-top: 10px;
-            font-size: 10px;
+            margin-top: 5px;
+            font-size: 9px;
         }
     </style>
 </head>

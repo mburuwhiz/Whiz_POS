@@ -6,36 +6,40 @@
     <style>
         body {
             font-family: Arial, sans-serif; /* Thicker font for thermal printers */
-            font-size: 11px; /* Slightly smaller for compact fit */
+            font-size: 12px; /* Reverted to 12px */
             font-weight: bold; /* Force boldness */
             color: #000;
             margin: 0;
-            padding: 0 15px; /* Increase horizontal padding to prevent cut-off, reduce vertical */
+            /* Added side borders with asterisks simulated by dashed border, per request for "symbols" look */
+            /* Padding inside the border */
+            padding: 5px;
             width: 100%;
             max-width: 300px;
             box-sizing: border-box;
+            border-left: 1px dashed black;
+            border-right: 1px dashed black;
         }
         .header {
             text-align: center;
-            margin-bottom: 2px;
+            margin-bottom: 5px; /* Increased margin */
         }
         .header h1 {
-            font-size: 16px;
-            margin: 0 0 1px 0;
+            font-size: 18px; /* Restored size */
+            margin: 0 0 2px 0;
             text-transform: uppercase;
         }
         .header p {
-            margin: 0;
+            margin: 2px 0; /* Increased margin */
         }
         .separator {
             border-top: 1px dashed #000;
-            margin: 3px 0;
+            margin: 5px 0; /* Increased margin */
         }
         .info {
-            margin-bottom: 2px;
+            margin-bottom: 5px;
         }
         .info p {
-            margin: 0;
+            margin: 2px 0;
         }
         table {
             width: 100%;
@@ -44,10 +48,10 @@
         th {
             text-align: left;
             border-bottom: 1px dashed #000;
-            padding-bottom: 1px;
+            padding-bottom: 2px;
         }
         td {
-            padding: 1px 0;
+            padding: 2px 0;
             vertical-align: top;
         }
         .qty {
@@ -63,37 +67,37 @@
             text-align: right;
         }
         .totals {
-            margin-top: 3px;
+            margin-top: 5px;
         }
         .totals .row {
             display: flex;
             justify-content: space-between;
-            margin: 0;
+            margin: 2px 0;
         }
         .totals .total-row {
             font-weight: 900; /* Extra bold */
-            font-size: 13px;
-            margin-top: 2px;
+            font-size: 14px; /* Restored size */
+            margin-top: 4px;
             border-top: 1px dashed #000;
-            padding-top: 2px;
+            padding-top: 4px;
         }
         .footer {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 11px;
+        }
+        .footer p {
+            margin: 2px 0;
+        }
+        .footer-dev {
             text-align: center;
             margin-top: 5px;
             font-size: 10px;
         }
-        .footer p {
-            margin: 0;
-        }
-        .footer-dev {
-            text-align: center;
-            margin-top: 3px;
-            font-size: 9px;
-        }
         .payment-line {
             display: flex;
             justify-content: space-between;
-            font-size: 11px;
+            font-size: 12px;
         }
     </style>
 </head>

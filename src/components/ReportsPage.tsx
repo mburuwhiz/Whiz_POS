@@ -18,14 +18,12 @@ export default function ReportsPage() {
   const [reportType, setReportType] = useState<'sales' | 'expenses' | 'credits'>('sales');
 
   const filteredTransactions = useMemo(() => {
-    // Custom filtering logic to handle "Today" correctly using local dates
-    const start = new Date(dateRange.startDate);
-    const end = new Date(dateRange.endDate);
+    // Robust local date parsing to prevent UTC shifts
+    const [startYear, startMonth, startDay] = dateRange.startDate.split('-').map(Number);
+    const [endYear, endMonth, endDay] = dateRange.endDate.split('-').map(Number);
 
-    // Set start to beginning of day
-    start.setHours(0, 0, 0, 0);
-    // Set end to end of day
-    end.setHours(23, 59, 59, 999);
+    const start = new Date(startYear, startMonth - 1, startDay, 0, 0, 0, 0);
+    const end = new Date(endYear, endMonth - 1, endDay, 23, 59, 59, 999);
 
     return transactions.filter(t => {
       const tDate = new Date(t.timestamp);
@@ -34,16 +32,14 @@ export default function ReportsPage() {
   }, [dateRange, transactions]);
 
   const filteredExpenses = useMemo(() => {
-    const start = new Date(dateRange.startDate);
-    const end = new Date(dateRange.endDate);
+    const [startYear, startMonth, startDay] = dateRange.startDate.split('-').map(Number);
+    const [endYear, endMonth, endDay] = dateRange.endDate.split('-').map(Number);
 
-    // Set start to beginning of day
-    start.setHours(0, 0, 0, 0);
-    // Set end to end of day
-    end.setHours(23, 59, 59, 999);
+    const start = new Date(startYear, startMonth - 1, startDay, 0, 0, 0, 0);
+    const end = new Date(endYear, endMonth - 1, endDay, 23, 59, 59, 999);
 
     return expenses.filter(expense => {
-      // Handle missing timestamp safely - assume old date (epoch) if missing, so it doesn't appear in today's report
+      // Handle missing timestamp safely - assume old date (epoch) if missing
       const expenseTimestamp = expense.timestamp || new Date(0).toISOString();
       const expenseDate = new Date(expenseTimestamp);
 

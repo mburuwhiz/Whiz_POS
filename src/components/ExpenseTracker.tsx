@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { usePosStore } from '../store/posStore';
 import { Expense } from '../types';
-import { DollarSign, Plus, Receipt, TrendingUp, Calendar, Search, Filter } from 'lucide-react';
+import { DollarSign, Plus, Receipt, TrendingUp, Calendar, Search, Filter, Copy, Edit2, Trash2, X } from 'lucide-react';
 
 export default function ExpenseTracker() {
-  const { expenses, saveExpense, currentCashier, setCurrentPage } = usePosStore();
+  const { expenses, saveExpense, currentCashier, setCurrentPage, deleteExpense, updateExpense } = usePosStore(); // Added actions
   const [showAddForm, setShowAddForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [quickAddAmount, setQuickAddAmount] = useState('');
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+
   const [formData, setFormData] = useState({
     description: '',
     amount: '',
@@ -43,7 +45,7 @@ export default function ExpenseTracker() {
   })).filter(cat => cat.total > 0);
 
   const todayExpenses = expenses.filter(expense => 
-    (expense.timestamp || '').startsWith(new Date().toLocaleDateString('en-CA')) // Use local date
+    (expense.timestamp || '').startsWith(new Date().toLocaleDateString('en-CA'))
   );
 
   const todayTotal = todayExpenses.reduce((sum, expense) => sum + expense.amount, 0);
@@ -51,23 +53,28 @@ export default function ExpenseTracker() {
   const handleAddExpense = () => {
     if (!formData.description || !formData.amount || !currentCashier) return;
 
-    const expense: Expense = {
-      id: `EXP${Date.now()}`,
-      description: formData.description,
-      amount: parseFloat(formData.amount),
-      category: formData.category,
-      timestamp: new Date().toISOString(),
-      cashier: currentCashier.name,
-      receipt: formData.receipt || undefined
-    };
+    if (editingExpenseId) {
+        updateExpense(editingExpenseId, {
+            description: formData.description,
+            amount: parseFloat(formData.amount),
+            category: formData.category,
+            receipt: formData.receipt || undefined
+        });
+        setEditingExpenseId(null);
+    } else {
+        const expense: Expense = {
+            id: `EXP${Date.now()}`,
+            description: formData.description,
+            amount: parseFloat(formData.amount),
+            category: formData.category,
+            timestamp: new Date().toISOString(),
+            cashier: currentCashier.name,
+            receipt: formData.receipt || undefined
+        };
+        saveExpense(expense);
+    }
 
-    saveExpense(expense);
-    setFormData({
-      description: '',
-      amount: '',
-      category: 'supplies',
-      receipt: ''
-    });
+    resetForm();
     setShowAddForm(false);
   };
 
@@ -78,13 +85,51 @@ export default function ExpenseTracker() {
         id: `EXP${Date.now()}`,
         description: 'Quick Expense',
         amount: parseFloat(quickAddAmount),
-        category: 'other', // Default category for quick add
+        category: 'other',
         timestamp: new Date().toISOString(),
         cashier: currentCashier.name
     };
 
     saveExpense(expense);
     setQuickAddAmount('');
+  };
+
+  const handleEdit = (expense: Expense) => {
+      setFormData({
+          description: expense.description,
+          amount: expense.amount.toString(),
+          category: expense.category,
+          receipt: expense.receipt || ''
+      });
+      setEditingExpenseId(expense.id);
+      setShowAddForm(true);
+  };
+
+  const handleDuplicate = (expense: Expense) => {
+      setFormData({
+          description: expense.description,
+          amount: expense.amount.toString(),
+          category: expense.category,
+          receipt: expense.receipt || ''
+      });
+      setEditingExpenseId(null); // Ensure it's a new entry
+      setShowAddForm(true);
+  };
+
+  const handleDelete = (id: string) => {
+      if(confirm('Are you sure you want to delete this expense?')) {
+          deleteExpense(id); // Assuming this action exists in store or I need to add it
+      }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      description: '',
+      amount: '',
+      category: 'supplies',
+      receipt: ''
+    });
+    setEditingExpenseId(null);
   };
 
   return (
@@ -106,7 +151,7 @@ export default function ExpenseTracker() {
               </div>
             </div>
             <button
-              onClick={() => setShowAddForm(true)}
+              onClick={() => { resetForm(); setShowAddForm(true); }}
               className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
               <Plus className="w-4 h-4" />
@@ -224,8 +269,8 @@ export default function ExpenseTracker() {
                     <th className="text-left py-3 px-6 font-medium text-gray-700">Date & Time</th>
                     <th className="text-left py-3 px-6 font-medium text-gray-700">Description</th>
                     <th className="text-left py-3 px-6 font-medium text-gray-700">Category</th>
-                    <th className="text-left py-3 px-6 font-medium text-gray-700">Cashier</th>
-                    <th className="text-right py-3 px-6 font-medium text-gray-700">Amount</th>
+                    <th className="text-left py-3 px-6 font-medium text-gray-700">Amount</th>
+                    <th className="text-right py-3 px-6 font-medium text-gray-700">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -257,9 +302,21 @@ export default function ExpenseTracker() {
                           {categories.find(c => c.value === expense.category)?.label || expense.category}
                         </span>
                       </td>
-                      <td className="py-3 px-6 text-gray-600">{expense.cashier}</td>
-                      <td className="py-3 px-6 text-right font-medium text-red-600">
+                      <td className="py-3 px-6 font-medium text-red-600">
                         -KES {expense.amount.toFixed(2)}
+                      </td>
+                      <td className="py-3 px-6 text-right">
+                          <div className="flex items-center justify-end space-x-2">
+                              <button onClick={() => handleEdit(expense)} className="text-blue-600 hover:text-blue-800" title="Edit">
+                                  <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => handleDuplicate(expense)} className="text-green-600 hover:text-green-800" title="Duplicate">
+                                  <Copy className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => handleDelete(expense.id)} className="text-red-600 hover:text-red-800" title="Delete">
+                                  <Trash2 className="w-4 h-4" />
+                              </button>
+                          </div>
                       </td>
                     </tr>
                   ))}
@@ -312,12 +369,12 @@ export default function ExpenseTracker() {
         </div>
       </div>
 
-      {/* Add Expense Modal */}
+      {/* Add/Edit Expense Modal */}
       {showAddForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
             <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Add New Expense</h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">{editingExpenseId ? 'Edit Expense' : 'Add New Expense'}</h3>
               
               <div className="space-y-4">
                 <div>
@@ -373,12 +430,7 @@ export default function ExpenseTracker() {
                 <button
                   onClick={() => {
                     setShowAddForm(false);
-                    setFormData({
-                      description: '',
-                      amount: '',
-                      category: 'supplies',
-                      receipt: ''
-                    });
+                    resetForm();
                   }}
                   className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
                 >
@@ -388,7 +440,7 @@ export default function ExpenseTracker() {
                   onClick={handleAddExpense}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
-                  Add Expense
+                  {editingExpenseId ? 'Update' : 'Add Expense'}
                 </button>
               </div>
             </div>

@@ -154,6 +154,7 @@ export interface CreditPayment {
     amount: number;
     date: string;
     cashierId?: string;
+    transactionId?: string; // Linked to specific transaction
 }
 
 export interface User {
@@ -319,6 +320,8 @@ interface PosState {
   updateCreditCustomer: (id: string, updates: Partial<CreditCustomer>) => void;
   deleteCreditCustomer: (id: string) => void;
   saveExpense: (expense: Expense) => void;
+  updateExpense: (id: string, updates: Partial<Expense>) => void;
+  deleteExpense: (id: string) => void;
   addSalary: (salary: Salary) => void;
   deleteSalary: (id: string) => void;
   saveBusinessSetup: (setup: BusinessSetup) => void;
@@ -356,7 +359,7 @@ interface PosState {
   autoPrintClosingReport: () => void;
   finishSetup: (businessData: Omit<BusinessSetup, 'createdAt'>, adminUser: Omit<User, 'createdAt' | 'isActive'>) => Promise<void>;
   pushDataToServer: () => Promise<void>;
-  addCreditPayment: (customerId: string, amount: number) => void;
+  addCreditPayment: (customerId: string, amount: number, transactionId?: string) => void;
   addInventoryLog: (log: InventoryLog) => void;
 }
 
@@ -703,7 +706,7 @@ export const usePosStore = create<PosState>()(
         });
       },
 
-      addCreditPayment: (customerId: string, amount: number) => {
+      addCreditPayment: (customerId: string, amount: number, transactionId?: string) => {
         set((state) => {
             const customer = state.creditCustomers.find(c => c.id === customerId);
             if (!customer) return {};
@@ -716,7 +719,8 @@ export const usePosStore = create<PosState>()(
                 customerId,
                 amount,
                 date: new Date().toISOString(),
-                cashierId: state.currentCashier?.id
+                cashierId: state.currentCashier?.id,
+                transactionId
             };
 
             const updatedPayments = [...state.creditPayments, payment];
@@ -764,6 +768,27 @@ export const usePosStore = create<PosState>()(
           return { expenses: updatedExpenses };
         });
       },
+
+  updateExpense: (id, updates) => {
+    set((state) => {
+      const updatedExpenses = state.expenses.map(expense =>
+        expense.id === id ? { ...expense, ...updates } : expense
+      );
+      saveDataToFile('expenses.json', updatedExpenses);
+      // Ensure data has the ID for the backend to identify it
+      state.addToSyncQueue({ type: 'update-expense', data: { id, updates } });
+      return { expenses: updatedExpenses };
+    });
+  },
+
+  deleteExpense: (id) => {
+    set((state) => {
+      const updatedExpenses = state.expenses.filter(expense => expense.id !== id);
+      saveDataToFile('expenses.json', updatedExpenses);
+      state.addToSyncQueue({ type: 'delete-expense', data: { id } });
+      return { expenses: updatedExpenses };
+    });
+  },
 
       addSalary: (salary) => {
         set((state) => {

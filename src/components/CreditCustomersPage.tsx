@@ -20,6 +20,11 @@ export default function CreditCustomersPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<CreditCustomer | null>(null);
   const [historyCustomer, setHistoryCustomer] = useState<CreditCustomer | null>(null);
+
+  // State for paying a specific transaction
+  const [payingTransactionId, setPayingTransactionId] = useState<string | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState('');
+
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -102,9 +107,11 @@ export default function CreditCustomersPage() {
     setFormData({ name: '', phone: '' });
   };
 
-  const handlePayment = (customerId: string, amount: number) => {
+  const handlePayment = (customerId: string, amount: number, transactionId?: string) => {
     if (amount <= 0) return;
-    addCreditPayment(customerId, amount);
+    addCreditPayment(customerId, amount, transactionId);
+    setPayingTransactionId(null);
+    setPaymentAmount('');
   };
 
   const handleDeleteCustomer = (customerId: string) => {
@@ -121,24 +128,40 @@ export default function CreditCustomersPage() {
   };
 
   const getCustomerHistory = (customer: CreditCustomer) => {
+      // 1. Get all credit sales for this customer
       const sales = transactions.filter(t =>
           (t.paymentMethod === 'credit' && t.creditCustomer === customer.name) ||
           customer.transactions.includes(t.id)
-      ).map(t => ({
-          type: 'sale',
-          date: t.timestamp,
-          amount: t.total,
-          id: t.id
-      }));
+      ).map(t => {
+          // Calculate how much of this specific transaction has been paid
+          const paymentsForThisTxn = creditPayments
+              .filter(p => p.transactionId === t.id)
+              .reduce((sum, p) => sum + p.amount, 0);
 
+          const remaining = t.total - paymentsForThisTxn;
+
+          return {
+              type: 'sale',
+              date: t.timestamp,
+              amount: t.total,
+              paid: paymentsForThisTxn,
+              remaining: Math.max(0, remaining),
+              id: t.id,
+              items: t.items // Include items for detail
+          };
+      });
+
+      // 2. Get all payments
       const payments = creditPayments.filter(p => p.customerId === customer.id)
           .map(p => ({
               type: 'payment',
               date: p.date,
               amount: p.amount,
-              id: p.id
+              id: p.id,
+              transactionId: p.transactionId // Reference to which txn it paid
           }));
 
+      // Combine and sort by date descending
       return [...sales, ...payments].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   };
 
@@ -297,24 +320,16 @@ export default function CreditCustomersPage() {
                     </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center space-x-2">
-                        {(customer.balance || 0) > 0 && (
-                          <button
-                            onClick={() => handlePayment(customer.id, customer.balance || 0)}
-                            className="text-green-600 hover:text-green-800 text-sm font-medium"
-                          >
-                            Pay
-                          </button>
-                        )}
                         <button
                             onClick={() => setHistoryCustomer(customer)}
-                            className="text-gray-600 hover:text-gray-800"
-                            title="View History"
+                            className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
+                            title="View History & Pay Specific"
                         >
-                            <History className="w-4 h-4" />
+                            <History className="w-4 h-4" /> Details
                         </button>
                         <button
                           onClick={() => handleEditCustomer(customer)}
-                          className="text-blue-600 hover:text-blue-800"
+                          className="text-gray-600 hover:text-gray-800"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
@@ -408,64 +423,169 @@ export default function CreditCustomersPage() {
         </div>
       )}
 
-      {/* History Modal */}
+      {/* History & Payment Modal */}
       {historyCustomer && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[80vh] flex flex-col">
-                  <div className="p-6 border-b flex justify-between items-center">
-                      <h3 className="text-xl font-bold text-gray-800">{historyCustomer.name} - Transaction History</h3>
-                      <button onClick={() => setHistoryCustomer(null)} className="text-gray-500 hover:text-gray-700">
-                          <span className="text-2xl">&times;</span>
-                      </button>
+              <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] flex flex-col">
+                  <div className="p-6 border-b flex justify-between items-center bg-gray-50 rounded-t-lg">
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-800">{historyCustomer.name}</h3>
+                        <p className="text-sm text-gray-500">Transaction History</p>
+                      </div>
+                      <div className="flex items-center gap-4">
+                          <div className="text-right">
+                              <p className="text-xs text-gray-500 uppercase font-semibold">Current Balance</p>
+                              <p className={`text-xl font-bold ${historyCustomer.balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                KES {historyCustomer.balance.toFixed(2)}
+                              </p>
+                          </div>
+                          <button onClick={() => setHistoryCustomer(null)} className="text-gray-400 hover:text-gray-600 p-2">
+                              <span className="text-2xl">&times;</span>
+                          </button>
+                      </div>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-6">
+
+                  <div className="flex-1 overflow-y-auto p-0">
                       <table className="w-full text-left">
-                          <thead>
-                              <tr className="border-b text-gray-500 text-sm">
-                                  <th className="py-2">Date</th>
-                                  <th className="py-2">Type</th>
-                                  <th className="py-2 text-right">Amount</th>
+                          <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
+                              <tr className="text-gray-500 text-xs uppercase tracking-wider">
+                                  <th className="py-3 px-6">Date</th>
+                                  <th className="py-3 px-6">Details</th>
+                                  <th className="py-3 px-6 text-right">Amount</th>
+                                  <th className="py-3 px-6 text-right">Status / Paid</th>
+                                  <th className="py-3 px-6 text-right">Action</th>
                               </tr>
                           </thead>
-                          <tbody>
+                          <tbody className="divide-y divide-gray-100">
                               {getCustomerHistory(historyCustomer).map((item, index) => (
-                                  <tr key={index} className="border-b last:border-0 hover:bg-gray-50">
-                                      <td className="py-3">
-                                          <div className="text-sm font-medium">{new Date(item.date).toLocaleDateString()}</div>
-                                          <div className="text-xs text-gray-500">{new Date(item.date).toLocaleTimeString()}</div>
+                                  <tr key={index} className="hover:bg-gray-50 transition-colors">
+                                      <td className="py-4 px-6 whitespace-nowrap">
+                                          <div className="text-sm font-medium text-gray-900">{new Date(item.date).toLocaleDateString()}</div>
+                                          <div className="text-xs text-gray-500">{new Date(item.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
                                       </td>
-                                      <td className="py-3">
-                                          <div className="flex items-center gap-2">
+
+                                      <td className="py-4 px-6">
+                                          <div className="flex items-center gap-2 mb-1">
                                               {item.type === 'sale' ? (
-                                                  <ArrowUpRight className="w-4 h-4 text-red-500" />
+                                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                                                      SALE
+                                                  </span>
                                               ) : (
-                                                  <ArrowDownLeft className="w-4 h-4 text-green-500" />
+                                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                                      PAYMENT
+                                                  </span>
                                               )}
-                                              <span className={item.type === 'sale' ? 'text-red-600 capitalize' : 'text-green-600 capitalize'}>
-                                                  {item.type}
-                                              </span>
+                                              <span className="text-xs text-gray-400">#{item.id.slice(-6)}</span>
                                           </div>
+                                          {item.type === 'sale' && (item as any).items && (
+                                              <div className="text-xs text-gray-600 max-w-xs truncate">
+                                                  {(item as any).items.map((i: any) => `${i.quantity}x ${i.product.name}`).join(', ')}
+                                              </div>
+                                          )}
+                                          {item.type === 'payment' && (item as any).transactionId && (
+                                              <div className="text-xs text-gray-500">
+                                                  Paying Transaction #{(item as any).transactionId.slice(-6)}
+                                              </div>
+                                          )}
                                       </td>
-                                      <td className={`py-3 text-right font-bold ${item.type === 'sale' ? 'text-red-600' : 'text-green-600'}`}>
-                                          {item.type === 'sale' ? '-' : '+'} KES {item.amount.toFixed(2)}
+
+                                      <td className={`py-4 px-6 text-right font-medium ${item.type === 'sale' ? 'text-gray-900' : 'text-green-600'}`}>
+                                          KES {item.amount.toFixed(2)}
+                                      </td>
+
+                                      <td className="py-4 px-6 text-right">
+                                          {item.type === 'sale' ? (
+                                              <div>
+                                                  {(item as any).remaining <= 0 ? (
+                                                      <span className="text-green-600 text-xs font-bold flex items-center justify-end gap-1">
+                                                          <CheckCircle className="w-3 h-3" /> Paid Full
+                                                      </span>
+                                                  ) : (
+                                                      <div className="flex flex-col items-end">
+                                                          <span className="text-xs text-gray-500">Paid: {(item as any).paid.toFixed(2)}</span>
+                                                          <span className="text-xs text-red-600 font-bold">Due: {(item as any).remaining.toFixed(2)}</span>
+                                                      </div>
+                                                  )}
+                                              </div>
+                                          ) : (
+                                              <span className="text-gray-400 text-xs">-</span>
+                                          )}
+                                      </td>
+
+                                      <td className="py-4 px-6 text-right">
+                                          {item.type === 'sale' && (item as any).remaining > 0 ? (
+                                              <button
+                                                  onClick={() => {
+                                                      setPayingTransactionId(item.id);
+                                                      setPaymentAmount((item as any).remaining.toString());
+                                                  }}
+                                                  className="bg-green-600 text-white text-xs px-3 py-1.5 rounded hover:bg-green-700 transition-colors shadow-sm"
+                                              >
+                                                  Pay Bill
+                                              </button>
+                                          ) : null}
                                       </td>
                                   </tr>
                               ))}
                               {getCustomerHistory(historyCustomer).length === 0 && (
                                   <tr>
-                                      <td colSpan={3} className="py-4 text-center text-gray-500">No history found</td>
+                                      <td colSpan={5} className="py-8 text-center text-gray-500">No transaction history found</td>
                                   </tr>
                               )}
                           </tbody>
                       </table>
                   </div>
-                  <div className="p-4 bg-gray-50 border-t flex justify-between items-center">
-                      <span className="font-medium text-gray-600">Current Balance:</span>
-                      <span className={`text-xl font-bold ${historyCustomer.balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                          KES {historyCustomer.balance.toFixed(2)}
-                      </span>
+
+                  <div className="p-4 bg-gray-50 border-t flex justify-end">
+                      <button
+                          onClick={() => setHistoryCustomer(null)}
+                          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
+                      >
+                          Close
+                      </button>
                   </div>
               </div>
+
+              {/* Nested Modal for Payment Confirmation */}
+              {payingTransactionId && (
+                  <div className="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center z-50 backdrop-blur-sm">
+                      <div className="bg-white rounded-lg shadow-2xl p-6 w-full max-w-sm border border-gray-100">
+                          <h4 className="text-lg font-bold text-gray-800 mb-4">Confirm Payment</h4>
+                          <p className="text-sm text-gray-600 mb-4">
+                              Paying for Transaction <span className="font-mono text-gray-800">#{payingTransactionId.slice(-6)}</span>
+                          </p>
+
+                          <div className="mb-4">
+                              <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Amount to Pay</label>
+                              <div className="relative">
+                                  <DollarSign className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                                  <input
+                                      type="number"
+                                      value={paymentAmount}
+                                      onChange={(e) => setPaymentAmount(e.target.value)}
+                                      className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none font-bold text-gray-800"
+                                      autoFocus
+                                  />
+                              </div>
+                          </div>
+
+                          <div className="flex gap-3">
+                              <button
+                                  onClick={() => setPayingTransactionId(null)}
+                                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
+                              >
+                                  Cancel
+                              </button>
+                              <button
+                                  onClick={() => handlePayment(historyCustomer.id, parseFloat(paymentAmount), payingTransactionId)}
+                                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium shadow-sm"
+                              >
+                                  Confirm
+                              </button>
+                          </div>
+                      </div>
+                  </div>
+              )}
           </div>
       )}
     </div>

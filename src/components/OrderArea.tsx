@@ -6,11 +6,11 @@ export default function OrderArea() {
   const { cart, removeFromCart, updateQuantity, clearCart, openCheckout } = usePosStore();
 
   const subtotal = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-  const tax = subtotal * 0.16; // 16% VAT
+  const tax = 0; // Tax is set to 0 as per user instruction
   const total = subtotal + tax;
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6">
+    <div className="bg-white rounded-lg shadow-lg p-6 h-full flex flex-col">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold text-gray-800">Current Order</h2>
         {cart.length > 0 && (
@@ -23,7 +23,7 @@ export default function OrderArea() {
         )}
       </div>
 
-      <div className="space-y-3 mb-6 max-h-96 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto space-y-3 mb-6">
         {cart.length === 0 ? (
           <p className="text-gray-500 text-center py-8">No items in cart</p>
         ) : (
@@ -69,13 +69,13 @@ export default function OrderArea() {
         )}
       </div>
 
-      <div className="border-t pt-4 space-y-2">
+      <div className="border-t pt-4 space-y-2 mt-auto">
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">Subtotal</span>
           <span className="font-medium">KES {subtotal.toFixed(2)}</span>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-gray-600">VAT (16%)</span>
+          <span className="text-gray-600">VAT (0%)</span>
           <span className="font-medium">KES {tax.toFixed(2)}</span>
         </div>
         <div className="flex justify-between text-lg font-bold text-gray-800 pt-2 border-t">

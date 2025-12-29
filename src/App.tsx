@@ -12,19 +12,24 @@ import { useEffect, useRef } from 'react';
 import { useIdle } from 'react-use';
 
 function App() {
-  const { businessSetup, loadInitialData, autoPrintClosingReport, isDataLoaded, logout } = usePosStore(state => ({
+  const { businessSetup, loadInitialData, autoPrintClosingReport, isDataLoaded, logout, currentCashier } = usePosStore(state => ({
     businessSetup: state.businessSetup,
     loadInitialData: state.loadInitialData,
     autoPrintClosingReport: state.autoPrintClosingReport,
     isDataLoaded: state.isDataLoaded,
-    logout: state.logout
+    logout: state.logout,
+    currentCashier: state.currentCashier
   }));
 
   // Auto-logoff Logic
-  // Trigger idle state after 20 seconds of inactivity.
-  // The AutoLogoutModal will then show a 10-second countdown.
-  // Total inactivity time before logout = 20s + 10s = 30s.
-  const isIdle = useIdle(20e3);
+  // Default to 5 minutes if not set or 0
+  const idleMinutes = businessSetup?.autoLogoffMinutes || 5;
+  const idleMs = idleMinutes * 60 * 1000;
+
+  // useIdle hook initializes with the duration.
+  // Note: changing idleMs dynamically might not reset the internal timer of react-use's useIdle instantly in all versions,
+  // but it usually reacts to prop changes or re-renders.
+  const isIdle = useIdle(idleMs);
 
   useEffect(() => {
     const init = async () => {
@@ -113,8 +118,9 @@ function App() {
           <OnScreenKeyboard />
 
           {/* Auto Logoff Warning Modal */}
-          {businessSetup.isLoggedIn && isIdle && (
-            <AutoLogoutModal onLogout={logout} />
+          {/* Only show if logged in, feature enabled, and idle */}
+          {businessSetup.isLoggedIn && businessSetup.autoLogoffEnabled && isIdle && (
+            <AutoLogoutModal onLogout={logout} userName={currentCashier?.name} />
           )}
         </div>
       </Router>

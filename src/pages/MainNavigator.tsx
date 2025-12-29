@@ -59,11 +59,23 @@ const MainNavigator = () => {
     <AppLayout>
       <Routes>
         <Route path="/" element={
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-theme(spacing.24))]">
+            {/*
+              Product Grid Container:
+              - overflow-y-auto: Allows scrolling within this column ONLY.
+              - h-full: Ensures it fills the calculated height.
+            */}
+            <div className="lg:col-span-2 h-full overflow-y-auto pr-2">
               <ProductGrid />
             </div>
-            <div className="lg:col-span-1">
+
+            {/*
+              Order Area Container:
+              - h-full: Fills height.
+              - overflow-hidden: Prevents outer scroll.
+              - The OrderArea component itself handles internal scrolling for items.
+            */}
+            <div className="lg:col-span-1 h-full overflow-hidden">
               <OrderArea />
             </div>
           </div>

@@ -80,7 +80,7 @@ export default function BusinessRegistration() {
       <div className="max-w-xl w-full">
         <div className="text-center mb-8">
           <Building2 className="w-16 h-16 text-blue-600 mx-auto mb-4" />
-          <h1 className="text-4xl font-bold text-gray-900">Register Your Business</h1>
+          <h1 className="text-4xl font-bold text-gray-900">Business System Setup</h1>
           <p className="text-xl text-gray-600">Join thousands of businesses using WHIZ POS</p>
         </div>
 

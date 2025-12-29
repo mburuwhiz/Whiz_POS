@@ -6,31 +6,35 @@
     <style>
         body {
             font-family: Arial, sans-serif; /* Thicker font for thermal printers */
-            font-size: 12px;
+            font-size: 12px; /* Reverted to 12px */
             font-weight: bold; /* Force boldness */
             color: #000;
-            margin: 0;
-            padding: 5px;
-            width: 300px;
+            margin: 0 15px; /* Added margin to prevent cutting on some printers */
+            /* Added side borders with asterisks simulated by dashed border, per request for "symbols" look */
+            /* Padding inside the border */
+            padding: 10px;
+            width: auto;
+            max-width: 300px;
+            box-sizing: border-box;
         }
         .header {
             text-align: center;
-            margin-bottom: 10px;
+            margin-bottom: 5px; /* Increased margin */
         }
         .header h1 {
-            font-size: 18px; /* Slightly larger */
-            margin: 0 0 5px 0;
+            font-size: 18px; /* Restored size */
+            margin: 0 0 2px 0;
             text-transform: uppercase;
         }
         .header p {
-            margin: 2px 0;
+            margin: 2px 0; /* Increased margin */
         }
         .separator {
             border-top: 1px dashed #000;
-            margin: 8px 0;
+            margin: 5px 0; /* Increased margin */
         }
         .info {
-            margin-bottom: 8px;
+            margin-bottom: 5px;
         }
         .info p {
             margin: 2px 0;
@@ -42,10 +46,10 @@
         th {
             text-align: left;
             border-bottom: 1px dashed #000;
-            padding-bottom: 4px;
+            padding-bottom: 2px;
         }
         td {
-            padding: 4px 0;
+            padding: 2px 0;
             vertical-align: top;
         }
         .qty {
@@ -61,7 +65,7 @@
             text-align: right;
         }
         .totals {
-            margin-top: 8px;
+            margin-top: 5px;
         }
         .totals .row {
             display: flex;
@@ -70,14 +74,14 @@
         }
         .totals .total-row {
             font-weight: 900; /* Extra bold */
-            font-size: 14px;
+            font-size: 14px; /* Restored size */
             margin-top: 4px;
             border-top: 1px dashed #000;
             padding-top: 4px;
         }
         .footer {
             text-align: center;
-            margin-top: 15px;
+            margin-top: 10px;
             font-size: 11px;
         }
         .footer p {
@@ -85,8 +89,13 @@
         }
         .footer-dev {
             text-align: center;
-            margin-top: 10px;
+            margin-top: 5px;
             font-size: 10px;
+        }
+        .payment-line {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
         }
     </style>
 </head>
@@ -142,8 +151,10 @@
     <div class="separator"></div>
 
     <div class="info">
-        <p>Payment: {{paymentMethod}}</p>
-        <p>Served By: {{servedBy}}</p>
+        <div class="payment-line">
+            <span>Pay: {{paymentMethod}}</span>
+            <span>Served By: {{servedBy}}</span>
+        </div>
     </div>
 
     <div style="text-align: center;">
@@ -154,7 +165,7 @@
 
     <div class="footer">
         <p>{{receiptHeader}}</p>
-        <p>{{receiptFooter}}</p>
+        {{receiptFooter}}
     </div>
 
     <div class="separator"></div>

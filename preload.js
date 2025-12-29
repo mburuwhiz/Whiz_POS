@@ -41,8 +41,9 @@ contextBridge.exposeInMainWorld('electron', {
    * Prints the daily closing report.
    * @param {ClosingReportData} reportData - The aggregated report data.
    * @param {BusinessSetup} businessSetup - The business configuration.
+   * @param {boolean} detailed - Whether to print detailed transaction/expense lists.
    */
-  printClosingReport: (reportData, businessSetup) => ipcRenderer.send('print-closing-report', reportData, businessSetup),
+  printClosingReport: (reportData, businessSetup, detailed) => ipcRenderer.send('print-closing-report', reportData, businessSetup, detailed),
 
   /**
    * Retrieves a list of available system printers.

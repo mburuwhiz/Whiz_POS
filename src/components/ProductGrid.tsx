@@ -12,24 +12,50 @@ const CART_PLACEHOLDER = cartPlaceholder;
 export default function ProductGrid() {
   const { products, addToCart } = usePosStore();
   const [searchTerm, setSearchTerm] = React.useState('');
+  const [selectedCategory, setSelectedCategory] = React.useState('All');
 
-  const filteredProducts = products.filter((product) =>
-    (product.name || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Extract unique categories
+  const categories = ['All', ...new Set(products.map(p => p.category).filter(Boolean))];
+
+  const filteredProducts = products.filter((product) => {
+    const matchesSearch = (product.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   return (
-    <div id="product-grid" className="bg-white rounded-lg shadow-lg p-6">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold text-gray-800">Products</h2>
-        <input
-          type="text"
-          placeholder="Search for products..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="border border-gray-300 rounded-lg px-4 py-2"
-        />
+    <div id="product-grid" className="bg-white rounded-lg shadow-lg p-6 flex flex-col h-full">
+      <div className="flex flex-col space-y-4 mb-4">
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold text-gray-800">Products</h2>
+          <input
+            type="text"
+            placeholder="Search for products..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="border border-gray-300 rounded-lg px-4 py-2"
+          />
+        </div>
+
+        {/* Categories Tab */}
+        <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
+          {categories.map((category) => (
+            <button
+              key={category}
+              onClick={() => setSelectedCategory(category)}
+              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                selectedCategory === category
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {category}
+            </button>
+          ))}
+        </div>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto pr-2 pb-2">
         {filteredProducts.map((product) => (
           <div
             key={product.id}

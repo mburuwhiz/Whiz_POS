@@ -69,6 +69,8 @@ async function ensureDataFilesExist() {
     'salaries.json': [], // New file for salaries
     'credit-customers.json': [],
     'mobile-receipts.json': [], // New file for queuing mobile receipts
+    'credit-payments.json': [], // New file for credit payments
+    'inventory-logs.json': [], // New file for inventory logs
   };
 
   for (const [fileName, content] of Object.entries(dataFiles)) {
@@ -937,7 +939,14 @@ app.whenReady().then(async () => {
     printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
 
     printWindow.webContents.on('did-finish-load', () => {
-        printWindow.webContents.print(options, (success, errorType) => {
+        // Force margins to 0 for better fit on thermal printers
+        // Unless specific margins were passed in options, we override them to 0
+        const printOptions = {
+             margins: { marginType: 'custom', top: 0, bottom: 0, left: 0, right: 0 },
+             ...options
+        };
+
+        printWindow.webContents.print(printOptions, (success, errorType) => {
             if (!success) console.error('Print failed:', errorType);
             else console.log('Print job sent successfully');
             printWindow.close();
@@ -975,9 +984,10 @@ app.whenReady().then(async () => {
   /**
    * IPC Listener: 'print-closing-report'
    * Generates and prints the daily closing report.
+   * Now supports 'detailed' flag.
    */
-  ipcMain.on('print-closing-report', async (event, reportData, businessSetup) => {
-      const htmlContent = await generateClosingReport(reportData, businessSetup);
+  ipcMain.on('print-closing-report', async (event, reportData, businessSetup, detailed = true) => {
+      const htmlContent = await generateClosingReport(reportData, businessSetup, detailed);
       printHtml(htmlContent);
   });
 

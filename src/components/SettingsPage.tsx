@@ -21,7 +21,9 @@ import {
   X,
   Smartphone,
   Monitor,
-  Printer
+  Printer,
+  Shield,
+  Clock
 } from 'lucide-react';
 
 export default function SettingsPage() {
@@ -38,7 +40,7 @@ export default function SettingsPage() {
     pushDataToServer
   } = usePosStore();
 
-  const [activeTab, setActiveTab] = useState<'business' | 'users' | 'sync' | 'devices' | 'printers' | 'updates'>('business');
+  const [activeTab, setActiveTab] = useState<'business' | 'users' | 'security' | 'sync' | 'devices' | 'printers' | 'updates'>('business');
   const [editingBusiness, setEditingBusiness] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [showAddUser, setShowAddUser] = useState(false);
@@ -61,6 +63,8 @@ export default function SettingsPage() {
     mpesaAccountNumber: '',
     mongoDbUri: '',
     onScreenKeyboard: false,
+    autoLogoffEnabled: false,
+    autoLogoffMinutes: 5,
   });
 
   const [userData, setUserData] = useState({
@@ -89,6 +93,8 @@ export default function SettingsPage() {
         mpesaAccountNumber: businessSetup.mpesaAccountNumber || '',
         mongoDbUri: businessSetup.mongoDbUri || '',
         onScreenKeyboard: businessSetup.onScreenKeyboard || false,
+        autoLogoffEnabled: businessSetup.autoLogoffEnabled || false,
+        autoLogoffMinutes: businessSetup.autoLogoffMinutes || 5,
       });
     }
   }, [businessSetup]);
@@ -159,9 +165,6 @@ export default function SettingsPage() {
   const handleShowQr = async (user: User) => {
       setShowUserQr(user);
       try {
-          // Generate QR with User Credentials for Auto-Login
-          // We send just the ID for security, or ID+PIN if the user explicitly wants "Badges"
-          // Given "qris for login", a badge usually implies instant access.
           const payload = { userId: user.id, pin: user.pin };
           const dataUrl = await QRCode.toDataURL(JSON.stringify(payload));
           setQrCodeData(dataUrl);
@@ -219,6 +222,18 @@ export default function SettingsPage() {
             >
               <Users className="w-5 h-5 mr-2" />
               Users
+            </button>
+
+            <button
+              onClick={() => setActiveTab('security')}
+              className={`flex items-center px-6 py-4 font-medium border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === 'security'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <Shield className="w-5 h-5 mr-2" />
+              Security
             </button>
 
             <button
@@ -433,6 +448,84 @@ export default function SettingsPage() {
               </table>
             </div>
           </div>
+        )}
+
+        {/* Security Settings (Auto Logoff) */}
+        {activeTab === 'security' && (
+            <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center gap-3 mb-4">
+                    <Shield className="w-6 h-6 text-orange-600" />
+                    <h2 className="text-xl font-bold text-gray-800">Security & Session</h2>
+                </div>
+                <p className="text-sm text-gray-600 mb-6">
+                    Manage session timeouts and access security.
+                </p>
+
+                <div className="space-y-6 max-w-xl">
+                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                                <Clock className="w-5 h-5 text-gray-600" />
+                                <div>
+                                    <h3 className="font-medium text-gray-800">Auto Log Off</h3>
+                                    <p className="text-xs text-gray-500">Automatically log out inactive users</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <span className="text-sm text-gray-600">{businessData.autoLogoffEnabled ? 'Enabled' : 'Disabled'}</span>
+                                <button
+                                    onClick={() => {
+                                        const newVal = !businessData.autoLogoffEnabled;
+                                        setBusinessData(prev => ({ ...prev, autoLogoffEnabled: newVal }));
+                                        saveBusinessSetup({ ...businessSetup, ...businessData, autoLogoffEnabled: newVal, isSetup: true } as any);
+                                    }}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${businessData.autoLogoffEnabled ? 'bg-blue-600' : 'bg-gray-200'}`}
+                                >
+                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${businessData.autoLogoffEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {businessData.autoLogoffEnabled && (
+                            <div className="mt-4 pt-4 border-t border-gray-200 animate-in slide-in-from-top-2 duration-200">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Idle Time (Minutes)</label>
+                                <div className="flex gap-4">
+                                    {[1, 2, 5, 10, 30, 60].map(mins => (
+                                        <button
+                                            key={mins}
+                                            onClick={() => {
+                                                setBusinessData(prev => ({ ...prev, autoLogoffMinutes: mins }));
+                                                saveBusinessSetup({ ...businessSetup, ...businessData, autoLogoffMinutes: mins, isSetup: true } as any);
+                                            }}
+                                            className={`px-3 py-2 rounded-lg text-sm font-medium border ${
+                                                businessData.autoLogoffMinutes === mins
+                                                ? 'bg-blue-50 border-blue-500 text-blue-700'
+                                                : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                                            }`}
+                                        >
+                                            {mins}m
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="mt-3">
+                                    <label className="text-xs text-gray-500">Custom (min):</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        value={businessData.autoLogoffMinutes}
+                                        onChange={(e) => {
+                                            const val = parseInt(e.target.value) || 1;
+                                            setBusinessData(prev => ({ ...prev, autoLogoffMinutes: val }));
+                                            saveBusinessSetup({ ...businessSetup, ...businessData, autoLogoffMinutes: val, isSetup: true } as any);
+                                        }}
+                                        className="ml-2 w-20 px-2 py-1 text-sm border rounded"
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
         )}
 
         {/* Devices & Connection */}

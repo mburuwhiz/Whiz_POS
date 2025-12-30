@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { usePosStore } from '../store/posStore';
 import { Product } from '../types';
-import { Package, AlertTriangle, TrendingUp, TrendingDown, Plus, Edit2, Trash2, Search, Filter } from 'lucide-react';
+import { Package, AlertTriangle, TrendingUp, TrendingDown, Plus, Edit2, Trash2, Search, Filter, ClipboardCheck } from 'lucide-react';
 import cartPlaceholder from '../assets/cart.png';
 
 export default function InventoryManagement() {
-  const { products, updateProduct, addProduct, deleteProduct } = usePosStore();
+  const { products, updateProduct, addProduct, deleteProduct, addToSyncQueue } = usePosStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isReconcileMode, setIsReconcileMode] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -20,24 +21,28 @@ export default function InventoryManagement() {
     available: true
   });
 
-  const categories = ['all', ...new Set(products.map(p => p.category))];
+  // State for Reconciliation
+  const [reconciliationData, setReconciliationData] = useState<{ [id: number]: number }>({});
+
+  const categories = ['all', ...new Set(products.map(p => p.category || 'Other'))].filter(Boolean);
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = (product.name || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
+    const productCategory = product.category || 'Other';
+    const matchesCategory = selectedCategory === 'all' || productCategory === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
   const lowStockProducts = filteredProducts.filter(product => 
-    product.stock !== undefined && product.stock <= (product.minStock || 10)
+    (product.stock || 0) <= (product.minStock || 10) && (product.stock || 0) > 0
   );
 
   const outOfStockProducts = filteredProducts.filter(product => 
-    product.stock === 0
+    (product.stock || 0) === 0
   );
 
   const totalStockValue = filteredProducts.reduce((sum, product) => 
-    sum + (product.price * (product.stock || 0)), 0
+    sum + ((product.price || 0) * (product.stock || 0)), 0
   );
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -100,6 +105,34 @@ export default function InventoryManagement() {
     updateProduct(product.id, { available: !product.available });
   };
 
+  // Reconciliation Logic
+  const handleReconcileChange = (productId: number, value: string) => {
+      const count = parseInt(value);
+      if (!isNaN(count)) {
+          setReconciliationData(prev => ({ ...prev, [productId]: count }));
+      }
+  };
+
+  const submitReconciliation = () => {
+      if (confirm("This will update the stock levels for all modified items. Continue?")) {
+          Object.entries(reconciliationData).forEach(([id, count]) => {
+              const productId = parseInt(id) || id; // Handle string/number ID mismatch if any
+              // Ideally updateProduct should handle ID type correctly.
+              // Product ID in interface is number, but some logic uses string.
+              // Let's assume it matches the type in store.
+              // Casting id to number if product.id is number
+              const product = products.find(p => p.id == productId);
+              if (product) {
+                  updateProduct(product.id, { stock: count });
+                  // Log adjustment? For now, updating stock is sufficient for MVP.
+              }
+          });
+          setReconciliationData({});
+          setIsReconcileMode(false);
+          alert("Stock levels updated successfully.");
+      }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -113,61 +146,78 @@ export default function InventoryManagement() {
                 <p className="text-gray-600">Manage products and stock levels</p>
               </div>
             </div>
-            <button
-              onClick={() => setIsFormOpen(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 transition-colors"
-            >
-              <Plus className="w-5 h-5" />
-              <span>Add Product</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm">Total Products</p>
-                <p className="text-2xl font-bold text-gray-800">{filteredProducts.length}</p>
-              </div>
-              <Package className="w-8 h-8 text-blue-600" />
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm">Low Stock</p>
-                <p className="text-2xl font-bold text-orange-600">{lowStockProducts.length}</p>
-              </div>
-              <AlertTriangle className="w-8 h-8 text-orange-600" />
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm">Out of Stock</p>
-                <p className="text-2xl font-bold text-red-600">{outOfStockProducts.length}</p>
-              </div>
-              <TrendingDown className="w-8 h-8 text-red-600" />
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm">Stock Value</p>
-                <p className="text-2xl font-bold text-green-600">KES {totalStockValue.toFixed(2)}</p>
-              </div>
-              <TrendingUp className="w-8 h-8 text-green-600" />
+            <div className="flex space-x-3">
+                <button
+                    onClick={() => setIsReconcileMode(!isReconcileMode)}
+                    className={`px-6 py-3 rounded-lg flex items-center space-x-2 transition-colors ${
+                        isReconcileMode
+                        ? 'bg-purple-100 text-purple-800 hover:bg-purple-200'
+                        : 'bg-purple-600 text-white hover:bg-purple-700'
+                    }`}
+                >
+                    <ClipboardCheck className="w-5 h-5" />
+                    <span>{isReconcileMode ? 'Exit Reconciliation' : 'Stock Reconciliation'}</span>
+                </button>
+                {!isReconcileMode && (
+                    <button
+                    onClick={() => setIsFormOpen(true)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 transition-colors"
+                    >
+                    <Plus className="w-5 h-5" />
+                    <span>Add Product</span>
+                    </button>
+                )}
             </div>
           </div>
         </div>
+
+        {/* Summary Cards (Hidden in Reconciliation Mode to focus) */}
+        {!isReconcileMode && (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+            <div className="bg-white rounded-lg shadow-sm p-6">
+                <div className="flex items-center justify-between">
+                <div>
+                    <p className="text-gray-600 text-sm">Total Products</p>
+                    <p className="text-2xl font-bold text-gray-800">{filteredProducts.length}</p>
+                </div>
+                <Package className="w-8 h-8 text-blue-600" />
+                </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-6">
+                <div className="flex items-center justify-between">
+                <div>
+                    <p className="text-gray-600 text-sm">Low Stock</p>
+                    <p className="text-2xl font-bold text-orange-600">{lowStockProducts.length}</p>
+                </div>
+                <AlertTriangle className="w-8 h-8 text-orange-600" />
+                </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-6">
+                <div className="flex items-center justify-between">
+                <div>
+                    <p className="text-gray-600 text-sm">Out of Stock</p>
+                    <p className="text-2xl font-bold text-red-600">{outOfStockProducts.length}</p>
+                </div>
+                <TrendingDown className="w-8 h-8 text-red-600" />
+                </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-6">
+                <div className="flex items-center justify-between">
+                <div>
+                    <p className="text-gray-600 text-sm">Stock Value</p>
+                    <p className="text-2xl font-bold text-green-600">KES {totalStockValue.toFixed(2)}</p>
+                </div>
+                <TrendingUp className="w-8 h-8 text-green-600" />
+                </div>
+            </div>
+            </div>
+        )}
 
         {/* Alerts */}
-        {(lowStockProducts.length > 0 || outOfStockProducts.length > 0) && (
+        {!isReconcileMode && (lowStockProducts.length > 0 || outOfStockProducts.length > 0) && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
             <h3 className="text-lg font-semibold text-yellow-800 mb-4">Stock Alerts</h3>
             {outOfStockProducts.length > 0 && (
@@ -219,14 +269,38 @@ export default function InventoryManagement() {
                 className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 {categories.map(cat => (
-                  <option key={cat} value={cat}>
-                    {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                  <option key={String(cat)} value={String(cat)}>
+                    {String(cat).charAt(0).toUpperCase() + String(cat).slice(1)}
                   </option>
                 ))}
               </select>
             </div>
           </div>
         </div>
+
+        {/* Reconciliation Actions */}
+        {isReconcileMode && (
+            <div className="bg-purple-50 p-4 rounded-lg mb-6 flex justify-between items-center border border-purple-200">
+                <div>
+                    <h3 className="font-bold text-purple-900">Stock Reconciliation Mode</h3>
+                    <p className="text-sm text-purple-700">Enter physical counts below. Variance will be calculated automatically.</p>
+                </div>
+                <div className="flex space-x-3">
+                    <button
+                        onClick={() => { setReconciliationData({}); setIsReconcileMode(false); }}
+                        className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={submitReconciliation}
+                        className="px-4 py-2 bg-purple-600 text-white hover:bg-purple-700 rounded-lg font-bold"
+                    >
+                        Submit Adjustments
+                    </button>
+                </div>
+            </div>
+        )}
 
         {/* Products Table */}
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
@@ -239,11 +313,20 @@ export default function InventoryManagement() {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Min Stock</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  {!isReconcileMode && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>}
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">System Stock</th>
+                  {isReconcileMode ? (
+                      <>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Physical Count</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Variance</th>
+                      </>
+                  ) : (
+                      <>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Min Stock</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      </>
+                  )}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -258,7 +341,7 @@ export default function InventoryManagement() {
                         />
                         <div>
                           <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                          <div className="text-sm text-gray-500">ID: {product.id}</div>
+                          {!isReconcileMode && <div className="text-sm text-gray-500">ID: {product.id}</div>}
                         </div>
                       </div>
                     </td>
@@ -267,49 +350,79 @@ export default function InventoryManagement() {
                         {product.category}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      KES {product.price.toFixed(2)}
-                    </td>
+                    {!isReconcileMode && (
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        KES {product.price.toFixed(2)}
+                        </td>
+                    )}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`text-sm font-medium ${
-                        product.stock === 0 ? 'text-red-600' :
-                        product.stock <= (product.minStock || 10) ? 'text-orange-600' :
-                        'text-green-600'
+                        !isReconcileMode && product.stock === 0 ? 'text-red-600' :
+                        !isReconcileMode && product.stock <= (product.minStock || 10) ? 'text-orange-600' :
+                        'text-gray-900'
                       }`}>
                         {product.stock || 0}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {product.minStock || 10}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <button
-                        onClick={() => toggleAvailability(product)}
-                        className={`px-3 py-1 text-xs font-medium rounded-full ${
-                          product.available 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}
-                      >
-                        {product.available ? 'Available' : 'Unavailable'}
-                      </button>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleEdit(product)}
-                          className="text-blue-600 hover:text-blue-800"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(product.id)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
+
+                    {isReconcileMode ? (
+                        <>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                                <input
+                                    type="number"
+                                    min="0"
+                                    className="w-24 p-2 border rounded focus:ring-2 focus:ring-purple-500"
+                                    value={reconciliationData[product.id] !== undefined ? reconciliationData[product.id] : ''}
+                                    onChange={(e) => handleReconcileChange(product.id, e.target.value)}
+                                    placeholder={product.stock?.toString()}
+                                />
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap font-bold">
+                                {reconciliationData[product.id] !== undefined ? (
+                                    <span className={reconciliationData[product.id] - (product.stock || 0) < 0 ? 'text-red-600' : 'text-green-600'}>
+                                        {reconciliationData[product.id] - (product.stock || 0) > 0 ? '+' : ''}
+                                        {reconciliationData[product.id] - (product.stock || 0)}
+                                    </span>
+                                ) : (
+                                    <span className="text-gray-400">-</span>
+                                )}
+                            </td>
+                        </>
+                    ) : (
+                        <>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {product.minStock || 10}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                            <button
+                                onClick={() => toggleAvailability(product)}
+                                className={`px-3 py-1 text-xs font-medium rounded-full ${
+                                product.available
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-red-100 text-red-800'
+                                }`}
+                            >
+                                {product.available ? 'Available' : 'Unavailable'}
+                            </button>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <div className="flex items-center space-x-2">
+                                <button
+                                onClick={() => handleEdit(product)}
+                                className="text-blue-600 hover:text-blue-800"
+                                >
+                                <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button
+                                onClick={() => handleDelete(product.id)}
+                                className="text-red-600 hover:text-red-800"
+                                >
+                                <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+                            </td>
+                        </>
+                    )}
                   </tr>
                 ))}
               </tbody>

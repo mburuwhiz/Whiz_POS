@@ -7,36 +7,43 @@ import autoTable from 'jspdf-autotable';
 export default function ReportsPage() {
   const { transactions, expenses, getDailySales, getTransactionsByDateRange, setCurrentPage, businessSetup } = usePosStore();
 
-  // Initialize range with today.
-  // We use current time for endDate to capture everything up to now.
-  const [dateRange, setDateRange] = useState({
-    startDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD
-    endDate: new Date().toISOString().split('T')[0]
+  // Initialize range with today using local time.
+  const [dateRange, setDateRange] = useState(() => {
+    const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in local time
+    return {
+      startDate: today,
+      endDate: today
+    };
   });
   const [reportType, setReportType] = useState<'sales' | 'expenses' | 'credits'>('sales');
 
   const filteredTransactions = useMemo(() => {
-    // Custom filtering logic to handle "Today" correctly (00:00:00 to Now)
-    // The store's getTransactionsByDateRange typically compares strings 'YYYY-MM-DD'
-    // which effectively does start <= date <= end.
-    // If we want exact time precision for "Today", we might need to filter manually here.
+    // Robust local date parsing to prevent UTC shifts
+    const [startYear, startMonth, startDay] = dateRange.startDate.split('-').map(Number);
+    const [endYear, endMonth, endDay] = dateRange.endDate.split('-').map(Number);
 
-    // Check if the range is a single day (Start == End)
-    if (dateRange.startDate === dateRange.endDate) {
-        const targetDate = dateRange.startDate;
-        return transactions.filter(t => {
-            const tDate = t.timestamp.split('T')[0]; // Extract YYYY-MM-DD part of ISO string
-            return tDate === targetDate;
-        });
-    }
+    const start = new Date(startYear, startMonth - 1, startDay, 0, 0, 0, 0);
+    const end = new Date(endYear, endMonth - 1, endDay, 23, 59, 59, 999);
 
-    return getTransactionsByDateRange(dateRange.startDate, dateRange.endDate);
-  }, [dateRange, transactions, getTransactionsByDateRange]);
+    return transactions.filter(t => {
+      const tDate = new Date(t.timestamp);
+      return tDate >= start && tDate <= end;
+    });
+  }, [dateRange, transactions]);
 
   const filteredExpenses = useMemo(() => {
+    const [startYear, startMonth, startDay] = dateRange.startDate.split('-').map(Number);
+    const [endYear, endMonth, endDay] = dateRange.endDate.split('-').map(Number);
+
+    const start = new Date(startYear, startMonth - 1, startDay, 0, 0, 0, 0);
+    const end = new Date(endYear, endMonth - 1, endDay, 23, 59, 59, 999);
+
     return expenses.filter(expense => {
-      const expenseDate = (expense.timestamp || new Date().toISOString()).split('T')[0];
-      return expenseDate >= dateRange.startDate && expenseDate <= dateRange.endDate;
+      // Handle missing timestamp safely - assume old date (epoch) if missing
+      const expenseTimestamp = expense.timestamp || new Date(0).toISOString();
+      const expenseDate = new Date(expenseTimestamp);
+
+      return expenseDate >= start && expenseDate <= end;
     });
   }, [expenses, dateRange]);
 
@@ -205,7 +212,7 @@ export default function ReportsPage() {
           <div className="flex flex-wrap gap-2 mb-4">
             <button
               onClick={() => {
-                const today = new Date().toISOString().split('T')[0];
+                const today = new Date().toLocaleDateString('en-CA');
                 setDateRange({ startDate: today, endDate: today });
               }}
               className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-full text-gray-700 transition-colors"
@@ -216,7 +223,7 @@ export default function ReportsPage() {
               onClick={() => {
                 const yesterday = new Date();
                 yesterday.setDate(yesterday.getDate() - 1);
-                const date = yesterday.toISOString().split('T')[0];
+                const date = yesterday.toLocaleDateString('en-CA');
                 setDateRange({ startDate: date, endDate: date });
               }}
               className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-full text-gray-700 transition-colors"
@@ -228,8 +235,8 @@ export default function ReportsPage() {
                 const today = new Date();
                 const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
                 setDateRange({
-                  startDate: firstDay.toISOString().split('T')[0],
-                  endDate: today.toISOString().split('T')[0]
+                  startDate: firstDay.toLocaleDateString('en-CA'),
+                  endDate: today.toLocaleDateString('en-CA')
                 });
               }}
               className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-full text-gray-700 transition-colors"
@@ -242,8 +249,8 @@ export default function ReportsPage() {
                 const firstDay = new Date(today.getFullYear(), today.getMonth() - 1, 1);
                 const lastDay = new Date(today.getFullYear(), today.getMonth(), 0);
                 setDateRange({
-                  startDate: firstDay.toISOString().split('T')[0],
-                  endDate: lastDay.toISOString().split('T')[0]
+                  startDate: firstDay.toLocaleDateString('en-CA'),
+                  endDate: lastDay.toLocaleDateString('en-CA')
                 });
               }}
               className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-full text-gray-700 transition-colors"

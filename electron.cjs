@@ -69,6 +69,8 @@ async function ensureDataFilesExist() {
     'salaries.json': [], // New file for salaries
     'credit-customers.json': [],
     'mobile-receipts.json': [], // New file for queuing mobile receipts
+    'credit-payments.json': [], // New file for credit payments
+    'inventory-logs.json': [], // New file for inventory logs
   };
 
   for (const [fileName, content] of Object.entries(dataFiles)) {
@@ -982,9 +984,10 @@ app.whenReady().then(async () => {
   /**
    * IPC Listener: 'print-closing-report'
    * Generates and prints the daily closing report.
+   * Now supports 'detailed' flag.
    */
-  ipcMain.on('print-closing-report', async (event, reportData, businessSetup) => {
-      const htmlContent = await generateClosingReport(reportData, businessSetup);
+  ipcMain.on('print-closing-report', async (event, reportData, businessSetup, detailed = true) => {
+      const htmlContent = await generateClosingReport(reportData, businessSetup, detailed);
       printHtml(htmlContent);
   });
 

@@ -105,7 +105,14 @@ export default function Dashboard() {
     const totalCustomers = new Set(filteredTransactions.map(t => t.customerName || 'Walk-in')).size;
     const previousCustomers = new Set(previousFilteredTransactions.map(t => t.customerName || 'Walk-in')).size;
 
-    const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+    // Filter expenses by the same date range as transactions
+    const { start, end } = getDateFilter();
+    const filteredExpenses = expenses.filter(e => {
+      const expenseDate = new Date(e.timestamp || 0); // Handle missing timestamps
+      return expenseDate >= start && expenseDate <= end;
+    });
+
+    const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
     const netProfit = totalRevenue - totalExpenses;
 
     const newDashboardMetrics: DashboardMetric[] = [

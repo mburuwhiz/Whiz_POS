@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, CheckCircle, Loader2, User, Search, Plus, Phone } from 'lucide-react';
+import { X, CheckCircle, Loader2, User, Search, Plus, Phone, Download } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useMobileStore } from '../store/mobileStore';
 import { api } from '../services/api';
+import html2canvas from 'html2canvas';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'mpesa' | 'credit' | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [currentTransaction, setCurrentTransaction] = useState<any>(null); // To store tx for receipt generation
 
   // Credit Customer Logic
   const [isCreditSelectionOpen, setIsCreditSelectionOpen] = useState(false);
@@ -95,6 +97,8 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
       status: 'completed'
     };
 
+    setCurrentTransaction(transaction); // Store for receipt generation
+
     // 1. Add Transaction to sync queue
     addToSyncQueue({ type: 'transaction', data: transaction });
 
@@ -124,21 +128,80 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
       setIsProcessing(false);
       setIsSuccess(true);
       clearCart();
+      // Keep success message open for manual close or timeout
       setTimeout(() => {
-        onClose();
-        // Reset State
-        setIsSuccess(false);
-        setPaymentMethod(null);
-        setSelectedCustomer(null);
-        setIsCreditSelectionOpen(false);
-      }, 2000);
+        // Automatically close after a delay if user doesn't interact
+        if (document.body.contains(document.getElementById('success-view'))) {
+             onClose();
+             resetState();
+        }
+      }, 5000);
     }, 1000);
+  };
+
+  const resetState = () => {
+      setIsSuccess(false);
+      setPaymentMethod(null);
+      setSelectedCustomer(null);
+      setIsCreditSelectionOpen(false);
+      setCurrentTransaction(null);
+  }
+
+  const handleDownloadReceipt = async () => {
+      const receiptElement = document.getElementById('receipt-capture');
+      if (receiptElement) {
+          try {
+              const canvas = await html2canvas(receiptElement, { scale: 2 }); // Higher scale for better quality
+              const dataUrl = canvas.toDataURL('image/png');
+
+              // Trigger download
+              const link = document.createElement('a');
+              link.href = dataUrl;
+              link.download = `Receipt-${currentTransaction?.id || 'New'}.png`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+          } catch (e) {
+              console.error("Receipt generation failed", e);
+              alert("Failed to generate receipt image.");
+          }
+      }
   };
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      {/* Hidden Receipt Element for Capture */}
+      {currentTransaction && (
+          <div id="receipt-capture" className="fixed top-0 left-0 bg-white text-black p-4 w-[300px] pointer-events-none opacity-0 z-[-1]" style={{ fontFamily: 'monospace' }}>
+              <div className="text-center border-b pb-2 mb-2 border-black border-dashed">
+                  <h1 className="text-lg font-bold">WHIZ POS MOBILE</h1>
+                  <p className="text-xs">Receipt #{currentTransaction.id}</p>
+                  <p className="text-xs">{new Date(currentTransaction.timestamp).toLocaleString()}</p>
+              </div>
+
+              <div className="space-y-1 mb-2 border-b pb-2 border-black border-dashed text-sm">
+                  {currentTransaction.items.map((item: any, i: number) => (
+                      <div key={i} className="flex justify-between">
+                          <span>{item.product.name} x{item.quantity}</span>
+                          <span>{(item.product.price * item.quantity).toFixed(2)}</span>
+                      </div>
+                  ))}
+              </div>
+
+              <div className="text-right font-bold text-lg mb-2">
+                  TOTAL: {currentTransaction.total.toFixed(2)}
+              </div>
+
+              <div className="text-center text-xs border-t pt-2 border-black border-dashed">
+                  <p>Paid via {currentTransaction.paymentMethod.toUpperCase()}</p>
+                  <p>Served by: {currentTransaction.cashierName}</p>
+                  <p className="mt-2">Thank you!</p>
+              </div>
+          </div>
+      )}
+
       <motion.div
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
@@ -146,7 +209,7 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
         className="bg-slate-900 w-full max-w-md rounded-t-3xl sm:rounded-3xl border-t sm:border border-white/10 p-6 shadow-2xl relative max-h-[90vh] overflow-hidden flex flex-col"
       >
         <button
-          onClick={onClose}
+          onClick={() => { onClose(); resetState(); }}
           className="absolute top-4 right-4 p-2 bg-white/5 rounded-full text-slate-400 hover:text-white z-10"
         >
           <X className="w-5 h-5" />
@@ -296,12 +359,20 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
             </button>
           </>
         ) : (
-          <div className="py-12 flex flex-col items-center text-center animate-in fade-in zoom-in duration-300">
+          <div id="success-view" className="py-12 flex flex-col items-center text-center animate-in fade-in zoom-in duration-300">
              <div className="w-20 h-20 rounded-full bg-emerald-500/20 flex items-center justify-center mb-6">
                <CheckCircle className="w-10 h-10 text-emerald-500" />
              </div>
              <h3 className="text-2xl font-bold text-white mb-2">Payment Successful!</h3>
-             <p className="text-slate-400">Transaction recorded & queued.</p>
+             <p className="text-slate-400 mb-6">Transaction recorded & queued.</p>
+
+             <button
+                onClick={handleDownloadReceipt}
+                className="flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl text-sky-400 font-medium transition-colors"
+             >
+                 <Download className="w-5 h-5" />
+                 Download Receipt Image
+             </button>
           </div>
         )}
       </motion.div>

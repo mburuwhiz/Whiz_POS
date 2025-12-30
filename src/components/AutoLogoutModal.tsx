@@ -4,11 +4,26 @@ import { LogOut, Activity } from 'lucide-react';
 
 interface AutoLogoutModalProps {
   onLogout: () => void;
+  userName?: string;
 }
 
-export default function AutoLogoutModal({ onLogout }: AutoLogoutModalProps) {
-  // We removed the countdown timer here.
-  // The purpose of this modal is now just to prompt the user.
+export default function AutoLogoutModal({ onLogout, userName }: AutoLogoutModalProps) {
+  const [countdown, setCountdown] = useState(60);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          onLogout();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [onLogout]);
 
   return (
     <AnimatePresence>
@@ -29,19 +44,27 @@ export default function AutoLogoutModal({ onLogout }: AutoLogoutModalProps) {
           <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-red-500/20 rounded-full blur-3xl pointer-events-none" />
 
           <div className="flex flex-col items-center text-center relative z-10">
-            <h2 className="text-xl font-bold text-gray-800 mb-2">Are you still there?</h2>
-            <p className="text-gray-500 mb-8">
+            <h2 className="text-xl font-bold text-gray-800 mb-2">
+              {userName ? `Hi ${userName}, are you still here?` : 'Are you still there?'}
+            </h2>
+            <p className="text-gray-500 mb-2">
               You have been idle for a while. Would you like to stay logged in or log out?
+            </p>
+            <p className="text-sm font-bold text-red-500 mb-8">
+              Logging out in {countdown}s
             </p>
 
             <div className="w-full space-y-3">
               <button
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl shadow-lg shadow-blue-500/30 transition-all active:scale-95 flex items-center justify-center gap-2 group"
                 onClick={() => {
-                  // User clicked "Stay". This counts as activity.
-                  // Since useIdle hook is event-based, clicking this button triggers document events
-                  // that reset the idle state automatically.
-                  // We just need a dummy handler here.
+                  // Interaction resets idle timer automatically via useIdle in parent,
+                  // but we should just let the component unmount naturally or reset here if managed externally.
+                  // Since useIdle relies on events, clicking this button is an event.
+                  // But we might need to close the modal if the parent doesn't do it instantly.
+                  // Actually, App.tsx renders this conditionally based on `isIdle`.
+                  // `isIdle` becomes false on interaction.
+                  // So just clicking should suffice.
                 }}
               >
                 <Activity className="w-5 h-5 group-hover:animate-pulse" />

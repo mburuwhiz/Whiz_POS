@@ -54,9 +54,6 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
     if (paymentMethod === 'CREDIT' && transaction.creditCustomer) {
         customerName = transaction.creditCustomer;
     }
-    // If user specifically requested actual names for M-Pesa/Cash, they are usually N/A
-    // But if we wanted to support it, we'd need a customer field on transaction.
-    // For now, adhere to "Walk Through Customer" for Cash/Mpesa vs Actual for Credit.
     template = template.replace('{{customer}}', customerName);
 
     template = template.replace('{{paymentMethod}}', paymentMethod);
@@ -65,7 +62,11 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
     template = template.replace('{{total}}', `Ksh ${total.toFixed(2)}`);
 
     template = template.replace('{{receiptHeader}}', businessSetup?.receiptHeader || 'Thank you for your business!');
-    template = template.replace('{{receiptFooter}}', businessSetup?.receiptFooter || 'Please come again!');
+
+    // Conditionally include footer paragraph only if content exists
+    const footerText = businessSetup?.receiptFooter;
+    const footerHtml = footerText ? `<p>${footerText}</p>` : '';
+    template = template.replace('{{receiptFooter}}', footerHtml);
 
     // Generate Items HTML
     const items = transaction.items || [];
@@ -87,12 +88,10 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
     let mpesaDetailsHtml = '';
     let details = [];
 
-    // Check if Paybill details are present in business setup
     if (businessSetup?.mpesaPaybill) {
         details.push(`<p>Paybill No: <b>${businessSetup.mpesaPaybill}</b> | A/C No: <b>${businessSetup.mpesaAccountNumber || 'Business No'}</b></p>`);
     }
 
-    // Check if Till details are present in business setup
     if (businessSetup?.mpesaTill) {
         details.push(`<p style="text-align: center;">Pay By Till : <b>${businessSetup.mpesaTill}</b></p>`);
     }
@@ -115,9 +114,10 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
  *
  * @param {ClosingReportData} reportData - The aggregated report data.
  * @param {BusinessSetup} businessSetup - The business configuration.
+ * @param {boolean} detailed - Whether to include detailed transactions/expenses.
  * @returns {Promise<string>} The populated HTML string.
  */
-async function generateClosingReport(reportData, businessSetup) {
+async function generateClosingReport(reportData, businessSetup, detailed = true) {
     const templatePath = app.isPackaged
       ? path.join(app.getAppPath(), 'closing-report-template.html')
       : path.join(__dirname, 'closing-report-template.html');
@@ -132,9 +132,11 @@ async function generateClosingReport(reportData, businessSetup) {
     template = template.replace('{{totalCredit}}', `Ksh. ${(reportData.totalCredit || 0).toFixed(2)}`);
     template = template.replace('{{grandTotal}}', `Ksh. ${(reportData.grandTotal || 0).toFixed(2)}`);
 
+    // Generate cashier breakdowns (Always show totals, optionally show details)
     const cashierReportsHtml = reportData.cashiers.map(cashier => {
         let creditTransactionsHtml = '';
-        if (cashier.creditTransactions.length > 0) {
+        // Only show credit transaction details if detailed report is requested
+        if (detailed && cashier.creditTransactions.length > 0) {
             creditTransactionsHtml = `
                 <p class="bold">Credit Transactions:</p>
                 <table class="table">
@@ -149,6 +151,10 @@ async function generateClosingReport(reportData, businessSetup) {
                 </table>
             `;
         }
+
+        // If not detailed, we might also want to hide other transaction lists if we added them?
+        // Currently we only have summary table + credit transactions.
+        // The summary table should always be shown per cashier as per requirement.
 
         return `
             <div class="cashier-section">
@@ -166,6 +172,7 @@ async function generateClosingReport(reportData, businessSetup) {
             </div>
         `;
     }).join('');
+
     template = template.replace('{{cashierReports}}', cashierReportsHtml);
 
     return template;

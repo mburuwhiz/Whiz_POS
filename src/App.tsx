@@ -34,7 +34,7 @@ function App() {
   useEffect(() => {
     const init = async () => {
       await loadInitialData();
-      autoPrintClosingReport();
+      // autoPrintClosingReport(); // Disabled on startup per request
     };
     init();
   }, [loadInitialData, autoPrintClosingReport]);

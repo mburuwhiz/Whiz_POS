@@ -26,9 +26,21 @@
         <p>{{date}}</p>
     </div>
     <hr>
-    <div id="cashier-reports">
-        {{cashierReports}}
+    <div class="center">
+        <h2 class="section-header bold">ITEM SALES REPORT</h2>
     </div>
+    <table class="table">
+        <thead>
+            <tr class="bold" style="border-bottom: 1px dashed black;">
+                <td class="label">Item</td>
+                <td class="center">Qty</td>
+                <td class="value">Total</td>
+            </tr>
+        </thead>
+        <tbody>
+            {{itemSales}}
+        </tbody>
+    </table>
     <hr>
     <div class="center">
         <h2 class="section-header bold">GRAND TOTALS</h2>

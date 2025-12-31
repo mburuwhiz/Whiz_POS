@@ -43,9 +43,9 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
     const paymentMethod = transaction.paymentMethod ? transaction.paymentMethod.toUpperCase() : 'CASH';
 
     template = template.replace('{{businessName}}', businessSetup?.businessName || 'WHIZ POS');
-    template = template.replace('{{location}}', 'KAGWE TOWN');
+    template = template.replace('{{location}}', 'KAGWE | ' + (businessSetup?.phone || ''));
     template = template.replace('{{address}}', businessSetup?.address || '');
-    template = template.replace('{{phone}}', businessSetup?.phone || '');
+    template = template.replace('{{phone}}', '');
     template = template.replace('{{receiptId}}', transaction.id + (isReprint ? ' (REPRINT)' : ''));
     template = template.replace('{{date}}', formatDate(transaction.timestamp));
     template = template.replace('{{servedBy}}', transaction.cashier || 'Cashier');
@@ -132,25 +132,18 @@ async function generateClosingReport(reportData, businessSetup, detailed = true)
     template = template.replace('{{totalCredit}}', `Ksh. ${(reportData.totalCredit || 0).toFixed(2)}`);
     template = template.replace('{{grandTotal}}', `Ksh. ${(reportData.grandTotal || 0).toFixed(2)}`);
 
-    // If detailed report is requested, generate cashier breakdowns. Otherwise empty string.
-    const cashierReportsHtml = detailed ? reportData.cashiers.map(cashier => {
+    // Generate Item Sales HTML
+    const itemSalesHtml = reportData.itemSales ? reportData.itemSales.map(item => {
         return `
-            <div class="cashier-section">
-                <p class="bold">CASHIER: ${(cashier.cashierName || 'Unknown').toUpperCase()}</p>
-                <hr>
-                <table class="table">
-                    <tbody>
-                        <tr><td class="label">Cash Sales:</td><td class="value">Ksh. ${cashier.cashTotal.toFixed(2)}</td></tr>
-                        <tr><td class="label">M-Pesa Sales:</td><td class="value">Ksh. ${cashier.mpesaTotal.toFixed(2)}</td></tr>
-                        <tr><td class="label">Credit Sales:</td><td class="value">Ksh. ${cashier.creditTotal.toFixed(2)}</td></tr>
-                        <tr><td class="label">Total Sales:</td><td class="value">Ksh. ${cashier.totalSales.toFixed(2)}</td></tr>
-                    </tbody>
-                </table>
-            </div>
+            <tr>
+                <td class="label">${item.name}</td>
+                <td class="center">${item.quantity}</td>
+                <td class="value">${item.total.toFixed(0)}</td>
+            </tr>
         `;
     }).join('') : '';
 
-    template = template.replace('{{cashierReports}}', cashierReportsHtml);
+    template = template.replace('{{itemSales}}', itemSalesHtml);
 
     return template;
 }

@@ -9,10 +9,8 @@
             font-size: 12px; /* Reverted to 12px */
             font-weight: bold; /* Force boldness */
             color: #000;
-            margin: 0 15px; /* Added margin to prevent cutting on some printers */
-            /* Added side borders with asterisks simulated by dashed border, per request for "symbols" look */
-            /* Padding inside the border */
-            padding: 10px;
+            margin: 0 3mm 0 4mm; /* Adjusted margins: Top Right Bottom Left */
+            padding: 0;
             width: auto;
             max-width: 300px;
             box-sizing: border-box;
@@ -152,7 +150,7 @@
 
     <div class="info">
         <div class="payment-line">
-            <span>Pay: {{paymentMethod}}</span>
+            <span>Payment : {{paymentMethod}}</span>
             <span>Served By: {{servedBy}}</span>
         </div>
     </div>

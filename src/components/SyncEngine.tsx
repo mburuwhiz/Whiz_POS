@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
 import { usePosStore } from '../store/posStore';
-import { Wifi, WifiOff, RefreshCw, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { Wifi, WifiOff, RefreshCw, CheckCircle, AlertCircle, Clock, Smartphone, Server } from 'lucide-react';
+
+interface ConnectedDevice {
+    ip: string;
+    name: string;
+    lastSeen: string;
+}
 
 interface SyncOperation {
   id: string;
@@ -28,6 +34,29 @@ export default function SyncEngine() {
   const [syncHistory, setSyncHistory] = useState<SyncOperation[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState(0);
+  const [connectedDevices, setConnectedDevices] = useState<ConnectedDevice[]>([]);
+  const [apiConfig, setApiConfig] = useState<{ apiUrl: string, apiKey: string } | null>(null);
+
+  useEffect(() => {
+      const loadConfig = async () => {
+          if (window.electron && window.electron.getApiConfig) {
+              const config = await window.electron.getApiConfig();
+              setApiConfig(config);
+          }
+      };
+      loadConfig();
+
+      const fetchDevices = async () => {
+          if (window.electron && window.electron.getConnectedDevices) {
+              const devices = await window.electron.getConnectedDevices();
+              setConnectedDevices(devices);
+          }
+      };
+
+      fetchDevices();
+      const deviceInterval = setInterval(fetchDevices, 30000); // Check every 30s
+      return () => clearInterval(deviceInterval);
+  }, []);
 
   // Monitor online/offline status
   useEffect(() => {
@@ -195,7 +224,7 @@ export default function SyncEngine() {
       <div className="container mx-auto px-4 py-6">
         {/* Connection Status */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-4">
               <div className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${
                 isOnline 
@@ -227,6 +256,51 @@ export default function SyncEngine() {
                 <span className="text-blue-600 font-medium">Syncing... {syncProgress}%</span>
               </div>
             )}
+          </div>
+
+          {/* Mobile Server Configuration */}
+          <div className="border-t pt-4 grid md:grid-cols-2 gap-6">
+             <div>
+                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                    <Server className="w-4 h-4" /> Desktop Server Config
+                </h3>
+                {apiConfig ? (
+                    <div className="space-y-2 bg-gray-50 p-3 rounded text-sm">
+                        <div className="flex justify-between">
+                            <span className="text-gray-600">Server URL:</span>
+                            <span className="font-mono font-medium select-all">{apiConfig.apiUrl}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-gray-600">API Key:</span>
+                            <span className="font-mono font-medium select-all blur-sm hover:blur-none transition-all">{apiConfig.apiKey}</span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Use these details to connect the Mobile App.</p>
+                    </div>
+                ) : (
+                    <div className="text-sm text-gray-500 italic">Loading configuration...</div>
+                )}
+             </div>
+
+             <div>
+                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                    <Smartphone className="w-4 h-4" /> Connected Devices
+                </h3>
+                {connectedDevices.length > 0 ? (
+                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                        {connectedDevices.map((device, idx) => (
+                            <div key={idx} className="flex justify-between items-center bg-gray-50 p-2 rounded text-sm">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                    <span className="font-medium text-gray-700">{device.name}</span>
+                                </div>
+                                <span className="text-xs text-gray-500">{device.ip}</span>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-sm text-gray-400 italic bg-gray-50 p-3 rounded">No devices connected recently.</div>
+                )}
+             </div>
           </div>
         </div>
 

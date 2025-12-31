@@ -24,6 +24,13 @@
 **WHIZ POS** is a complete POS ecosystem built for real-world business workflows.
 It is **fast**, **offline-ready**, and designed for cafés, restaurants, and retail shops.
 
+### Version 5.2.2 Updates
+- **Receipt Formatting**: Optimized for 80mm paper (margins 3mm/4mm), combined header info, and cleaner layout.
+- **Reports**: Daily Sales Report now itemizes sales by product (Qty/Total) instead of detailed credit breakdowns.
+- **Sync**: Enhanced Sync page with Server Connection details and Connected Devices tracking.
+- **Backup**: Added full system Backup & Restore functionality in Developer Settings.
+- **Fixes**: Resolved issue with automatic printing on startup.
+
 ### System Components
 
 | Component           | Tech                              | Purpose                                        |

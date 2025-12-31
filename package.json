@@ -1,7 +1,7 @@
 {
   "name": "whiz-pos",
   "private": true,
-  "version": "5.2.3",
+  "version": "5.2.4",
   "type": "module",
   "main": "electron.cjs",
   "homepage": ".",
@@ -24,6 +24,7 @@
     "@playwright/test": "^1.56.1",
     "ai": "^4.3.16",
     "cannon-es": "^0.20.0",
+    "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.0",
     "cors": "^2.8.5",
     "crypto": "^1.0.1",
@@ -53,6 +54,7 @@
     "react-router-dom": "^6.30.1",
     "react-use": "^17.6.0",
     "tailwind-merge": "^3.4.0",
+    "tailwindcss-animate": "^1.0.7",
     "three": "^0.179.1",
     "zod": "^3.25.67",
     "zustand": "^4.4.7"

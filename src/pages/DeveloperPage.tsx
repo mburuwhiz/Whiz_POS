@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { usePosStore } from '../store/posStore';
-import { Shield, Key, Database, Globe, Save, RefreshCw, Lock, CheckCircle, AlertTriangle, Delete, HardDrive, Upload, Download } from 'lucide-react';
+import { Shield, Key, Database, Globe, Save, RefreshCw, Lock, CheckCircle, AlertTriangle, Delete, HardDrive, Upload, Download, FileText, Copy } from 'lucide-react';
 
 const DeveloperPage = () => {
     const { businessSetup, saveBusinessSetup } = usePosStore();
@@ -17,6 +17,10 @@ const DeveloperPage = () => {
     const [backOfficeApiKey, setBackOfficeApiKey] = useState('');
     const [isPushing, setIsPushing] = useState(false);
     const [isBackingUp, setIsBackingUp] = useState(false);
+
+    // Logs State
+    const [logs, setLogs] = useState('');
+    const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
     useEffect(() => {
         loadConfig();
@@ -38,6 +42,35 @@ const DeveloperPage = () => {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const fetchLogs = async () => {
+        if (!window.electron || !window.electron.getLogs) return;
+        setIsLoadingLogs(true);
+        try {
+            const logsData = await window.electron.getLogs();
+            setLogs(logsData);
+        } catch (e) {
+            console.error("Failed to fetch logs", e);
+        } finally {
+            setIsLoadingLogs(false);
+        }
+    };
+
+    const copyLogs = () => {
+        navigator.clipboard.writeText(logs);
+        setSuccessMsg('Logs copied to clipboard');
+        setTimeout(() => setSuccessMsg(''), 3000);
+    };
+
+    const downloadLogs = () => {
+        const element = document.createElement("a");
+        const file = new Blob([logs], {type: 'text/plain'});
+        element.href = URL.createObjectURL(file);
+        element.download = `whiz-pos-logs-${new Date().toISOString()}.txt`;
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
     };
 
     // Keypad Logic
@@ -377,6 +410,55 @@ const DeveloperPage = () => {
                         {error}
                     </div>
                 )}
+
+                {/* System Logs */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <div className="flex items-center justify-between mb-4 border-b pb-2">
+                        <div className="flex items-center gap-2">
+                            <FileText className="w-5 h-5 text-gray-600" />
+                            <h2 className="text-xl font-semibold text-gray-800">System Logs (Last 48h)</h2>
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={fetchLogs}
+                                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                title="Refresh Logs"
+                            >
+                                <RefreshCw className={`w-5 h-5 ${isLoadingLogs ? 'animate-spin' : ''}`} />
+                            </button>
+                            <button
+                                onClick={copyLogs}
+                                disabled={!logs}
+                                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+                                title="Copy Logs"
+                            >
+                                <Copy className="w-5 h-5" />
+                            </button>
+                            <button
+                                onClick={downloadLogs}
+                                disabled={!logs}
+                                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+                                title="Download Logs"
+                            >
+                                <Download className="w-5 h-5" />
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="bg-gray-900 rounded-lg p-4 h-64 overflow-y-auto font-mono text-xs text-green-400">
+                        {isLoadingLogs ? (
+                            <div className="flex items-center justify-center h-full text-gray-500">
+                                Loading logs...
+                            </div>
+                        ) : logs ? (
+                            <pre className="whitespace-pre-wrap">{logs}</pre>
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-gray-500">
+                                No logs found. Click refresh to load.
+                            </div>
+                        )}
+                    </div>
+                </div>
 
                 {/* Save Button */}
                 <div className="flex justify-end pt-4">

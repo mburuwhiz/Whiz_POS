@@ -530,48 +530,73 @@ export default function SettingsPage() {
 
         {/* Devices & Connection */}
         {activeTab === 'devices' && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center gap-3 mb-4">
-                <Smartphone className="w-6 h-6 text-blue-600" />
-                <h2 className="text-xl font-bold text-gray-800">Mobile App Connection</h2>
-            </div>
-            <p className="text-sm text-gray-600 mb-6">
-                Scan this QR code with the Mobile App to connect to this Desktop POS for printing and syncing.
-            </p>
+          <div className="space-y-6">
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center gap-3 mb-4">
+                    <Smartphone className="w-6 h-6 text-blue-600" />
+                    <h2 className="text-xl font-bold text-gray-800">Mobile App Connection</h2>
+                </div>
+                <p className="text-sm text-gray-600 mb-6">
+                    Scan this QR code with the Mobile App to connect to this Desktop POS for printing and syncing.
+                </p>
 
-            {apiConfig ? (
-                <div className="flex flex-col md:flex-row gap-8 items-center bg-gray-50 p-6 rounded-xl border border-gray-200">
-                    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                        <img src={apiConfig.qrCodeDataUrl} alt="Connection QR Code" className="w-48 h-48" />
-                    </div>
-                    <div className="flex-1 space-y-6 w-full">
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Desktop Server URL</label>
-                            <div className="flex items-center gap-2 mt-1">
-                            <code className="block w-full bg-white px-4 py-3 rounded-lg border border-gray-300 text-sm font-mono text-gray-800 shadow-sm">
-                                {apiConfig.apiUrl}
-                            </code>
-                            </div>
-                            <p className="text-xs text-gray-400 mt-1">Enter this exactly into the Mobile App.</p>
+                {apiConfig ? (
+                    <div className="flex flex-col md:flex-row gap-8 items-center bg-gray-50 p-6 rounded-xl border border-gray-200">
+                        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                            <img src={apiConfig.qrCodeDataUrl} alt="Connection QR Code" className="w-48 h-48" />
                         </div>
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Mobile Sync Key</label>
-                            <div className="flex items-center gap-2 mt-1">
-                            <code className="block w-full bg-white px-4 py-3 rounded-lg border border-gray-300 text-sm font-mono text-gray-800 break-all shadow-sm">
-                                {apiConfig.apiKey}
-                            </code>
+                        <div className="flex-1 space-y-6 w-full">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Desktop Server URL</label>
+                                <div className="flex items-center gap-2 mt-1">
+                                <code className="block w-full bg-white px-4 py-3 rounded-lg border border-gray-300 text-sm font-mono text-gray-800 shadow-sm">
+                                    {apiConfig.apiUrl}
+                                </code>
+                                </div>
+                                <p className="text-xs text-gray-400 mt-1">Enter this exactly into the Mobile App.</p>
                             </div>
-                            <p className="text-xs text-gray-400 mt-1">This key secures the connection between Mobile and Desktop.</p>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Mobile Sync Key</label>
+                                <div className="flex items-center gap-2 mt-1">
+                                <code className="block w-full bg-white px-4 py-3 rounded-lg border border-gray-300 text-sm font-mono text-gray-800 break-all shadow-sm">
+                                    {apiConfig.apiKey}
+                                </code>
+                                </div>
+                                <p className="text-xs text-gray-400 mt-1">This key secures the connection between Mobile and Desktop.</p>
+                            </div>
                         </div>
                     </div>
-                </div>
-            ) : (
-                <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-                    <div className="w-12 h-12 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-gray-500 font-medium">Generating secure connection credentials...</p>
-                    <p className="text-xs text-gray-400 mt-2">Please ensure the app is running in Desktop mode.</p>
-                </div>
-            )}
+                ) : (
+                    <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                        <div className="w-12 h-12 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
+                        <p className="text-gray-500 font-medium">Generating secure connection credentials...</p>
+                        <p className="text-xs text-gray-400 mt-2">Please ensure the app is running in Desktop mode.</p>
+                    </div>
+                )}
+              </div>
+
+              <div className="bg-white rounded-lg shadow p-6">
+                  <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                          <h3 className="font-semibold text-gray-800">Mobile App (APK) Sync</h3>
+                      </div>
+                      <Smartphone className="w-5 h-5 text-gray-400" />
+                  </div>
+
+                  <p className="text-sm text-gray-600 mb-4">
+                      The Mobile Application (APK) uses the same API logic. It connects to the Back Office using the API Key found in Settings &gt; Connected Devices.
+                  </p>
+
+                  <div className="bg-gray-50 rounded-lg p-4 font-mono text-xs text-gray-600 border border-gray-200">
+                      <div className="space-y-1">
+                          <p>// Mobile Sync Logic (Placeholder)</p>
+                          <p>// Uses Capacitor Background Fetch</p>
+                          <p>// Endpoint: /api/transaction</p>
+                          <p>// Auth: X-API-KEY</p>
+                      </div>
+                  </div>
+              </div>
           </div>
         )}
 

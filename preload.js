@@ -153,4 +153,6 @@ contextBridge.exposeInMainWorld('electron', {
   restoreData: () => ipcRenderer.invoke('restore-data'),
 
   getConnectedDevices: () => ipcRenderer.invoke('get-connected-devices'),
+
+  getLogs: () => ipcRenderer.invoke('get-logs'),
 });

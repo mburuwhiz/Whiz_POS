@@ -19,6 +19,31 @@ const store = new Store();
  * Handles application lifecycle, window management, IPC communication, and a local API server for mobile printing.
  */
 
+// Custom Logger Setup
+const logFilePath = path.join(app.getPath('userData'), 'logs.txt');
+
+function logToFile(message) {
+    const timestamp = new Date().toISOString();
+    const logLine = `[${timestamp}] ${message}\n`;
+    fs.appendFile(logFilePath, logLine).catch(err => console.error('Failed to write to log file:', err));
+}
+
+// Override console methods to capture logs
+const originalLog = console.log;
+const originalError = console.error;
+
+console.log = (...args) => {
+    const message = args.map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : arg)).join(' ');
+    logToFile(`INFO: ${message}`);
+    originalLog.apply(console, args);
+};
+
+console.error = (...args) => {
+    const message = args.map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : arg)).join(' ');
+    logToFile(`ERROR: ${message}`);
+    originalError.apply(console, args);
+};
+
 // Define paths for storing user data and assets.
 const userDataPath = path.join(app.getPath('userData'), 'data');
 const productImagesPath = path.join(app.getPath('userData'), 'assets', 'product_images');
@@ -560,6 +585,18 @@ app.whenReady().then(async () => {
           }
       }
 
+      // If the path is just a filename (no directory separators), assume it's already in the product images folder
+      // This happens if the user tries to "re-save" an image that is already local-asset://...
+      if (!sourcePath.includes(path.sep) && !sourcePath.includes('/')) {
+         const existingPath = path.join(productImagesPath, sourcePath);
+         try {
+             await fs.access(existingPath);
+             return { success: true, path: existingPath, fileName: sourcePath };
+         } catch (e) {
+             // Not found, proceed to fail
+         }
+      }
+
       // Verify source file exists
       try {
           await fs.access(sourcePath);
@@ -677,6 +714,28 @@ app.whenReady().then(async () => {
           }
       }
       return devices;
+  });
+
+  // --- Logs ---
+  ipcMain.handle('get-logs', async () => {
+      try {
+          const content = await fs.readFile(logFilePath, 'utf-8');
+          // Filter last 48 hours
+          const lines = content.split('\n');
+          const now = new Date();
+          const filteredLines = lines.filter(line => {
+              const match = line.match(/^\[(.*?)\]/);
+              if (match && match[1]) {
+                  const logTime = new Date(match[1]);
+                  const hoursDiff = (now - logTime) / (1000 * 60 * 60);
+                  return hoursDiff <= 48;
+              }
+              return false; // Filter out malformed lines or empty lines
+          });
+          return filteredLines.join('\n');
+      } catch (e) {
+          return ''; // Return empty if file missing or error
+      }
   });
 
   // --- Developer & Direct DB Sync ---

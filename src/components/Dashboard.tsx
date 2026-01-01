@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { usePosStore } from '../store/posStore';
-import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Package, Calendar, AlertTriangle, Activity, Target } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Package, Calendar, Activity, Target, PieChart, X } from 'lucide-react';
+import { Pie } from 'react-chartjs-2';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 interface DashboardMetric {
   title: string;
@@ -18,11 +22,12 @@ interface TopProduct {
 }
 
 export default function Dashboard() {
-  const { transactions, products, expenses, currentCashier } = usePosStore();
+  const { transactions, products, expenses, setCurrentPage } = usePosStore();
   const [timeRange, setTimeRange] = useState<'today' | 'week' | 'month' | 'year'>('today');
   const [metrics, setMetrics] = useState<DashboardMetric[]>([]);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [recentTransactions, setRecentTransactions] = useState(transactions.slice(0, 50));
+  const [showPieChart, setShowPieChart] = useState(false);
 
   // Calculate date range filter
   const getDateFilter = () => {
@@ -163,7 +168,7 @@ export default function Dashboard() {
     setMetrics(newDashboardMetrics);
   }, [transactions, products, expenses, timeRange]);
 
-  // Calculate top products - Removed Slice to show full list as requested
+  // Calculate top products
   useEffect(() => {
     const filteredTransactions = getFilteredTransactions();
     const productSales = new Map<string, { quantity: number; revenue: number; name: string }>();
@@ -186,7 +191,6 @@ export default function Dashboard() {
     const top = Array.from(productSales.entries())
       .map(([id, data]) => ({ id, ...data }))
       .sort((a, b) => b.revenue - a.revenue);
-      // .slice(0, 5); // REMOVED LIMIT
 
     setTopProducts(top);
   }, [transactions, timeRange]);
@@ -207,6 +211,30 @@ export default function Dashboard() {
     }
   };
 
+  const chartData = {
+    labels: topProducts.slice(0, 5).map(p => p.name),
+    datasets: [
+      {
+        data: topProducts.slice(0, 5).map(p => p.revenue),
+        backgroundColor: [
+          'rgba(54, 162, 235, 0.8)',
+          'rgba(255, 99, 132, 0.8)',
+          'rgba(255, 206, 86, 0.8)',
+          'rgba(75, 192, 192, 0.8)',
+          'rgba(153, 102, 255, 0.8)',
+        ],
+        borderColor: [
+          'rgba(54, 162, 235, 1)',
+          'rgba(255, 99, 132, 1)',
+          'rgba(255, 206, 86, 1)',
+          'rgba(75, 192, 192, 1)',
+          'rgba(153, 102, 255, 1)',
+        ],
+        borderWidth: 1,
+      },
+    ],
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -221,6 +249,14 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setShowPieChart(true)}
+                className="p-2 text-gray-600 hover:text-blue-600 transition-colors"
+                title="Show Product Sales Chart"
+              >
+                <PieChart className="w-6 h-6" />
+              </button>
+              <div className="h-6 w-px bg-gray-300 mx-2"></div>
               <Calendar className="w-5 h-5 text-gray-600" />
               <select
                 value={timeRange}
@@ -347,19 +383,28 @@ export default function Dashboard() {
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <button className="p-4 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg text-left transition-colors">
+            <button
+              onClick={() => setCurrentPage('pos')}
+              className="p-4 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg text-left transition-colors"
+            >
               <DollarSign className="w-6 h-6 text-blue-600 mb-2" />
               <p className="font-medium text-blue-800">Process Sale</p>
               <p className="text-sm text-blue-600">Start new transaction</p>
             </button>
             
-            <button className="p-4 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg text-left transition-colors">
+            <button
+              onClick={() => setCurrentPage('inventory')}
+              className="p-4 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg text-left transition-colors"
+            >
               <Package className="w-6 h-6 text-green-600 mb-2" />
               <p className="font-medium text-green-800">Manage Inventory</p>
               <p className="text-sm text-green-600">Update stock levels</p>
             </button>
             
-            <button className="p-4 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg text-left transition-colors">
+            <button
+              onClick={() => setCurrentPage('reports')}
+              className="p-4 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg text-left transition-colors"
+            >
               <Users className="w-6 h-6 text-purple-600 mb-2" />
               <p className="font-medium text-purple-800">View Reports</p>
               <p className="text-sm text-purple-600">Analytics & insights</p>
@@ -367,6 +412,32 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Pie Chart Popup */}
+      {showPieChart && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowPieChart(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg relative"
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowPieChart(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            <h3 className="text-xl font-bold text-gray-800 mb-6 text-center">Top Products Revenue</h3>
+
+            <div className="aspect-square w-full max-w-sm mx-auto">
+              <Pie data={chartData} options={{ responsive: true, maintainAspectRatio: true }} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

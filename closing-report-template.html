@@ -2,7 +2,17 @@
 <html>
 <head>
     <style>
-        body { font-family: 'monospace'; width: auto; margin: 0 15px; padding: 10px; box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            width: 70mm;
+            margin: 0 auto;
+            padding: 0;
+            box-sizing: border-box;
+            overflow: hidden;
+            font-size: 12px;
+            font-weight: bold;
+            color: #000;
+        }
         .center { text-align: center; }
         .bold { font-weight: bold; }
         .header { font-size: 24px; }
@@ -41,6 +51,13 @@
             {{itemSales}}
         </tbody>
     </table>
+    <hr>
+    <div class="center">
+        <h2 class="section-header bold">CASHIER SUMMARY</h2>
+    </div>
+    <div class="cashier-section">
+        {{cashierBreakdown}}
+    </div>
     <hr>
     <div class="center">
         <h2 class="section-header bold">GRAND TOTALS</h2>

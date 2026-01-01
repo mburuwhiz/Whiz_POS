@@ -145,6 +145,29 @@ async function generateClosingReport(reportData, businessSetup, detailed = true)
 
     template = template.replace('{{itemSales}}', itemSalesHtml);
 
+    // Generate Cashier Breakdown HTML
+    const cashierBreakdownHtml = reportData.cashiers ? reportData.cashiers.map(cashier => {
+        return `
+            <div style="margin-bottom: 10px; border-bottom: 1px dashed #ccc; padding-bottom: 5px;">
+                <p style="font-weight: bold; margin: 2px 0;">Cashier: ${cashier.cashierName}</p>
+                <div style="display: flex; justify-content: space-between; font-size: 11px;">
+                    <span>Cash:</span><span>${cashier.cashTotal.toFixed(0)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 11px;">
+                    <span>M-Pesa:</span><span>${cashier.mpesaTotal.toFixed(0)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 11px;">
+                    <span>Credit:</span><span>${cashier.creditTotal.toFixed(0)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-weight: bold; margin-top: 2px;">
+                    <span>Total:</span><span>${cashier.totalSales.toFixed(0)}</span>
+                </div>
+            </div>
+        `;
+    }).join('') : '';
+
+    template = template.replace('{{cashierBreakdown}}', cashierBreakdownHtml);
+
     return template;
 }
 

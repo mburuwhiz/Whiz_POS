@@ -47,15 +47,6 @@ export default function OrderArea() {
         ) : (
           cart.map((item) => (
             <div key={item.product.id} className="group flex items-center gap-3 bg-white border border-gray-100 hover:border-blue-200 rounded-xl p-3 shadow-sm transition-all hover:shadow-md">
-              {/* Image Placeholder or Actual Image */}
-              <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                  {item.product.image ? (
-                      <img src={item.product.image} alt={item.product.name} className="w-full h-full object-cover" onError={(e) => (e.target as HTMLImageElement).src = '/assets/cart.png'} />
-                  ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400 font-bold text-xs">IMG</div>
-                  )}
-              </div>
-
               <div className="flex-1 min-w-0">
                 <h4 className="font-semibold text-gray-800 truncate">{item.product.name}</h4>
                 <p className="text-sm text-blue-600 font-medium">KES {item.product.price}</p>

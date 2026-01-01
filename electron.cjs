@@ -550,9 +550,27 @@ app.whenReady().then(async () => {
       return { success: false, error: 'Invalid or missing file path' };
     }
     try {
-      const fileName = `${Date.now()}-${path.basename(tempPath)}`;
+      // Decode URL if it was passed as a file:// URL
+      let sourcePath = tempPath;
+      if (sourcePath.startsWith('file://')) {
+          sourcePath = decodeURIComponent(sourcePath.replace('file://', ''));
+          // On Windows, remove leading slash if present (e.g., /C:/...)
+          if (process.platform === 'win32' && sourcePath.startsWith('/') && sourcePath.includes(':')) {
+              sourcePath = sourcePath.substring(1);
+          }
+      }
+
+      // Verify source file exists
+      try {
+          await fs.access(sourcePath);
+      } catch (e) {
+          console.error(`Source image not found at: ${sourcePath}`);
+          return { success: false, error: `Source image not found: ${sourcePath}` };
+      }
+
+      const fileName = `${Date.now()}-${path.basename(sourcePath)}`;
       const permanentPath = path.join(productImagesPath, fileName);
-      await fs.copyFile(tempPath, permanentPath);
+      await fs.copyFile(sourcePath, permanentPath);
       return { success: true, path: permanentPath, fileName: fileName };
     } catch (error) {
       console.error('Failed to save image:', error);

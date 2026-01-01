@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { usePosStore } from '../store/posStore';
-import { Shield, Key, Database, Globe, Save, RefreshCw, Lock, CheckCircle, AlertTriangle, Delete } from 'lucide-react';
+import { Shield, Key, Database, Globe, Save, RefreshCw, Lock, CheckCircle, AlertTriangle, Delete, HardDrive, Upload, Download } from 'lucide-react';
 
 const DeveloperPage = () => {
     const { businessSetup, saveBusinessSetup } = usePosStore();
@@ -16,6 +16,7 @@ const DeveloperPage = () => {
     const [backOfficeUrl, setBackOfficeUrl] = useState('');
     const [backOfficeApiKey, setBackOfficeApiKey] = useState('');
     const [isPushing, setIsPushing] = useState(false);
+    const [isBackingUp, setIsBackingUp] = useState(false);
 
     useEffect(() => {
         loadConfig();
@@ -114,6 +115,43 @@ const DeveloperPage = () => {
             setError('Push Error: ' + e.message);
         } finally {
             setIsPushing(false);
+        }
+    };
+
+    const handleBackup = async () => {
+        if (!window.electron || !window.electron.backupData) return;
+        setIsBackingUp(true);
+        setSuccessMsg('');
+        setError('');
+        try {
+            const result = await window.electron.backupData();
+            if (result.success) {
+                setSuccessMsg(`Backup saved to ${result.filePath}`);
+            } else if (result.error !== 'Cancelled') {
+                setError('Backup failed: ' + result.error);
+            }
+        } catch (e: any) {
+            setError('Backup error: ' + e.message);
+        } finally {
+            setIsBackingUp(false);
+        }
+    };
+
+    const handleRestore = async () => {
+        if (!window.electron || !window.electron.restoreData) return;
+        if (!window.confirm("WARNING: This will overwrite all current data with the backup. This action cannot be undone. Continue?")) return;
+
+        setSuccessMsg('');
+        setError('');
+        try {
+            const result = await window.electron.restoreData();
+            if (result.success) {
+                setSuccessMsg('Restore successful! Application is reloading...');
+            } else if (result.error !== 'Cancelled') {
+                setError('Restore failed: ' + result.error);
+            }
+        } catch (e: any) {
+            setError('Restore error: ' + e.message);
         }
     };
 
@@ -235,6 +273,46 @@ const DeveloperPage = () => {
                                 className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
                             />
                         </div>
+                    </div>
+                </div>
+
+                {/* Backup & Restore */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <div className="flex items-center gap-2 mb-4 border-b pb-2">
+                        <HardDrive className="w-5 h-5 text-orange-600" />
+                        <h2 className="text-xl font-semibold text-gray-800">System Backup & Restore</h2>
+                    </div>
+                    <p className="text-sm text-gray-500 mb-4">
+                        Create a full backup of your business data or restore from a previous backup file.
+                    </p>
+
+                    <div className="flex flex-col sm:flex-row gap-4">
+                        <button
+                            onClick={handleBackup}
+                            disabled={isBackingUp}
+                            className={`flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-lg text-white font-medium transition-colors
+                                ${isBackingUp ? 'bg-gray-400' : 'bg-orange-500 hover:bg-orange-600'}`}
+                        >
+                            {isBackingUp ? (
+                                <>
+                                    <RefreshCw className="w-5 h-5 animate-spin" />
+                                    Backing up...
+                                </>
+                            ) : (
+                                <>
+                                    <Download className="w-5 h-5" />
+                                    Download Backup
+                                </>
+                            )}
+                        </button>
+
+                        <button
+                            onClick={handleRestore}
+                            className="flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-lg bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition-colors border border-gray-200"
+                        >
+                            <Upload className="w-5 h-5" />
+                            Restore Data
+                        </button>
                     </div>
                 </div>
 

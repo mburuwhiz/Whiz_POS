@@ -74,6 +74,9 @@ declare global {
       getPrinters: () => Promise<any[]>;
       checkForUpdate: () => void;
       toggleFullscreen: () => void;
+      getConnectedDevices: () => Promise<{ ip: string; name: string; lastSeen: string }[]>;
+      backupData: () => Promise<{ success: boolean; filePath?: string; error?: string }>;
+      restoreData: () => Promise<{ success: boolean; error?: string }>;
     };
   }
 }
@@ -234,9 +237,16 @@ export interface CashierReport {
   creditTransactions: CreditTransaction[];
 }
 
+export interface ItemSales {
+    name: string;
+    quantity: number;
+    total: number;
+}
+
 export interface ClosingReportData {
   date: string;
   cashiers: CashierReport[];
+  itemSales: ItemSales[];
   grandTotal: number;
   totalCash: number;
   totalMpesa: number;
@@ -1115,6 +1125,21 @@ export const usePosStore = create<PosState>()(
           t.timestamp.startsWith(date) && t.status === 'completed'
         );
 
+        // Calculate Item Sales
+        const itemSalesMap = new Map<string, ItemSales>();
+        dayTransactions.forEach(t => {
+            t.items.forEach(item => {
+                const name = item.product.name;
+                if (!itemSalesMap.has(name)) {
+                    itemSalesMap.set(name, { name, quantity: 0, total: 0 });
+                }
+                const record = itemSalesMap.get(name)!;
+                record.quantity += item.quantity;
+                record.total += (item.quantity * item.product.price);
+            });
+        });
+        const itemSales = Array.from(itemSalesMap.values()).sort((a, b) => b.total - a.total);
+
         const cashierNames = [...new Set(dayTransactions.map(t => t.cashier || 'Unknown'))];
 
         const cashiers: CashierReport[] = cashierNames.map(name => {
@@ -1123,12 +1148,11 @@ export const usePosStore = create<PosState>()(
           const mpesaTotal = transactions.filter(t => t.paymentMethod === 'mpesa').reduce((sum, t) => sum + t.total, 0);
           const creditTotal = transactions.filter(t => t.paymentMethod === 'credit').reduce((sum, t) => sum + t.total, 0);
 
+          // Credit transactions per cashier (kept in data structure but not printed in simplified report)
           const creditTransactions: CreditTransaction[] = transactions
             .filter(t => t.paymentMethod === 'credit' && t.creditCustomer)
             .map(t => {
               const customer = state.creditCustomers.find(c => c.name === t.creditCustomer);
-              // If the customer has paid their balance or if we implement partial payment logic later
-              // For now, if balance > 0, we consider recent transactions as part of that unpaid balance
               const isPaid = (customer?.balance || 0) <= 0;
               return {
                 customerName: t.creditCustomer || 'N/A',
@@ -1155,6 +1179,7 @@ export const usePosStore = create<PosState>()(
         return {
           date,
           cashiers,
+          itemSales,
           grandTotal: totalCash + totalMpesa + totalCredit,
           totalCash,
           totalMpesa,

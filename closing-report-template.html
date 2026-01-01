@@ -2,7 +2,17 @@
 <html>
 <head>
     <style>
-        body { font-family: 'monospace'; width: auto; margin: 0 15px; padding: 10px; box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            width: 70mm;
+            margin: 0 auto;
+            padding: 0;
+            box-sizing: border-box;
+            overflow: hidden;
+            font-size: 12px;
+            font-weight: bold;
+            color: #000;
+        }
         .center { text-align: center; }
         .bold { font-weight: bold; }
         .header { font-size: 24px; }
@@ -26,8 +36,27 @@
         <p>{{date}}</p>
     </div>
     <hr>
-    <div id="cashier-reports">
-        {{cashierReports}}
+    <div class="center">
+        <h2 class="section-header bold">ITEM SALES REPORT</h2>
+    </div>
+    <table class="table">
+        <thead>
+            <tr class="bold" style="border-bottom: 1px dashed black;">
+                <td class="label">Item</td>
+                <td class="center">Qty</td>
+                <td class="value">Total</td>
+            </tr>
+        </thead>
+        <tbody>
+            {{itemSales}}
+        </tbody>
+    </table>
+    <hr>
+    <div class="center">
+        <h2 class="section-header bold">CASHIER SUMMARY</h2>
+    </div>
+    <div class="cashier-section">
+        {{cashierBreakdown}}
     </div>
     <hr>
     <div class="center">

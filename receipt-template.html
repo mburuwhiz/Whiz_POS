@@ -4,18 +4,20 @@
     <meta charset="UTF-8">
     <title>Receipt</title>
     <style>
+        @page {
+            margin: 0;
+            size: auto;
+        }
         body {
             font-family: Arial, sans-serif; /* Thicker font for thermal printers */
             font-size: 12px; /* Reverted to 12px */
             font-weight: bold; /* Force boldness */
             color: #000;
-            margin: 0 15px; /* Added margin to prevent cutting on some printers */
-            /* Added side borders with asterisks simulated by dashed border, per request for "symbols" look */
-            /* Padding inside the border */
-            padding: 10px;
-            width: auto;
-            max-width: 300px;
+            margin: 0 auto;
+            padding: 0;
+            width: 70mm;
             box-sizing: border-box;
+            overflow: hidden;
         }
         .header {
             text-align: center;
@@ -152,7 +154,7 @@
 
     <div class="info">
         <div class="payment-line">
-            <span>Pay: {{paymentMethod}}</span>
+            <span>Payment : {{paymentMethod}}</span>
             <span>Served By: {{servedBy}}</span>
         </div>
     </div>

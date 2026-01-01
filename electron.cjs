@@ -10,6 +10,7 @@ const Store = require('electron-store');
 const { autoUpdater } = require('electron-updater');
 const { generateReceipt, generateClosingReport, generateBusinessSetup } = require(path.join(__dirname, 'print-jobs.cjs'));
 const { MongoClient } = require('mongodb');
+const { dialog } = require('electron'); // For file dialogs
 
 const store = new Store();
 
@@ -135,6 +136,7 @@ app.commandLine.appendSwitch('remote-debugging-port', '9222');
 // Global API Key variable
 let apiKey = null;
 let server = null;
+global.connectedDevicesMap = new Map();
 
 /**
  * Initialize API Key from storage or create if missing
@@ -198,11 +200,28 @@ function startApiServer() {
     apiApp.use(cors({
       origin: '*',
       methods: ['GET', 'POST', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-API-KEY'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-API-KEY', 'X-DEVICE-NAME'],
     }));
 
     // Serve product images statically
     apiApp.use('/assets', express.static(productImagesPath));
+
+    // Middleware to track connected devices
+    apiApp.use((req, res, next) => {
+        const deviceName = req.headers['x-device-name'] || req.headers['user-agent'] || 'Unknown Device';
+        const ip = req.ip.replace('::ffff:', ''); // Clean IPv6 prefix
+
+        // Update device last seen
+        if (global.connectedDevicesMap) {
+            global.connectedDevicesMap.set(ip, {
+                ip,
+                name: deviceName,
+                lastSeen: new Date().toISOString()
+            });
+        }
+
+        next();
+    });
 
     const authMiddleware = (req, res, next) => {
         const authHeader = req.headers['authorization'];
@@ -531,9 +550,27 @@ app.whenReady().then(async () => {
       return { success: false, error: 'Invalid or missing file path' };
     }
     try {
-      const fileName = `${Date.now()}-${path.basename(tempPath)}`;
+      // Decode URL if it was passed as a file:// URL
+      let sourcePath = tempPath;
+      if (sourcePath.startsWith('file://')) {
+          sourcePath = decodeURIComponent(sourcePath.replace('file://', ''));
+          // On Windows, remove leading slash if present (e.g., /C:/...)
+          if (process.platform === 'win32' && sourcePath.startsWith('/') && sourcePath.includes(':')) {
+              sourcePath = sourcePath.substring(1);
+          }
+      }
+
+      // Verify source file exists
+      try {
+          await fs.access(sourcePath);
+      } catch (e) {
+          console.error(`Source image not found at: ${sourcePath}`);
+          return { success: false, error: `Source image not found: ${sourcePath}` };
+      }
+
+      const fileName = `${Date.now()}-${path.basename(sourcePath)}`;
       const permanentPath = path.join(productImagesPath, fileName);
-      await fs.copyFile(tempPath, permanentPath);
+      await fs.copyFile(sourcePath, permanentPath);
       return { success: true, path: permanentPath, fileName: fileName };
     } catch (error) {
       console.error('Failed to save image:', error);
@@ -627,7 +664,92 @@ app.whenReady().then(async () => {
     }
   });
 
+  ipcMain.handle('get-connected-devices', () => {
+      // Return array of connected devices (active in last hour)
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+
+      if (!global.connectedDevicesMap) return [];
+
+      const devices = [];
+      for (const [ip, device] of global.connectedDevicesMap.entries()) {
+          if (new Date(device.lastSeen) > oneHourAgo) {
+              devices.push(device);
+          }
+      }
+      return devices;
+  });
+
   // --- Developer & Direct DB Sync ---
+
+  ipcMain.handle('backup-data', async () => {
+    try {
+        const { canceled, filePath } = await dialog.showSaveDialog({
+            title: 'Save Backup',
+            defaultPath: `whiz-pos-backup-${new Date().toISOString().split('T')[0]}.json`,
+            filters: [{ name: 'JSON Backup', extensions: ['json'] }]
+        });
+
+        if (canceled || !filePath) return { success: false, error: 'Cancelled' };
+
+        const files = [
+            'business-setup.json', 'products.json', 'users.json', 'transactions.json',
+            'expenses.json', 'salaries.json', 'credit-customers.json', 'server-config.json',
+            'credit-payments.json', 'inventory-logs.json'
+        ];
+
+        const backupData = {
+            timestamp: new Date().toISOString(),
+            version: '5.2.0',
+            data: {}
+        };
+
+        for (const file of files) {
+            try {
+                const content = await fs.readFile(path.join(userDataPath, file), 'utf-8');
+                backupData.data[file] = JSON.parse(content);
+            } catch (e) {
+                // Ignore missing files
+            }
+        }
+
+        await fs.writeFile(filePath, JSON.stringify(backupData, null, 2));
+        return { success: true, filePath };
+    } catch (e) {
+        console.error("Backup failed", e);
+        return { success: false, error: e.message };
+    }
+  });
+
+  ipcMain.handle('restore-data', async () => {
+      try {
+          const { canceled, filePaths } = await dialog.showOpenDialog({
+              title: 'Select Backup File',
+              properties: ['openFile'],
+              filters: [{ name: 'JSON Backup', extensions: ['json'] }]
+          });
+
+          if (canceled || filePaths.length === 0) return { success: false, error: 'Cancelled' };
+
+          const backupContent = await fs.readFile(filePaths[0], 'utf-8');
+          const backup = JSON.parse(backupContent);
+
+          if (!backup.data) throw new Error("Invalid backup file format");
+
+          // Restore files
+          for (const [filename, content] of Object.entries(backup.data)) {
+              await fs.writeFile(path.join(userDataPath, filename), JSON.stringify(content, null, 2));
+          }
+
+          // Reload window to apply changes
+          const mainWindow = BrowserWindow.getAllWindows()[0];
+          if (mainWindow) mainWindow.reload();
+
+          return { success: true };
+      } catch (e) {
+          console.error("Restore failed", e);
+          return { success: false, error: e.message };
+      }
+  });
 
   ipcMain.handle('get-developer-config', async () => {
       try {

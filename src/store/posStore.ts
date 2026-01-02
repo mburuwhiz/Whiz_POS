@@ -1170,6 +1170,7 @@ export const usePosStore = create<PosState>()(
           return {
             cashierName: name,
             items,
+            transactions,
             totalSales: cashTotal + mpesaTotal + creditTotal,
             cashTotal,
             mpesaTotal,

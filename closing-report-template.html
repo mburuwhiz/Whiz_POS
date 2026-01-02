@@ -3,94 +3,77 @@
 <head>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Courier New', monospace; /* Monospace for alignment */
             width: 70mm;
             margin: 0 auto;
             padding: 0;
-            box-sizing: border-box;
-            overflow: hidden;
+            background-color: #fff;
+            color: #000;
             font-size: 12px;
             font-weight: bold;
-            color: #000;
         }
-        .center { text-align: center; }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .text-left { text-align: left; }
         .bold { font-weight: bold; }
-        .header { font-size: 24px; }
-        .section-header { font-size: 18px; margin-top: 15px; }
-        .table { width: 100%; border-collapse: collapse; }
-        .table th, .table td { padding: 5px; }
-        .table .label { text-align: left; }
-        .table .value { text-align: right; }
-        .cashier-section { margin-top: 15px; }
+        .uppercase { text-transform: uppercase; }
+
+        .header {
+            margin-bottom: 10px;
+        }
+        .business-name {
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px dashed #000;
+            margin: 5px 0;
+        }
+
+        .report-title {
+            font-size: 14px;
+            margin: 10px 0;
+        }
+
+        .grand-total-section {
+            margin-top: 10px;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
-    <div class="center">
-        <h1 class="header bold">{{businessName}}</h1>
-        <p>{{businessAddress}}</p>
-        <p>Tel: {{businessPhone}}</p>
+    <div class="header text-center">
+        <div class="business-name bold uppercase">{{businessName}}</div>
+        <div>{{businessAddress}}</div>
+        <div>{{businessPhone}}</div>
     </div>
-    <hr>
-    <div class="center">
-        <h2 class="section-header bold">DAILY SALES REPORT</h2>
-        <p>{{date}}</p>
+
+    <hr/>
+
+    <div class="text-center">
+        <div class="report-title bold">END DAY REPORT</div>
+        <div>{{date}}</div>
     </div>
-    <hr>
-    <div class="center">
-        <h2 class="section-header bold">ITEM SALES REPORT</h2>
+
+    <hr/>
+
+    <!-- Dynamic Cashier Sections Injected Here -->
+    {{cashierSections}}
+
+    <hr/>
+
+    <div class="grand-total-section">
+        <div style="display: flex; justify-content: space-between;">
+            <span class="bold">GRAND TOTAL:</span>
+            <span class="bold">{{grandTotal}}</span>
+        </div>
     </div>
-    <table class="table">
-        <thead>
-            <tr class="bold" style="border-bottom: 1px dashed black;">
-                <td class="label">Item</td>
-                <td class="center">Qty</td>
-                <td class="value">Total</td>
-            </tr>
-        </thead>
-        <tbody>
-            {{itemSales}}
-        </tbody>
-    </table>
-    <hr>
-    <div class="center">
-        <h2 class="section-header bold">CASHIER SUMMARY</h2>
-    </div>
-    <div class="cashier-section">
-        {{cashierBreakdown}}
-    </div>
-    <hr>
-    <div class="center">
-        <h2 class="section-header bold">GRAND TOTALS</h2>
-    </div>
-    <hr>
-    <table class="table">
-        <tbody>
-            <tr>
-                <td class="label">Total Cash:</td>
-                <td class="value">{{totalCash}}</td>
-            </tr>
-            <tr>
-                <td class="label">Total M-Pesa:</td>
-                <td class="value">{{totalMpesa}}</td>
-            </tr>
-            <tr>
-                <td class="label">Total Credit:</td>
-                <td class="value">{{totalCredit}}</td>
-            </tr>
-        </tbody>
-    </table>
-    <hr>
-    <table class="table">
-        <tbody>
-            <tr class="bold">
-                <td class="label">GRAND TOTAL:</td>
-                <td class="value">{{grandTotal}}</td>
-            </tr>
-        </tbody>
-    </table>
-    <hr>
-    <div class="center">
-        <p>End of Day Report</p>
+
+    <hr/>
+    <div class="text-center" style="margin-top: 10px;">
+        *** END OF REPORT ***
     </div>
 </body>
 </html>

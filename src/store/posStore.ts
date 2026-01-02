@@ -520,7 +520,25 @@ export const usePosStore = create<PosState>()(
           newCursorPos = start + value.length;
         }
 
-        activeInput.value = newValue;
+        // Use the native value setter to ensure React detects the change
+        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+          window.HTMLInputElement.prototype,
+          'value'
+        )?.set;
+
+        const nativeTextAreaValueSetter = Object.getOwnPropertyDescriptor(
+          window.HTMLTextAreaElement.prototype,
+          'value'
+        )?.set;
+
+        if (activeInput instanceof HTMLInputElement && nativeInputValueSetter) {
+          nativeInputValueSetter.call(activeInput, newValue);
+        } else if (activeInput instanceof HTMLTextAreaElement && nativeTextAreaValueSetter) {
+          nativeTextAreaValueSetter.call(activeInput, newValue);
+        } else {
+          activeInput.value = newValue;
+        }
+
         const event = new Event('input', { bubbles: true });
         activeInput.dispatchEvent(event);
         activeInput.selectionStart = activeInput.selectionEnd = newCursorPos;
@@ -1125,50 +1143,37 @@ export const usePosStore = create<PosState>()(
           t.timestamp.startsWith(date) && t.status === 'completed'
         );
 
-        // Calculate Item Sales
-        const itemSalesMap = new Map<string, ItemSales>();
-        dayTransactions.forEach(t => {
-            t.items.forEach(item => {
-                const name = item.product.name;
-                if (!itemSalesMap.has(name)) {
-                    itemSalesMap.set(name, { name, quantity: 0, total: 0 });
-                }
-                const record = itemSalesMap.get(name)!;
-                record.quantity += item.quantity;
-                record.total += (item.quantity * item.product.price);
-            });
-        });
-        const itemSales = Array.from(itemSalesMap.values()).sort((a, b) => b.total - a.total);
-
+        // Group by Cashier first
         const cashierNames = [...new Set(dayTransactions.map(t => t.cashier || 'Unknown'))];
 
-        const cashiers: CashierReport[] = cashierNames.map(name => {
+        const cashiers: any[] = cashierNames.map(name => {
           const transactions = dayTransactions.filter(t => (t.cashier || 'Unknown') === name);
           const cashTotal = transactions.filter(t => t.paymentMethod === 'cash').reduce((sum, t) => sum + t.total, 0);
           const mpesaTotal = transactions.filter(t => t.paymentMethod === 'mpesa').reduce((sum, t) => sum + t.total, 0);
           const creditTotal = transactions.filter(t => t.paymentMethod === 'credit').reduce((sum, t) => sum + t.total, 0);
 
-          // Credit transactions per cashier (kept in data structure but not printed in simplified report)
-          const creditTransactions: CreditTransaction[] = transactions
-            .filter(t => t.paymentMethod === 'credit' && t.creditCustomer)
-            .map(t => {
-              const customer = state.creditCustomers.find(c => c.name === t.creditCustomer);
-              const isPaid = (customer?.balance || 0) <= 0;
-              return {
-                customerName: t.creditCustomer || 'N/A',
-                amount: t.total,
-                status: isPaid ? 'paid' : 'unpaid',
-              };
-            });
+          // Items sold by this cashier
+          const itemSalesMap = new Map<string, { name: string; quantity: number; total: number }>();
+          transactions.forEach(t => {
+              t.items.forEach(item => {
+                  const name = item.product.name;
+                  if (!itemSalesMap.has(name)) {
+                      itemSalesMap.set(name, { name, quantity: 0, total: 0 });
+                  }
+                  const record = itemSalesMap.get(name)!;
+                  record.quantity += item.quantity;
+                  record.total += (item.quantity * item.product.price);
+              });
+          });
+          const items = Array.from(itemSalesMap.values()).sort((a, b) => b.total - a.total);
 
           return {
             cashierName: name,
-            transactions,
+            items,
             totalSales: cashTotal + mpesaTotal + creditTotal,
             cashTotal,
             mpesaTotal,
             creditTotal,
-            creditTransactions,
           };
         });
 
@@ -1179,7 +1184,7 @@ export const usePosStore = create<PosState>()(
         return {
           date,
           cashiers,
-          itemSales,
+          itemSales: [], // Redundant for this report style but kept for type compat
           grandTotal: totalCash + totalMpesa + totalCredit,
           totalCash,
           totalMpesa,

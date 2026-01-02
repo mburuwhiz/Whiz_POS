@@ -123,50 +123,56 @@ async function generateClosingReport(reportData, businessSetup, detailed = true)
       : path.join(__dirname, 'closing-report-template.html');
     let template = await fs.readFile(templatePath, 'utf-8');
 
+    // Header
     template = template.replace('{{businessName}}', businessSetup?.businessName || '');
     template = template.replace('{{businessAddress}}', businessSetup?.address || '');
     template = template.replace('{{businessPhone}}', businessSetup?.phone || '');
     template = template.replace('{{date}}', new Date(reportData.date).toDateString());
-    template = template.replace('{{totalCash}}', `Ksh. ${(reportData.totalCash || 0).toFixed(2)}`);
-    template = template.replace('{{totalMpesa}}', `Ksh. ${(reportData.totalMpesa || 0).toFixed(2)}`);
-    template = template.replace('{{totalCredit}}', `Ksh. ${(reportData.totalCredit || 0).toFixed(2)}`);
-    template = template.replace('{{grandTotal}}', `Ksh. ${(reportData.grandTotal || 0).toFixed(2)}`);
 
-    // Generate Item Sales HTML
-    const itemSalesHtml = reportData.itemSales ? reportData.itemSales.map(item => {
-        return `
+    // Generate Cashier Sections (Items + Summary)
+    const cashierSections = reportData.cashiers ? reportData.cashiers.map(cashier => {
+        // Items Table
+        const itemsRows = cashier.items.map(item => `
             <tr>
-                <td class="label">${item.name}</td>
-                <td class="center">${item.quantity}</td>
-                <td class="value">${item.total.toFixed(0)}</td>
+                <td style="text-align: left; padding: 2px;">${item.name}</td>
+                <td style="text-align: center; padding: 2px;">${item.quantity}</td>
+                <td style="text-align: right; padding: 2px;">${item.total.toFixed(2)}</td>
             </tr>
-        `;
-    }).join('') : '';
+        `).join('');
 
-    template = template.replace('{{itemSales}}', itemSalesHtml);
-
-    // Generate Cashier Breakdown HTML
-    const cashierBreakdownHtml = reportData.cashiers ? reportData.cashiers.map(cashier => {
         return `
-            <div style="margin-bottom: 10px; border-bottom: 1px dashed #ccc; padding-bottom: 5px;">
-                <p style="font-weight: bold; margin: 2px 0;">Cashier: ${cashier.cashierName}</p>
-                <div style="display: flex; justify-content: space-between; font-size: 11px;">
-                    <span>Cash:</span><span>${cashier.cashTotal.toFixed(0)}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-size: 11px;">
-                    <span>M-Pesa:</span><span>${cashier.mpesaTotal.toFixed(0)}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-size: 11px;">
-                    <span>Credit:</span><span>${cashier.creditTotal.toFixed(0)}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-weight: bold; margin-top: 2px;">
-                    <span>Total:</span><span>${cashier.totalSales.toFixed(0)}</span>
+            <div class="cashier-section" style="margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px;">
+                <h3 style="margin: 0 0 5px 0; font-size: 14px; text-transform: uppercase;">User: ${cashier.cashierName}</h3>
+
+                <table style="width: 100%; font-size: 12px; margin-bottom: 10px; border-collapse: collapse;">
+                    <thead style="border-bottom: 1px solid #000;">
+                        <tr>
+                            <th style="text-align: left;">Product</th>
+                            <th style="text-align: center;">Qty</th>
+                            <th style="text-align: right;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${itemsRows}
+                    </tbody>
+                </table>
+
+                <div class="summary" style="font-size: 12px;">
+                    <div style="display: flex; justify-content: space-between;"><span>Cash:</span><span>${cashier.cashTotal.toFixed(2)}</span></div>
+                    <div style="display: flex; justify-content: space-between;"><span>M-Pesa:</span><span>${cashier.mpesaTotal.toFixed(2)}</span></div>
+                    <div style="display: flex; justify-content: space-between;"><span>Credit:</span><span>${cashier.creditTotal.toFixed(2)}</span></div>
+                    <div style="display: flex; justify-content: space-between; font-weight: bold; border-top: 1px dashed #000; margin-top: 2px; padding-top: 2px;">
+                        <span>User Total:</span><span>${cashier.totalSales.toFixed(2)}</span>
+                    </div>
                 </div>
             </div>
         `;
     }).join('') : '';
 
-    template = template.replace('{{cashierBreakdown}}', cashierBreakdownHtml);
+    template = template.replace('{{cashierSections}}', cashierSections);
+
+    // Grand Total Footer
+    template = template.replace('{{grandTotal}}', `Ksh. ${(reportData.grandTotal || 0).toFixed(2)}`);
 
     return template;
 }

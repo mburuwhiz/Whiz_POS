@@ -358,40 +358,26 @@ export default function SettingsPage() {
                 <input type="text" name="mpesaAccountNumber" value={businessData.mpesaAccountNumber} onChange={handleBusinessDataChange} disabled={!editingBusiness} className="w-full p-3 border rounded-lg bg-gray-50 disabled:bg-gray-200" />
               </div>
                <div className="md:col-span-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
                     <div className='flex items-center'>
                         <Keyboard className="w-5 h-5 mr-2 text-gray-600" />
-                        <label htmlFor="onScreenKeyboard" className="block text-sm font-medium text-gray-700">On-Screen Keyboard</label>
+                        <div>
+                            <label htmlFor="onScreenKeyboard" className="block text-sm font-medium text-gray-700">On-Screen Keyboard</label>
+                            <p className="text-xs text-gray-500">Enable virtual keyboard for touchscreens</p>
+                        </div>
                     </div>
                     <div className="flex items-center space-x-4">
-                        <div className="flex items-center">
-                            <input
-                                type="radio"
-                                id="enableKeyboard"
-                                name="onScreenKeyboard"
-                                checked={businessData.onScreenKeyboard}
-                                onChange={() => {
-                                    setBusinessData(prev => ({ ...prev, onScreenKeyboard: true }));
-                                    saveBusinessSetup({ ...businessSetup, ...businessData, onScreenKeyboard: true, isSetup: true } as any);
-                                }}
-                                className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                            />
-                            <label htmlFor="enableKeyboard" className="ml-2 block text-sm text-gray-900">Enable</label>
-                        </div>
-                        <div className="flex items-center">
-                            <input
-                                type="radio"
-                                id="disableKeyboard"
-                                name="onScreenKeyboard"
-                                checked={!businessData.onScreenKeyboard}
-                                onChange={() => {
-                                    setBusinessData(prev => ({ ...prev, onScreenKeyboard: false }));
-                                    saveBusinessSetup({ ...businessSetup, ...businessData, onScreenKeyboard: false, isSetup: true } as any);
-                                }}
-                                className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                            />
-                            <label htmlFor="disableKeyboard" className="ml-2 block text-sm text-gray-900">Disable</label>
-                        </div>
+                        <span className="text-sm text-gray-600">{businessData.onScreenKeyboard ? 'Enabled' : 'Disabled'}</span>
+                        <button
+                            onClick={() => {
+                                const newVal = !businessData.onScreenKeyboard;
+                                setBusinessData(prev => ({ ...prev, onScreenKeyboard: newVal }));
+                                saveBusinessSetup({ ...businessSetup, ...businessData, onScreenKeyboard: newVal, isSetup: true } as any);
+                            }}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${businessData.onScreenKeyboard ? 'bg-blue-600' : 'bg-gray-200'}`}
+                        >
+                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${businessData.onScreenKeyboard ? 'translate-x-6' : 'translate-x-1'}`} />
+                        </button>
                     </div>
                 </div>
               </div>

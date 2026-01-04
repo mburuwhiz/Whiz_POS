@@ -6,34 +6,34 @@
     <style>
         @page {
             margin: 0;
-            size: auto;
+            size: 80mm auto; /* Force 80mm width for thermal printers */
         }
         body {
-            font-family: Arial, sans-serif; /* Thicker font for thermal printers */
-            font-size: 12px; /* Reverted to 12px */
-            font-weight: bold; /* Force boldness */
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            font-weight: bold;
             color: #000;
-            margin: 0 auto;
-            padding: 0;
-            width: 70mm;
+            margin: 0;
+            padding: 2mm; /* Small padding to prevent cutting off at edges */
+            width: 100%; /* Fill the available 80mm width */
             box-sizing: border-box;
             overflow: hidden;
         }
         .header {
             text-align: center;
-            margin-bottom: 5px; /* Increased margin */
+            margin-bottom: 5px;
         }
         .header h1 {
-            font-size: 18px; /* Restored size */
+            font-size: 18px;
             margin: 0 0 2px 0;
             text-transform: uppercase;
         }
         .header p {
-            margin: 2px 0; /* Increased margin */
+            margin: 2px 0;
         }
         .separator {
             border-top: 1px dashed #000;
-            margin: 5px 0; /* Increased margin */
+            margin: 5px 0;
         }
         .info {
             margin-bottom: 5px;
@@ -53,6 +53,7 @@
         td {
             padding: 2px 0;
             vertical-align: top;
+            word-wrap: break-word; /* Ensure long names wrap */
         }
         .qty {
             width: 15%;
@@ -75,8 +76,8 @@
             margin: 2px 0;
         }
         .totals .total-row {
-            font-weight: 900; /* Extra bold */
-            font-size: 14px; /* Restored size */
+            font-weight: 900;
+            font-size: 14px;
             margin-top: 4px;
             border-top: 1px dashed #000;
             padding-top: 4px;

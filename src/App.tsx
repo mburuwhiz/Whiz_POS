@@ -8,7 +8,7 @@ import LoginScreen from './components/LoginScreen';
 import OnScreenKeyboard from './components/OnScreenKeyboard';
 import ErrorBoundary from './components/ErrorBoundary';
 import AutoLogoutModal from './components/AutoLogoutModal';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useIdle } from 'react-use';
 
 function App() {
@@ -30,6 +30,19 @@ function App() {
   // Note: changing idleMs dynamically might not reset the internal timer of react-use's useIdle instantly in all versions,
   // but it usually reacts to prop changes or re-renders.
   const isIdle = useIdle(idleMs);
+
+  // Grace period to prevent immediate logout upon login if isIdle is lingering
+  const [gracePeriodOver, setGracePeriodOver] = useState(false);
+
+  useEffect(() => {
+    if (businessSetup?.isLoggedIn) {
+      setGracePeriodOver(false);
+      const timer = setTimeout(() => {
+        setGracePeriodOver(true);
+      }, 3000); // 3 seconds grace period after login
+      return () => clearTimeout(timer);
+    }
+  }, [businessSetup?.isLoggedIn]);
 
   useEffect(() => {
     const init = async () => {
@@ -118,8 +131,8 @@ function App() {
           <OnScreenKeyboard />
 
           {/* Auto Logoff Warning Modal */}
-          {/* Only show if logged in, feature enabled, and idle */}
-          {businessSetup.isLoggedIn && businessSetup.autoLogoffEnabled && isIdle && (
+          {/* Only show if logged in, feature enabled, and idle. Also respect grace period. */}
+          {businessSetup.isLoggedIn && businessSetup.autoLogoffEnabled && isIdle && gracePeriodOver && (
             <AutoLogoutModal onLogout={logout} userName={currentCashier?.name} />
           )}
         </div>

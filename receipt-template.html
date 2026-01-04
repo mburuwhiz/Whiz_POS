@@ -14,7 +14,7 @@
             font-weight: bold;
             color: #000;
             margin: 0;
-            padding: 2mm; /* Small padding to prevent cutting off at edges */
+            padding: 5px 8mm; /* Increased side padding (8mm) to avoid hardware clipping */
             width: 100%; /* Fill the available width */
             box-sizing: border-box;
             overflow: hidden;
@@ -98,6 +98,7 @@
         .payment-line {
             display: flex;
             justify-content: space-between;
+            flex-wrap: wrap; /* Allow wrapping if text is too long */
             font-size: 12px;
         }
     </style>

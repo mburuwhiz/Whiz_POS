@@ -76,14 +76,17 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
     const items = transaction.items || [];
     const itemsHtml = items.map(item => {
         const product = item.product || {};
-        const price = product.price || 0;
-        const quantity = item.quantity || 0;
+        // Ensure numeric values with safe parsing
+        const price = parseFloat(product.price) || 0;
+        const quantity = parseFloat(item.quantity) || 0;
+        const lineTotal = price * quantity;
+
         return `
         <tr>
             <td>${product.name || 'Unknown Item'}</td>
             <td class="qty">${quantity}</td>
             <td class="price">${price.toFixed(2)}</td>
-            <td class="total">${(quantity * price).toFixed(2)}</td>
+            <td class="total">${lineTotal.toFixed(2)}</td>
         </tr>
     `}).join('');
     template = template.replace('{{itemsHtml}}', itemsHtml);

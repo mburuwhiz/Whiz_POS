@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { usePosStore } from '../store/posStore';
-import { Shield, Key, Database, Globe, Save, RefreshCw, Lock, CheckCircle, AlertTriangle, Delete, HardDrive, Upload, Download, FileText, Copy } from 'lucide-react';
+import { Shield, Key, Database, Globe, Save, RefreshCw, Lock, CheckCircle, AlertTriangle, Delete, HardDrive, Upload, Download, FileText, Copy, Printer } from 'lucide-react';
+import { Switch } from '@headlessui/react';
 
 const DeveloperPage = () => {
     const { businessSetup, saveBusinessSetup } = usePosStore();

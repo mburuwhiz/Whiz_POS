@@ -397,6 +397,37 @@ const DeveloperPage = () => {
                     </div>
                 </div>
 
+                {/* Receipt Configuration */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <div className="flex items-center gap-2 mb-4 border-b pb-2">
+                        <Printer className="w-5 h-5 text-teal-600" />
+                        <h2 className="text-xl font-semibold text-gray-800">Receipt Configuration</h2>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="font-medium text-gray-800">Show Developer Footer</p>
+                            <p className="text-sm text-gray-500">
+                                Display "System Designed by Whiz Tech" at the bottom of receipts.
+                                Disable to save paper.
+                            </p>
+                        </div>
+                        <Switch
+                            checked={showDevFooter}
+                            onChange={setShowDevFooter}
+                            className={`${
+                                showDevFooter ? 'bg-teal-600' : 'bg-gray-200'
+                            } relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2`}
+                        >
+                            <span
+                                className={`${
+                                    showDevFooter ? 'translate-x-6' : 'translate-x-1'
+                                } inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
+                            />
+                        </Switch>
+                    </div>
+                </div>
+
                 {/* Status Messages */}
                 {successMsg && (
                     <div className="bg-green-50 text-green-700 p-4 rounded-lg flex items-center gap-2 animate-fade-in">

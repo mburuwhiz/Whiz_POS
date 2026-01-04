@@ -86,7 +86,6 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
             <td>${product.name || 'Unknown Item'}</td>
             <td class="qty">${quantity}</td>
             <td class="price">${price.toFixed(2)}</td>
-            <td class="total">${lineTotal.toFixed(2)}</td>
         </tr>
     `}).join('');
     template = template.replace('{{itemsHtml}}', itemsHtml);
@@ -140,8 +139,17 @@ async function generateClosingReport(reportData, businessSetup, detailed = true)
     template = template.replace('{{businessPhone}}', businessSetup?.phone || '');
     template = template.replace('{{date}}', new Date(reportData.date).toDateString());
 
+    // Calculate global totals
+    let globalCash = 0;
+    let globalMpesa = 0;
+    let globalCredit = 0;
+
     // Generate Cashier Sections (Items + Summary)
     const cashierSections = reportData.cashiers ? reportData.cashiers.map(cashier => {
+        globalCash += cashier.cashTotal || 0;
+        globalMpesa += cashier.mpesaTotal || 0;
+        globalCredit += cashier.creditTotal || 0;
+
         // Items Table
         let itemsTableHtml = '';
         if (detailed) {
@@ -190,6 +198,9 @@ async function generateClosingReport(reportData, businessSetup, detailed = true)
     template = template.replace('{{cashierSections}}', cashierSections);
 
     // Grand Total Footer
+    template = template.replace('{{totalCash}}', `Ksh. ${globalCash.toFixed(2)}`);
+    template = template.replace('{{totalMpesa}}', `Ksh. ${globalMpesa.toFixed(2)}`);
+    template = template.replace('{{totalCredit}}', `Ksh. ${globalCredit.toFixed(2)}`);
     template = template.replace('{{grandTotal}}', `Ksh. ${(reportData.grandTotal || 0).toFixed(2)}`);
 
     return template;

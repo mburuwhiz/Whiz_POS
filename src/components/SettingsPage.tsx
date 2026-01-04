@@ -37,12 +37,14 @@ export default function SettingsPage() {
     isOnline,
     lastSyncTime,
     processSyncQueue,
-    pushDataToServer
+    pushDataToServer,
+    archiveTransactions
   } = usePosStore();
 
-  const [activeTab, setActiveTab] = useState<'business' | 'users' | 'security' | 'sync' | 'devices' | 'printers' | 'updates'>('business');
+  const [activeTab, setActiveTab] = useState<'business' | 'users' | 'security' | 'sync' | 'devices' | 'printers' | 'updates' | 'data'>('business');
   const [editingBusiness, setEditingBusiness] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [pruneDays, setPruneDays] = useState(30);
   const [showAddUser, setShowAddUser] = useState(false);
 
   // User QR State
@@ -65,6 +67,7 @@ export default function SettingsPage() {
     onScreenKeyboard: false,
     autoLogoffEnabled: false,
     autoLogoffMinutes: 5,
+    printerPaperWidth: 80,
   });
 
   const [userData, setUserData] = useState({
@@ -95,6 +98,7 @@ export default function SettingsPage() {
         onScreenKeyboard: businessSetup.onScreenKeyboard || false,
         autoLogoffEnabled: businessSetup.autoLogoffEnabled || false,
         autoLogoffMinutes: businessSetup.autoLogoffMinutes || 5,
+        printerPaperWidth: businessSetup.printerPaperWidth || 80,
       });
     }
   }, [businessSetup]);
@@ -282,6 +286,18 @@ export default function SettingsPage() {
             >
               <RefreshCw className="w-5 h-5 mr-2" />
               Updates
+            </button>
+
+            <button
+              onClick={() => setActiveTab('data')}
+              className={`flex items-center px-6 py-4 font-medium border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === 'data'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <Database className="w-5 h-5 mr-2" />
+              Data
             </button>
           </div>
         </div>
@@ -514,6 +530,58 @@ export default function SettingsPage() {
             </div>
         )}
 
+        {/* Data Management */}
+        {activeTab === 'data' && (
+            <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center gap-3 mb-4">
+                    <Database className="w-6 h-6 text-red-600" />
+                    <h2 className="text-xl font-semibold text-gray-800">Data Management</h2>
+                </div>
+                <p className="text-sm text-gray-600 mb-6">
+                    Manage storage and optimize performance by archiving old data.
+                </p>
+
+                <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-xl">
+                    <h3 className="font-bold text-red-800 mb-2">Delete Old Receipts</h3>
+                    <p className="text-sm text-red-700 mb-4">
+                        This operation will permanently delete transaction records older than the specified number of days.
+                        <br/><br/>
+                        <strong>Note:</strong> Sales totals and reports will be preserved in the archives, but detailed receipt lookups (e.g., reprinting old receipts) will no longer be available for the deleted period.
+                    </p>
+
+                    <div className="flex items-end gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Older than (days)</label>
+                            <input
+                                type="number"
+                                min="1"
+                                value={pruneDays}
+                                onChange={(e) => setPruneDays(Math.max(1, parseInt(e.target.value) || 1))}
+                                className="p-3 border rounded-lg bg-white w-32"
+                            />
+                        </div>
+                        <button
+                            onClick={async () => {
+                                if (confirm(`Are you sure you want to delete receipts older than ${pruneDays} days? This cannot be undone.`)) {
+                                    try {
+                                        await archiveTransactions(pruneDays);
+                                        alert('Data pruned successfully.');
+                                    } catch (e) {
+                                        console.error(e);
+                                        alert('Failed to prune data.');
+                                    }
+                                }
+                            }}
+                            className="flex items-center bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg shadow-sm transition-colors mb-[1px]"
+                        >
+                            <Trash2 className="w-5 h-5 mr-2" />
+                            Delete Receipts
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+
         {/* Devices & Connection */}
         {activeTab === 'devices' && (
           <div className="space-y-6">
@@ -666,6 +734,25 @@ export default function SettingsPage() {
                 </p>
 
                 <div className="max-w-xl space-y-6">
+                    <div>
+                         <label className="block text-sm font-medium text-gray-700 mb-2">Paper Width (mm)</label>
+                         <input
+                            type="number"
+                            min="40"
+                            max="120"
+                            value={businessData.printerPaperWidth || 80}
+                            onChange={(e) => {
+                                const val = parseInt(e.target.value) || 80;
+                                setBusinessData(prev => ({ ...prev, printerPaperWidth: val }));
+                                saveBusinessSetup({ ...businessSetup, ...businessData, printerPaperWidth: val, isSetup: true } as any);
+                            }}
+                            className="w-full p-3 border rounded-lg bg-white"
+                         />
+                         <p className="text-xs text-gray-500 mt-2">
+                             Set the width of your thermal paper (e.g., 80mm or 58mm). This ensures the receipt content scales correctly.
+                         </p>
+                    </div>
+
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Default Printer</label>
                         <select

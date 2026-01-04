@@ -6,7 +6,7 @@
     <style>
         @page {
             margin: 0;
-            size: 80mm auto; /* Force 80mm width for thermal printers */
+            size: {{paperWidth}}mm auto; /* Configurable paper width */
         }
         body {
             font-family: Arial, sans-serif;
@@ -15,7 +15,7 @@
             color: #000;
             margin: 0;
             padding: 2mm; /* Small padding to prevent cutting off at edges */
-            width: 100%; /* Fill the available 80mm width */
+            width: 100%; /* Fill the available width */
             box-sizing: border-box;
             overflow: hidden;
         }

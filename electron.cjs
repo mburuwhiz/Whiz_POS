@@ -97,6 +97,7 @@ async function ensureDataFilesExist() {
     'mobile-receipts.json': [], // New file for queuing mobile receipts
     'credit-payments.json': [], // New file for credit payments
     'inventory-logs.json': [], // New file for inventory logs
+    'daily-summaries.json': {}, // New file for archived daily reports
   };
 
   for (const [fileName, content] of Object.entries(dataFiles)) {

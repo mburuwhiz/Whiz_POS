@@ -10,9 +10,22 @@ const CART_PLACEHOLDER = cartPlaceholder;
  * Allows searching and adding products to the cart.
  */
 export default function ProductGrid() {
-  const { products, addToCart } = usePosStore();
+  const { products, transactions, addToCart } = usePosStore();
   const [searchTerm, setSearchTerm] = React.useState('');
   const [selectedCategory, setSelectedCategory] = React.useState('All');
+
+  // Calculate product popularity based on sales quantity
+  const productSalesCount = React.useMemo(() => {
+    const counts: Record<number, number> = {};
+    transactions.forEach(t => {
+      t.items.forEach(item => {
+        if (item.product && item.product.id) {
+          counts[item.product.id] = (counts[item.product.id] || 0) + item.quantity;
+        }
+      });
+    });
+    return counts;
+  }, [transactions]);
 
   // Extract unique categories
   const categories = ['All', ...new Set(products.map(p => p.category).filter(Boolean))];
@@ -21,6 +34,14 @@ export default function ProductGrid() {
     const matchesSearch = (product.name || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
     return matchesSearch && matchesCategory;
+  }).sort((a, b) => {
+     // Sort by popularity (descending), then name (ascending)
+     const countA = productSalesCount[a.id] || 0;
+     const countB = productSalesCount[b.id] || 0;
+     if (countB !== countA) {
+       return countB - countA;
+     }
+     return a.name.localeCompare(b.name);
   });
 
   return (

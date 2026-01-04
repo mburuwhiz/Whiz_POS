@@ -5,7 +5,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 export default function ReportsPage() {
-  const { transactions, expenses, getDailySales, getTransactionsByDateRange, setCurrentPage, businessSetup } = usePosStore();
+  const { transactions, dailySummaries, expenses, getDailySales, getTransactionsByDateRange, setCurrentPage, businessSetup } = usePosStore();
 
   // Initialize range with today using local time.
   const [dateRange, setDateRange] = useState(() => {
@@ -48,19 +48,34 @@ export default function ReportsPage() {
   }, [expenses, dateRange]);
 
   const salesSummary = useMemo(() => {
-    const cash = filteredTransactions
+    let cash = filteredTransactions
       .filter(t => t.paymentMethod === 'cash')
       .reduce((sum, t) => sum + t.total, 0);
 
-    const mpesa = filteredTransactions
+    let mpesa = filteredTransactions
       .filter(t => t.paymentMethod === 'mpesa')
       .reduce((sum, t) => sum + t.total, 0);
 
-    const credit = filteredTransactions
+    let credit = filteredTransactions
       .filter(t => t.paymentMethod === 'credit')
       .reduce((sum, t) => sum + t.total, 0);
 
-    const totalSales = cash + mpesa + credit;
+    let transactionCount = filteredTransactions.length;
+    let totalSales = cash + mpesa + credit;
+
+    // Add archived data
+    if (dailySummaries) {
+      Object.values(dailySummaries).forEach(summary => {
+        if (summary.date >= dateRange.startDate && summary.date <= dateRange.endDate) {
+          cash += summary.cashTotal;
+          mpesa += summary.mpesaTotal;
+          credit += summary.creditTotal;
+          totalSales += summary.totalSales;
+          transactionCount += summary.transactionCount;
+        }
+      });
+    }
+
     const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
     const netProfit = totalSales - totalExpenses;
 
@@ -71,9 +86,9 @@ export default function ReportsPage() {
       totalSales,
       totalExpenses,
       netProfit,
-      transactionCount: filteredTransactions.length
+      transactionCount
     };
-  }, [filteredTransactions, filteredExpenses]);
+  }, [filteredTransactions, filteredExpenses, dailySummaries, dateRange]);
 
   const topProducts = useMemo(() => {
     const productSales: { [key: string]: { quantity: number; revenue: number } } = {};

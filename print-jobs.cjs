@@ -42,6 +42,10 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
     const tax = transaction.tax || 0;
     const paymentMethod = transaction.paymentMethod ? transaction.paymentMethod.toUpperCase() : 'CASH';
 
+    // Set dynamic paper width (default 80mm)
+    const paperWidth = businessSetup?.printerPaperWidth || 80;
+    template = template.replace('{{paperWidth}}', paperWidth);
+
     template = template.replace('{{businessName}}', businessSetup?.businessName || 'WHIZ POS');
     template = template.replace('{{location}}', 'KAGWE | ' + (businessSetup?.phone || ''));
     template = template.replace('{{address}}', businessSetup?.address || '');
@@ -123,6 +127,10 @@ async function generateClosingReport(reportData, businessSetup, detailed = true)
       : path.join(__dirname, 'closing-report-template.html');
     let template = await fs.readFile(templatePath, 'utf-8');
 
+    // Set dynamic paper width
+    const paperWidth = businessSetup?.printerPaperWidth || 80;
+    template = template.replace('{{paperWidth}}', paperWidth);
+
     // Header
     template = template.replace('{{businessName}}', businessSetup?.businessName || '');
     template = template.replace('{{businessAddress}}', businessSetup?.address || '');
@@ -132,18 +140,17 @@ async function generateClosingReport(reportData, businessSetup, detailed = true)
     // Generate Cashier Sections (Items + Summary)
     const cashierSections = reportData.cashiers ? reportData.cashiers.map(cashier => {
         // Items Table
-        const itemsRows = cashier.items.map(item => `
-            <tr>
-                <td style="text-align: left; padding: 2px;">${item.name}</td>
-                <td style="text-align: center; padding: 2px;">${item.quantity}</td>
-                <td style="text-align: right; padding: 2px;">${item.total.toFixed(2)}</td>
-            </tr>
-        `).join('');
+        let itemsTableHtml = '';
+        if (detailed) {
+            const itemsRows = cashier.items.map(item => `
+                <tr>
+                    <td style="text-align: left; padding: 2px;">${item.name}</td>
+                    <td style="text-align: center; padding: 2px;">${item.quantity}</td>
+                    <td style="text-align: right; padding: 2px;">${item.total.toFixed(2)}</td>
+                </tr>
+            `).join('');
 
-        return `
-            <div class="cashier-section" style="margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px;">
-                <h3 style="margin: 0 0 5px 0; font-size: 14px; text-transform: uppercase;">User: ${cashier.cashierName}</h3>
-
+            itemsTableHtml = `
                 <table style="width: 100%; font-size: 12px; margin-bottom: 10px; border-collapse: collapse;">
                     <thead style="border-bottom: 1px solid #000;">
                         <tr>
@@ -156,6 +163,14 @@ async function generateClosingReport(reportData, businessSetup, detailed = true)
                         ${itemsRows}
                     </tbody>
                 </table>
+            `;
+        }
+
+        return `
+            <div class="cashier-section" style="margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px;">
+                <h3 style="margin: 0 0 5px 0; font-size: 14px; text-transform: uppercase;">User: ${cashier.cashierName}</h3>
+
+                ${itemsTableHtml}
 
                 <div class="summary" style="font-size: 12px;">
                     <div style="display: flex; justify-content: space-between;"><span>Cash:</span><span>${cashier.cashTotal.toFixed(2)}</span></div>
@@ -189,6 +204,10 @@ async function generateBusinessSetup(businessSetup, adminUser) {
       ? path.join(app.getAppPath(), 'startup-invoice-template.html')
       : path.join(__dirname, 'startup-invoice-template.html');
     let template = await fs.readFile(templatePath, 'utf-8');
+
+    // Set dynamic paper width
+    const paperWidth = businessSetup?.printerPaperWidth || 80;
+    template = template.replace('{{paperWidth}}', paperWidth);
 
     template = template.replace('{{businessName}}', businessSetup?.businessName || '');
     template = template.replace('{{businessAddress}}', businessSetup?.address || '');

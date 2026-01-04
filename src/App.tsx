@@ -12,10 +12,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useIdle } from 'react-use';
 
 function App() {
-  const { businessSetup, loadInitialData, autoPrintClosingReport, isDataLoaded, logout, currentCashier } = usePosStore(state => ({
+  const { businessSetup, loadInitialData, isDataLoaded, logout, currentCashier } = usePosStore(state => ({
     businessSetup: state.businessSetup,
     loadInitialData: state.loadInitialData,
-    autoPrintClosingReport: state.autoPrintClosingReport,
     isDataLoaded: state.isDataLoaded,
     logout: state.logout,
     currentCashier: state.currentCashier
@@ -47,10 +46,9 @@ function App() {
   useEffect(() => {
     const init = async () => {
       await loadInitialData();
-      // autoPrintClosingReport(); // Disabled on startup per request
     };
     init();
-  }, [loadInitialData, autoPrintClosingReport]);
+  }, [loadInitialData]);
 
   // Setup Electron IPC Listeners
   useEffect(() => {

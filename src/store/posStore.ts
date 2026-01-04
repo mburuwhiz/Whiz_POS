@@ -207,6 +207,7 @@ export interface BusinessSetup {
   selectedPrinter?: string;
   showPrintPreview?: boolean;
   onScreenKeyboard?: boolean;
+  printerPaperWidth?: number; // Paper width in mm
   isSetup: boolean;
   isLoggedIn: boolean; // Added for login state
   createdAt: string;
@@ -265,11 +266,22 @@ export interface InventoryLog {
     reason?: string;
 }
 
+export interface DailySummary {
+  date: string;
+  totalSales: number;
+  cashTotal: number;
+  mpesaTotal: number;
+  creditTotal: number;
+  expenseTotal: number;
+  transactionCount: number;
+}
+
 interface PosState {
   // Data
   products: Product[];
   cart: CartItem[];
   transactions: Transaction[];
+  dailySummaries: Record<string, DailySummary>; // Archived data
   creditCustomers: CreditCustomer[];
   creditPayments: CreditPayment[];
   inventoryLogs: InventoryLog[];
@@ -298,7 +310,6 @@ interface PosState {
   inventoryProducts: Product[];
   loyaltyCustomers: any[];
   syncHistory: any[];
-  lastClosingReportDate: string | null;
 
   // Actions
   login: (user: User) => void;
@@ -366,11 +377,11 @@ interface PosState {
   updateLoyaltyCustomer: (id: string, updates: any) => void;
   addSyncHistoryItem: (item: any) => void;
   loadInitialData: () => void;
-  autoPrintClosingReport: () => void;
   finishSetup: (businessData: Omit<BusinessSetup, 'createdAt'>, adminUser: Omit<User, 'createdAt' | 'isActive'>) => Promise<void>;
   pushDataToServer: () => Promise<void>;
   addCreditPayment: (customerId: string, amount: number, transactionId?: string) => void;
   addInventoryLog: (log: InventoryLog) => void;
+  archiveTransactions: (daysToKeep: number) => Promise<void>;
 }
 
 /**
@@ -385,6 +396,7 @@ export const usePosStore = create<PosState>()(
       products: [],
       cart: [],
       transactions: [],
+      dailySummaries: {},
       creditCustomers: [],
       creditPayments: [],
       inventoryLogs: [],
@@ -404,7 +416,6 @@ export const usePosStore = create<PosState>()(
       isOnline: navigator.onLine,
       syncQueue: [],
       lastSyncTime: null,
-      lastClosingReportDate: null,
       mobileReceipts: [],
 
       /**
@@ -1118,6 +1129,13 @@ export const usePosStore = create<PosState>()(
       // Reports
       getDailySales: (date: string) => {
         const state = get();
+
+        // Check archived summaries first
+        if (state.dailySummaries && state.dailySummaries[date]) {
+            const s = state.dailySummaries[date];
+            return { cash: s.cashTotal, mpesa: s.mpesaTotal, credit: s.creditTotal, total: s.totalSales };
+        }
+
         const dayTransactions = state.transactions.filter(t =>
           t.timestamp.startsWith(date) && t.status === 'completed'
         );
@@ -1327,7 +1345,7 @@ export const usePosStore = create<PosState>()(
               set({ businessSetup: prefillSetup });
           }
 
-          const fileNames = ['products.json', 'users.json', 'transactions.json', 'credit-customers.json', 'expenses.json', 'salaries.json', 'credit-payments.json', 'inventory-logs.json'];
+          const fileNames = ['products.json', 'users.json', 'transactions.json', 'credit-customers.json', 'expenses.json', 'salaries.json', 'credit-payments.json', 'inventory-logs.json', 'daily-summaries.json'];
           const dataMap = {
             'products.json': 'products',
             'users.json': 'users',
@@ -1336,7 +1354,8 @@ export const usePosStore = create<PosState>()(
             'expenses.json': 'expenses',
             'salaries.json': 'salaries',
             'credit-payments.json': 'creditPayments',
-            'inventory-logs.json': 'inventoryLogs'
+            'inventory-logs.json': 'inventoryLogs',
+            'daily-summaries.json': 'dailySummaries'
           };
 
           for (const fileName of fileNames) {
@@ -1351,20 +1370,6 @@ export const usePosStore = create<PosState>()(
           // Handle error appropriately, maybe set an error state
         } finally {
           set({ isDataLoaded: true });
-        }
-      },
-
-      autoPrintClosingReport: () => {
-        const state = get();
-        const today = new Date().toISOString().split('T')[0];
-        const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-
-        if (state.lastClosingReportDate !== yesterday && state.lastClosingReportDate !== today) {
-          const reportData = state.getDailyClosingReport(yesterday);
-          if (reportData.grandTotal > 0 && window.electron && state.businessSetup) {
-            window.electron.printClosingReport(reportData, state.businessSetup);
-            set({ lastClosingReportDate: yesterday });
-          }
         }
       },
 
@@ -1408,6 +1413,56 @@ export const usePosStore = create<PosState>()(
           }
         };
         printWithRetry();
+      },
+
+      archiveTransactions: async (daysToKeep) => {
+          const state = get();
+          const cutoffDate = new Date();
+          cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
+          cutoffDate.setHours(0, 0, 0, 0);
+
+          const toKeep: Transaction[] = [];
+          const toArchive: Transaction[] = [];
+
+          state.transactions.forEach(t => {
+              const tDate = new Date(t.timestamp);
+              if (tDate < cutoffDate) {
+                  toArchive.push(t);
+              } else {
+                  toKeep.push(t);
+              }
+          });
+
+          if (toArchive.length === 0) return;
+
+          const newSummaries = { ...(state.dailySummaries || {}) };
+
+          toArchive.forEach(t => {
+              // Use local date string YYYY-MM-DD
+              const date = new Date(t.timestamp).toLocaleDateString('en-CA');
+
+              if (!newSummaries[date]) {
+                  newSummaries[date] = {
+                      date,
+                      totalSales: 0,
+                      cashTotal: 0,
+                      mpesaTotal: 0,
+                      creditTotal: 0,
+                      expenseTotal: 0,
+                      transactionCount: 0
+                  };
+              }
+              const s = newSummaries[date];
+              s.totalSales += t.total;
+              s.transactionCount += 1;
+              if (t.paymentMethod === 'cash') s.cashTotal += t.total;
+              if (t.paymentMethod === 'mpesa') s.mpesaTotal += t.total;
+              if (t.paymentMethod === 'credit') s.creditTotal += t.total;
+          });
+
+          set({ transactions: toKeep, dailySummaries: newSummaries });
+          await saveDataToFile('transactions.json', toKeep);
+          await saveDataToFile('daily-summaries.json', newSummaries);
       },
 
       pushDataToServer: async () => {
@@ -1494,6 +1549,7 @@ export const usePosStore = create<PosState>()(
         businessSetup: state.businessSetup,
         currentCashier: state.currentCashier,
         transactions: state.transactions ? state.transactions.slice(-100) : [],
+        dailySummaries: state.dailySummaries,
         creditCustomers: state.creditCustomers,
         creditPayments: state.creditPayments,
         inventoryLogs: state.inventoryLogs, // Persist inventory logs

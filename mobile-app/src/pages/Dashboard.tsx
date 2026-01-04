@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useMobileStore } from '../store/mobileStore';
 import { cn } from '../lib/utils';
-import { ShoppingCart, Search, Menu, LogOut, RefreshCw, X, Receipt, DollarSign, Users, Settings, Trash2, Plus, Minus, BarChart3 } from 'lucide-react';
+import { ShoppingCart, Search, Menu, LogOut, RefreshCw, X, Receipt, DollarSign, Users, Settings, Trash2, Plus, Minus, BarChart3, FileText, ShoppingBag } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../services/api';
 import CheckoutModal from '../components/CheckoutModal';
@@ -304,6 +304,12 @@ export default function Dashboard() {
                </button>
                <button onClick={() => handleNavigate('/credit-customers')} className="w-full flex items-center gap-3 p-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-colors">
                  <Users className="w-5 h-5" /> Credit Customers
+               </button>
+               <button onClick={() => handleNavigate('/inventory')} className="w-full flex items-center gap-3 p-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-colors">
+                 <ShoppingBag className="w-5 h-5" /> Inventory
+               </button>
+               <button onClick={() => handleNavigate('/closing-report')} className="w-full flex items-center gap-3 p-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-colors">
+                 <FileText className="w-5 h-5" /> Closing Report
                </button>
                {currentUser?.role === 'admin' && (
                  <button onClick={() => handleNavigate('/salaries')} className="w-full flex items-center gap-3 p-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-colors">

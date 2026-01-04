@@ -16,6 +16,7 @@ const DeveloperPage = () => {
     const [mongoUri, setMongoUri] = useState('');
     const [backOfficeUrl, setBackOfficeUrl] = useState('');
     const [backOfficeApiKey, setBackOfficeApiKey] = useState('');
+    const [showDevFooter, setShowDevFooter] = useState(true);
     const [isPushing, setIsPushing] = useState(false);
     const [isBackingUp, setIsBackingUp] = useState(false);
 
@@ -37,6 +38,7 @@ const DeveloperPage = () => {
                 // Load Back Office settings from Store (primary source) or Config (fallback)
                 setBackOfficeUrl(businessSetup?.backOfficeUrl || businessSetup?.apiUrl || '');
                 setBackOfficeApiKey(businessSetup?.backOfficeApiKey || businessSetup?.apiKey || '');
+                setShowDevFooter(businessSetup?.showDeveloperFooter !== false);
             }
         } catch (e) {
             console.error("Failed to load developer config", e);
@@ -118,6 +120,7 @@ const DeveloperPage = () => {
             backOfficeApiKey,
             apiUrl: backOfficeUrl,
             apiKey: backOfficeApiKey,
+            showDeveloperFooter: showDevFooter,
             isSetup: true
         };
         // @ts-ignore

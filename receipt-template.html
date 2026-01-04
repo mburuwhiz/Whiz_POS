@@ -9,37 +9,37 @@
             size: auto;
         }
         body {
-            font-family: Arial, sans-serif; /* Thicker font for thermal printers */
-            font-size: 12px; /* Reverted to 12px */
-            font-weight: bold; /* Force boldness */
+            font-family: Arial, sans-serif;
+            font-size: 10.5px; /* Updated to 10.5px */
+            font-weight: bold;
             color: #000;
             margin: 0 auto;
-            padding: 0;
-            width: 70mm;
+            padding: 5px 6mm; /* Minimal margins with padding */
+            width: 70mm; /* Optimized for small paper */
             box-sizing: border-box;
             overflow: hidden;
         }
         .header {
             text-align: center;
-            margin-bottom: 5px; /* Increased margin */
+            margin-bottom: 5px;
         }
         .header h1 {
-            font-size: 18px; /* Restored size */
+            font-size: 14px;
             margin: 0 0 2px 0;
             text-transform: uppercase;
         }
         .header p {
-            margin: 2px 0; /* Increased margin */
+            margin: 1px 0;
         }
         .separator {
             border-top: 1px dashed #000;
-            margin: 5px 0; /* Increased margin */
+            margin: 4px 0;
         }
         .info {
-            margin-bottom: 5px;
+            margin-bottom: 4px;
         }
         .info p {
-            margin: 2px 0;
+            margin: 1px 0;
         }
         table {
             width: 100%;
@@ -53,51 +53,55 @@
         td {
             padding: 2px 0;
             vertical-align: top;
+            word-wrap: break-word; /* Ensure text wraps */
         }
         .qty {
-            width: 15%;
+            width: 12%;
             text-align: center;
         }
         .price {
-            width: 25%;
+            width: 20%;
             text-align: right;
         }
         .total {
             width: 25%;
             text-align: right;
         }
+
         .totals {
             margin-top: 5px;
         }
         .totals .row {
             display: flex;
             justify-content: space-between;
-            margin: 2px 0;
+            margin: 1px 0;
         }
         .totals .total-row {
-            font-weight: 900; /* Extra bold */
-            font-size: 14px; /* Restored size */
+            font-weight: 900;
+            font-size: 13px;
             margin-top: 4px;
             border-top: 1px dashed #000;
             padding-top: 4px;
         }
         .footer {
             text-align: center;
-            margin-top: 10px;
-            font-size: 11px;
+            margin-top: 8px;
+            font-size: 10px;
         }
         .footer p {
-            margin: 2px 0;
+            margin: 1px 0;
         }
         .footer-dev {
             text-align: center;
-            margin-top: 5px;
-            font-size: 10px;
+            margin-top: 4px;
+            font-size: 9px;
+            display: {{showDeveloperFooter}}; /* Controlled by variable */
         }
         .payment-line {
             display: flex;
             justify-content: space-between;
-            font-size: 12px;
+            font-size: 10.5px;
+            flex-wrap: wrap; /* Ensure it doesn't cut off */
         }
     </style>
 </head>
@@ -124,7 +128,7 @@
             <tr>
                 <th>Item</th>
                 <th class="qty">Qty</th>
-                <th class="price">Price</th>
+                <th class="price">@ Price</th>
                 <th class="total">Total</th>
             </tr>
         </thead>
@@ -140,10 +144,6 @@
             <span>Subtotal:</span>
             <span>{{subtotal}}</span>
         </div>
-        <div class="row">
-            <span>Tax:</span>
-            <span>{{tax}}</span>
-        </div>
         <div class="row total-row">
             <span>TOTAL:</span>
             <span>{{total}}</span>
@@ -154,8 +154,10 @@
 
     <div class="info">
         <div class="payment-line">
-            <span>Payment : {{paymentMethod}}</span>
+            <!-- Swapped order: Served By first, then Payment -->
+            <!-- Served By uses First Name logic which should be handled in JS, but here we expect {{servedBy}} to be just first name -->
             <span>Served By: {{servedBy}}</span>
+            <span>Payment : {{paymentMethod}}</span>
         </div>
     </div>
 

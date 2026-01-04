@@ -68,18 +68,23 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
     const footerHtml = footerText ? `<p>${footerText}</p>` : '';
     template = template.replace('{{receiptFooter}}', footerHtml);
 
+    // Handle Developer Footer Visibility
+    const showDevFooter = businessSetup?.showDeveloperFooter !== false ? 'block' : 'none';
+    template = template.replace('{{showDeveloperFooter}}', showDevFooter);
+
     // Generate Items HTML
     const items = transaction.items || [];
     const itemsHtml = items.map(item => {
         const product = item.product || {};
         const price = product.price || 0;
         const quantity = item.quantity || 0;
+        const lineTotal = quantity * price;
         return `
         <tr>
             <td>${product.name || 'Unknown Item'}</td>
             <td class="qty">${quantity}</td>
             <td class="price">${price.toFixed(2)}</td>
-            <td class="total">${(quantity * price).toFixed(2)}</td>
+            <td class="total">${lineTotal.toFixed(2)}</td>
         </tr>
     `}).join('');
     template = template.replace('{{itemsHtml}}', itemsHtml);
@@ -132,18 +137,42 @@ async function generateClosingReport(reportData, businessSetup, detailed = true)
     template = template.replace('{{totalCredit}}', `Ksh. ${(reportData.totalCredit || 0).toFixed(2)}`);
     template = template.replace('{{grandTotal}}', `Ksh. ${(reportData.grandTotal || 0).toFixed(2)}`);
 
-    // Generate Item Sales HTML
-    const itemSalesHtml = reportData.itemSales ? reportData.itemSales.map(item => {
-        return `
-            <tr>
-                <td class="label">${item.name}</td>
-                <td class="center">${item.quantity}</td>
-                <td class="value">${item.total.toFixed(0)}</td>
-            </tr>
-        `;
-    }).join('') : '';
+    // Generate Item Sales HTML - Only if detailed is true
+    let itemSalesHtml = '';
+    let itemSalesSection = '';
 
-    template = template.replace('{{itemSales}}', itemSalesHtml);
+    if (detailed && reportData.itemSales && reportData.itemSales.length > 0) {
+        const rows = reportData.itemSales.map(item => {
+            return `
+                <tr>
+                    <td class="label">${item.name}</td>
+                    <td class="center">${item.quantity}</td>
+                    <td class="value">${item.total.toFixed(0)}</td>
+                </tr>
+            `;
+        }).join('');
+
+        itemSalesSection = `
+            <div class="center">
+                <h2 class="section-header bold">ITEM SALES REPORT</h2>
+            </div>
+            <table class="table">
+                <thead>
+                    <tr class="bold" style="border-bottom: 1px dashed black;">
+                        <td class="label">Item</td>
+                        <td class="center">Qty</td>
+                        <td class="value">Total</td>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows}
+                </tbody>
+            </table>
+            <hr>
+        `;
+    }
+
+    template = template.replace('{{itemSalesSection}}', itemSalesSection);
 
     // Generate Cashier Breakdown HTML
     const cashierBreakdownHtml = reportData.cashiers ? reportData.cashiers.map(cashier => {

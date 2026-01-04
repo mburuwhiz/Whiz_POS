@@ -18,6 +18,10 @@ const DeveloperPage = () => {
     const [isPushing, setIsPushing] = useState(false);
     const [isBackingUp, setIsBackingUp] = useState(false);
 
+    // Feature Toggles
+    const [showDeveloperFooter, setShowDeveloperFooter] = useState(true);
+    const [deleteDays, setDeleteDays] = useState(30);
+
     useEffect(() => {
         loadConfig();
     }, [businessSetup]);
@@ -32,6 +36,10 @@ const DeveloperPage = () => {
                 // Load Back Office settings from Store (primary source) or Config (fallback)
                 setBackOfficeUrl(businessSetup?.backOfficeUrl || businessSetup?.apiUrl || '');
                 setBackOfficeApiKey(businessSetup?.backOfficeApiKey || businessSetup?.apiKey || '');
+
+                if (businessSetup) {
+                    setShowDeveloperFooter(businessSetup.showDeveloperFooter !== false);
+                }
             }
         } catch (e) {
             console.error("Failed to load developer config", e);
@@ -84,11 +92,20 @@ const DeveloperPage = () => {
             backOfficeApiKey,
             apiUrl: backOfficeUrl,
             apiKey: backOfficeApiKey,
+            showDeveloperFooter,
             isSetup: true
         };
         // @ts-ignore
         saveBusinessSetup(updatedSetup);
         setSuccessMsg('Settings saved successfully');
+    };
+
+    const handleDeleteOldReceipts = () => {
+        if (window.confirm(`Are you sure you want to delete receipts older than ${deleteDays} days? This cannot be undone.`)) {
+            // @ts-ignore
+            usePosStore.getState().deleteOldTransactions(deleteDays);
+            setSuccessMsg('Old receipts deleted successfully.');
+        }
     };
 
     const handleDirectPush = async () => {
@@ -246,6 +263,48 @@ const DeveloperPage = () => {
             </div>
 
             <div className="grid gap-6">
+                {/* Advanced Settings */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <div className="flex items-center gap-2 mb-4 border-b pb-2">
+                        <Save className="w-5 h-5 text-gray-600" />
+                        <h2 className="text-xl font-semibold text-gray-800">Advanced Settings</h2>
+                    </div>
+
+                    <div className="grid gap-6 md:grid-cols-2">
+                         <div>
+                            <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                                <input
+                                    type="checkbox"
+                                    checked={showDeveloperFooter}
+                                    onChange={(e) => setShowDeveloperFooter(e.target.checked)}
+                                    className="w-5 h-5 text-blue-600"
+                                />
+                                <span className="font-medium text-gray-700">Show Developer Footer on Receipts</span>
+                            </label>
+                            <p className="text-xs text-gray-500 mt-1 ml-1">Enable to print developer contact info on receipts.</p>
+                        </div>
+
+                        <div className="p-3 border rounded-lg bg-red-50 border-red-100">
+                             <label className="block text-sm font-medium text-gray-700 mb-2">Delete Old Receipts</label>
+                             <div className="flex gap-2">
+                                <input
+                                    type="number"
+                                    value={deleteDays}
+                                    onChange={(e) => setDeleteDays(parseInt(e.target.value))}
+                                    className="w-20 p-2 border rounded text-center"
+                                    min="1"
+                                />
+                                <button
+                                    onClick={handleDeleteOldReceipts}
+                                    className="flex-1 bg-red-600 text-white font-bold rounded hover:bg-red-700 transition-colors"
+                                >
+                                    Delete Older Than {deleteDays} Days
+                                </button>
+                             </div>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Cloud Connection */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                     <div className="flex items-center gap-2 mb-4 border-b pb-2">

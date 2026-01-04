@@ -27,17 +27,30 @@ function App() {
   const idleMs = idleMinutes * 60 * 1000;
 
   // useIdle hook initializes with the duration.
-  // Note: changing idleMs dynamically might not reset the internal timer of react-use's useIdle instantly in all versions,
-  // but it usually reacts to prop changes or re-renders.
   const isIdle = useIdle(idleMs);
+
+  // Grace period to prevent immediate logout on login
+  // We track the time of last login or app start to ignore isIdle for a short duration
+  const [canAutoLogout, setCanAutoLogout] = React.useState(false);
+
+  useEffect(() => {
+    if (businessSetup?.isLoggedIn) {
+        setCanAutoLogout(false);
+        const timer = setTimeout(() => {
+            setCanAutoLogout(true);
+        }, 5000); // 5 seconds grace period
+        return () => clearTimeout(timer);
+    } else {
+        setCanAutoLogout(false);
+    }
+  }, [businessSetup?.isLoggedIn]);
 
   useEffect(() => {
     const init = async () => {
       await loadInitialData();
-      // autoPrintClosingReport(); // Disabled on startup per request
     };
     init();
-  }, [loadInitialData, autoPrintClosingReport]);
+  }, [loadInitialData]);
 
   // Setup Electron IPC Listeners
   useEffect(() => {
@@ -118,8 +131,8 @@ function App() {
           <OnScreenKeyboard />
 
           {/* Auto Logoff Warning Modal */}
-          {/* Only show if logged in, feature enabled, and idle */}
-          {businessSetup.isLoggedIn && businessSetup.autoLogoffEnabled && isIdle && (
+          {/* Only show if logged in, feature enabled, and idle, and grace period passed */}
+          {businessSetup.isLoggedIn && businessSetup.autoLogoffEnabled && isIdle && canAutoLogout && (
             <AutoLogoutModal onLogout={logout} userName={currentCashier?.name} />
           )}
         </div>

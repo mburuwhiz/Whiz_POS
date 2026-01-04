@@ -219,6 +219,7 @@ export interface BusinessSetup {
   locationName?: string;
   autoLogoffEnabled?: boolean;
   autoLogoffMinutes?: number;
+  showDeveloperFooter?: boolean;
 }
 
 export interface CreditTransaction {
@@ -299,6 +300,7 @@ interface PosState {
   loyaltyCustomers: any[];
   syncHistory: any[];
   lastClosingReportDate: string | null;
+  dailySummaries: ClosingReportData[];
 
   // Actions
   login: (user: User) => void;
@@ -371,6 +373,7 @@ interface PosState {
   pushDataToServer: () => Promise<void>;
   addCreditPayment: (customerId: string, amount: number, transactionId?: string) => void;
   addInventoryLog: (log: InventoryLog) => void;
+  deleteOldTransactions: (days: number) => void;
 }
 
 /**
@@ -388,6 +391,7 @@ export const usePosStore = create<PosState>()(
       creditCustomers: [],
       creditPayments: [],
       inventoryLogs: [],
+      dailySummaries: [],
       users: [],
       expenses: [],
       salaries: [],
@@ -826,6 +830,91 @@ export const usePosStore = create<PosState>()(
         });
       },
 
+      deleteOldTransactions: (days) => {
+        const state = get();
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - days);
+        const cutoffTime = cutoffDate.getTime();
+
+        // 1. Identify transactions to delete
+        const transactionsToDelete = state.transactions.filter(t => new Date(t.timestamp).getTime() < cutoffTime);
+        const transactionsToKeep = state.transactions.filter(t => new Date(t.timestamp).getTime() >= cutoffTime);
+
+        if (transactionsToDelete.length === 0) return;
+
+        // 2. Aggregate deleted transactions into Daily Summaries
+        const summariesByDate = new Map<string, ClosingReportData>();
+
+        // Helper to get or create summary
+        const getSummary = (date: string) => {
+            if (!summariesByDate.has(date)) {
+                // Initialize with zeros
+                summariesByDate.set(date, {
+                    date,
+                    cashiers: [],
+                    itemSales: [],
+                    grandTotal: 0,
+                    totalCash: 0,
+                    totalMpesa: 0,
+                    totalCredit: 0
+                });
+            }
+            return summariesByDate.get(date)!;
+        };
+
+        transactionsToDelete.forEach(t => {
+            if (t.status !== 'completed') return;
+            const date = t.timestamp.split('T')[0];
+            const summary = getSummary(date);
+
+            // Update Totals
+            summary.grandTotal += t.total;
+            if (t.paymentMethod === 'cash') summary.totalCash += t.total;
+            if (t.paymentMethod === 'mpesa') summary.totalMpesa += t.total;
+            if (t.paymentMethod === 'credit') summary.totalCredit += t.total;
+
+            // Note: We don't reconstruct full itemSales or cashier breakdowns for archived summaries
+            // to save space, consistent with "archived reports remain viewable" but potentially simplified.
+            // If full detail is required, we'd need more complex logic.
+            // The memory says "getDailyClosingReport function... implements a fallback... checks dailySummaries to return aggregated totals".
+            // So aggregated totals are the key requirement.
+        });
+
+        // 3. Merge with existing summaries
+        const existingSummaries = state.dailySummaries;
+        const newSummariesList = Array.from(summariesByDate.values());
+
+        // Check if we already have a summary for this date in state (unlikely if generated on fly, but possible if partially archived)
+        const updatedSummaries = [...existingSummaries];
+
+        newSummariesList.forEach(newSum => {
+            const existingIndex = updatedSummaries.findIndex(s => s.date === newSum.date);
+            if (existingIndex >= 0) {
+                 // Merge (though usually we don't partial delete, so simple replace or add might suffice)
+                 // Safer to add values
+                 const exist = updatedSummaries[existingIndex];
+                 updatedSummaries[existingIndex] = {
+                     ...exist,
+                     grandTotal: exist.grandTotal + newSum.grandTotal,
+                     totalCash: exist.totalCash + newSum.totalCash,
+                     totalMpesa: exist.totalMpesa + newSum.totalMpesa,
+                     totalCredit: exist.totalCredit + newSum.totalCredit
+                 };
+            } else {
+                updatedSummaries.push(newSum);
+            }
+        });
+
+        // 4. Update State & Persist
+        set({
+            transactions: transactionsToKeep,
+            dailySummaries: updatedSummaries
+        });
+
+        saveDataToFile('transactions.json', transactionsToKeep);
+        saveDataToFile('daily-summaries.json', updatedSummaries);
+      },
+
       // Sync operations
       addToSyncQueue: (operation) => {
         set((state) => ({
@@ -1125,6 +1214,13 @@ export const usePosStore = create<PosState>()(
           t.timestamp.startsWith(date) && t.status === 'completed'
         );
 
+        // Fallback: Check daily summaries if no active transactions found for this date
+        // and it's not today.
+        if (dayTransactions.length === 0) {
+            const summary = state.dailySummaries.find(s => s.date === date);
+            if (summary) return summary;
+        }
+
         // Calculate Item Sales
         const itemSalesMap = new Map<string, ItemSales>();
         dayTransactions.forEach(t => {
@@ -1321,7 +1417,7 @@ export const usePosStore = create<PosState>()(
               set({ businessSetup: prefillSetup });
           }
 
-          const fileNames = ['products.json', 'users.json', 'transactions.json', 'credit-customers.json', 'expenses.json', 'salaries.json', 'credit-payments.json', 'inventory-logs.json'];
+          const fileNames = ['products.json', 'users.json', 'transactions.json', 'credit-customers.json', 'expenses.json', 'salaries.json', 'credit-payments.json', 'inventory-logs.json', 'daily-summaries.json'];
           const dataMap = {
             'products.json': 'products',
             'users.json': 'users',
@@ -1330,7 +1426,8 @@ export const usePosStore = create<PosState>()(
             'expenses.json': 'expenses',
             'salaries.json': 'salaries',
             'credit-payments.json': 'creditPayments',
-            'inventory-logs.json': 'inventoryLogs'
+            'inventory-logs.json': 'inventoryLogs',
+            'daily-summaries.json': 'dailySummaries'
           };
 
           for (const fileName of fileNames) {
@@ -1338,6 +1435,31 @@ export const usePosStore = create<PosState>()(
             if (data) {
               set({ [dataMap[fileName]]: data });
             }
+          }
+
+          // Sort products by popularity (sales count)
+          const state = get();
+          if (state.products.length > 0 && state.transactions.length > 0) {
+              const productSales = new Map<number, number>();
+
+              // Calculate sales counts
+              state.transactions.forEach(t => {
+                  if (t.items) {
+                      t.items.forEach(item => {
+                          const pid = item.product.id;
+                          productSales.set(pid, (productSales.get(pid) || 0) + item.quantity);
+                      });
+                  }
+              });
+
+              // Sort products
+              const sortedProducts = [...state.products].sort((a, b) => {
+                  const salesA = productSales.get(a.id) || 0;
+                  const salesB = productSales.get(b.id) || 0;
+                  return salesB - salesA; // Descending order
+              });
+
+              set({ products: sortedProducts });
           }
 
         } catch (error) {
@@ -1497,7 +1619,8 @@ export const usePosStore = create<PosState>()(
         products: state.products ? state.products.slice(-100) : [],
         inventoryProducts: state.inventoryProducts,
         loyaltyCustomers: state.loyaltyCustomers,
-        syncHistory: state.syncHistory ? state.syncHistory.slice(-50) : []
+      syncHistory: state.syncHistory ? state.syncHistory.slice(-50) : [],
+      dailySummaries: state.dailySummaries || []
       })
     }
   )

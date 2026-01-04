@@ -72,6 +72,7 @@ async function ensureDataFilesExist() {
     'mobile-receipts.json': [], // New file for queuing mobile receipts
     'credit-payments.json': [], // New file for credit payments
     'inventory-logs.json': [], // New file for inventory logs
+    'daily-summaries.json': [], // New file for aggregated daily summaries
   };
 
   for (const [fileName, content] of Object.entries(dataFiles)) {
@@ -694,7 +695,7 @@ app.whenReady().then(async () => {
         const files = [
             'business-setup.json', 'products.json', 'users.json', 'transactions.json',
             'expenses.json', 'salaries.json', 'credit-customers.json', 'server-config.json',
-            'credit-payments.json', 'inventory-logs.json'
+            'credit-payments.json', 'inventory-logs.json', 'daily-summaries.json'
         ];
 
         const backupData = {

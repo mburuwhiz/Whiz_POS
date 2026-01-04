@@ -38,7 +38,8 @@ export default function SettingsPage() {
     lastSyncTime,
     processSyncQueue,
     pushDataToServer,
-    archiveTransactions
+    archiveTransactions,
+    testPrint
   } = usePosStore();
 
   const [activeTab, setActiveTab] = useState<'business' | 'users' | 'security' | 'sync' | 'devices' | 'printers' | 'updates' | 'data'>('business');
@@ -770,13 +771,22 @@ export default function SettingsPage() {
                         </p>
                     </div>
 
-                    <button
-                        onClick={handleSavePrinter}
-                        className="flex items-center bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg shadow-sm transition-colors"
-                    >
-                        <Save className="w-5 h-5 mr-2" />
-                        Save Printer Settings
-                    </button>
+                    <div className="flex gap-4">
+                        <button
+                            onClick={handleSavePrinter}
+                            className="flex items-center bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg shadow-sm transition-colors"
+                        >
+                            <Save className="w-5 h-5 mr-2" />
+                            Save Printer Settings
+                        </button>
+                        <button
+                            onClick={testPrint}
+                            className="flex items-center bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg shadow-sm transition-colors"
+                        >
+                            <Printer className="w-5 h-5 mr-2" />
+                            Test Print
+                        </button>
+                    </div>
                 </div>
             </div>
         )}

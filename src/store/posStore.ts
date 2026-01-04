@@ -382,6 +382,7 @@ interface PosState {
   addCreditPayment: (customerId: string, amount: number, transactionId?: string) => void;
   addInventoryLog: (log: InventoryLog) => void;
   archiveTransactions: (daysToKeep: number) => Promise<void>;
+  testPrint: () => void;
 }
 
 /**
@@ -1463,6 +1464,27 @@ export const usePosStore = create<PosState>()(
           set({ transactions: toKeep, dailySummaries: newSummaries });
           await saveDataToFile('transactions.json', toKeep);
           await saveDataToFile('daily-summaries.json', newSummaries);
+      },
+
+      testPrint: () => {
+          const state = get();
+          if (window.electron && state.businessSetup) {
+              const dummyTransaction: Transaction = {
+                  id: 'TEST-001',
+                  timestamp: new Date().toISOString(),
+                  items: [
+                      { product: { id: 1, name: 'Test Item 1', price: 100, category: 'Test', image: '', available: true }, quantity: 1 },
+                      { product: { id: 2, name: 'Test Item 2', price: 50, category: 'Test', image: '', available: true }, quantity: 2 }
+                  ],
+                  subtotal: 200,
+                  tax: 0,
+                  total: 200,
+                  paymentMethod: 'cash',
+                  cashier: 'System Admin',
+                  status: 'completed'
+              };
+              window.electron.printReceipt(dummyTransaction, state.businessSetup, false);
+          }
       },
 
       pushDataToServer: async () => {

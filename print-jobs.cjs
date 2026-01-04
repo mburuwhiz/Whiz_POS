@@ -112,6 +112,21 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
     }
     template = template.replace('{{mpesaDetails}}', mpesaDetailsHtml);
 
+    // Developer Footer Logic
+    // Default to true if undefined
+    const showDevFooter = businessSetup?.showDeveloperFooter !== false;
+    let devFooterHtml = '';
+
+    if (showDevFooter) {
+        devFooterHtml = `
+            <div class="footer-dev">
+                <p>System Designed and serviced by Whiz tech</p>
+                <p>Tell: 0740 841 168</p>
+            </div>
+        `;
+    }
+    template = template.replace('{{developerFooter}}', devFooterHtml);
+
     return template;
 }
 

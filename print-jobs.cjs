@@ -76,8 +76,8 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
     const items = transaction.items || [];
     const itemsHtml = items.map(item => {
         const product = item.product || {};
-        // Ensure numeric values with safe parsing
-        const price = parseFloat(product.price) || 0;
+        // Ensure numeric values with safe parsing, falling back to item.price if product.price is missing
+        const price = parseFloat(product.price || item.price) || 0;
         const quantity = parseFloat(item.quantity) || 0;
         const lineTotal = price * quantity;
 

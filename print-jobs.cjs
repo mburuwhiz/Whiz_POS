@@ -43,12 +43,16 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
     const paymentMethod = transaction.paymentMethod ? transaction.paymentMethod.toUpperCase() : 'CASH';
 
     template = template.replace('{{businessName}}', businessSetup?.businessName || 'WHIZ POS');
-    template = template.replace('{{location}}', 'KAGWE | ' + (businessSetup?.phone || ''));
+    template = template.replace('{{location}}', 'Kagwe Town   |   ' + (businessSetup?.phone || ''));
     template = template.replace('{{address}}', businessSetup?.address || '');
     template = template.replace('{{phone}}', '');
     template = template.replace('{{receiptId}}', transaction.id + (isReprint ? ' (REPRINT)' : ''));
     template = template.replace('{{date}}', formatDate(transaction.timestamp));
-    template = template.replace('{{servedBy}}', transaction.cashier || 'Cashier');
+
+    // Served By - First Name Only
+    const cashierName = transaction.cashier || 'Cashier';
+    const servedByFirstName = cashierName.split(' ')[0];
+    template = template.replace('{{servedBy}}', servedByFirstName);
 
     let customerName = 'Walk Through Customer';
     if (paymentMethod === 'CREDIT' && transaction.creditCustomer) {

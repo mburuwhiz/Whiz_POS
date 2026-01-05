@@ -6,16 +6,16 @@
     <style>
         @page {
             margin: 0;
-            size: auto;
+            size: 80mm auto; /* Force 80mm width for PDF generation */
         }
         body {
             font-family: Arial, sans-serif;
             font-size: 10.5px; /* Updated to 10.5px */
             font-weight: bold;
             color: #000;
-            margin: 0 auto;
+            margin: 0;
             padding: 5px 6mm; /* Minimal margins with padding */
-            width: 70mm; /* Optimized for small paper */
+            width: 100%; /* Fill the 80mm page */
             box-sizing: border-box;
             overflow: hidden;
         }
@@ -128,7 +128,7 @@
             <tr>
                 <th>Item</th>
                 <th class="qty">Qty</th>
-                <th class="price">@ Price</th>
+                <th class="price">@</th>
                 <th class="total">Total</th>
             </tr>
         </thead>

@@ -810,6 +810,7 @@ app.whenReady().then(async () => {
               const ops = products.map(p => {
                   // Ensure numeric types
                   const product = { ...p };
+                  delete product._id;
                   if (product.price) product.price = Number(product.price);
                   if (product.cost) product.cost = Number(product.cost);
                   if (product.stock) product.stock = Number(product.stock);
@@ -829,6 +830,7 @@ app.whenReady().then(async () => {
           if (users.length > 0) {
               const ops = users.map(u => {
                   const user = { ...u, userId: u.id };
+                  delete user._id;
                   if (user.createdAt) user.createdAt = new Date(user.createdAt);
                   return {
                       updateOne: {
@@ -845,6 +847,7 @@ app.whenReady().then(async () => {
           if (expenses.length > 0) {
             const ops = expenses.map(e => {
                 const expense = { ...e };
+                delete expense._id;
                 // Fix: map cashier to recordedBy to match Mongoose schema expectation if missing
                 if (expense.cashier && !expense.recordedBy) {
                     expense.recordedBy = expense.cashier;
@@ -867,6 +870,7 @@ app.whenReady().then(async () => {
           if (salaries.length > 0) {
             const ops = salaries.map(s => {
                 const salary = { ...s };
+                delete salary._id;
                 if (salary.amount) salary.amount = Number(salary.amount);
                 if (salary.date) salary.date = new Date(salary.date);
                 return {
@@ -884,6 +888,9 @@ app.whenReady().then(async () => {
           if (transactions.length > 0) {
               const ops = transactions.map(t => {
                   const transaction = { ...t, transactionId: t.id };
+
+                  // Exclude _id to prevent immutable field error
+                  delete transaction._id;
 
                   // Fix: Map 'total' to 'totalAmount' for Back Office Schema Compatibility
                   if (transaction.total !== undefined) {
@@ -935,6 +942,7 @@ app.whenReady().then(async () => {
           if (creditCustomers.length > 0) {
               const ops = creditCustomers.map(c => {
                   const customer = { ...c, customerId: c.id };
+                  delete customer._id;
                   if (customer.limit) customer.limit = Number(customer.limit);
                   if (customer.balance) customer.balance = Number(customer.balance);
                   if (customer.loyaltyPoints) customer.loyaltyPoints = Number(customer.loyaltyPoints);

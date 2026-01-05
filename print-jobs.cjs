@@ -52,7 +52,8 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
     // Served By - First Name Only
     const cashierName = transaction.cashier || 'Cashier';
     const servedByFirstName = cashierName.split(' ')[0];
-    template = template.replace('{{servedBy}}', servedByFirstName);
+    // Use regex to replace all occurrences and handle potential spacing issues
+    template = template.replace(/\{\{\s*servedBy\s*\}\}/g, servedByFirstName);
 
     let customerName = 'Walk Through Customer';
     if (paymentMethod === 'CREDIT' && transaction.creditCustomer) {

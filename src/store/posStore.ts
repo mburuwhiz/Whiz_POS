@@ -881,7 +881,7 @@ export const usePosStore = create<PosState>()(
         });
 
         // 3. Merge with existing summaries
-        const existingSummaries = state.dailySummaries;
+        const existingSummaries = Array.isArray(state.dailySummaries) ? state.dailySummaries : [];
         const newSummariesList = Array.from(summariesByDate.values());
 
         // Check if we already have a summary for this date in state (unlikely if generated on fly, but possible if partially archived)
@@ -1217,7 +1217,8 @@ export const usePosStore = create<PosState>()(
         // Fallback: Check daily summaries if no active transactions found for this date
         // and it's not today.
         if (dayTransactions.length === 0) {
-            const summary = state.dailySummaries.find(s => s.date === date);
+            const summaries = Array.isArray(state.dailySummaries) ? state.dailySummaries : [];
+            const summary = summaries.find(s => s.date === date);
             if (summary) return summary;
         }
 
@@ -1433,7 +1434,12 @@ export const usePosStore = create<PosState>()(
           for (const fileName of fileNames) {
             const { data } = await readDataFromFile(fileName);
             if (data) {
-              set({ [dataMap[fileName]]: data });
+                // Defensive check for array types
+                if (fileName === 'daily-summaries.json' && !Array.isArray(data)) {
+                    set({ [dataMap[fileName]]: [] });
+                } else {
+                    set({ [dataMap[fileName]]: data });
+                }
             }
           }
 

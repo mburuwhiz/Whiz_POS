@@ -1,80 +1,164 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <title>Closing Report</title>
     <style>
+        @page {
+            margin: 0;
+            size: 80mm auto; /* Force 80mm width for PDF generation */
+        }
         body {
             font-family: Arial, sans-serif;
-            width: 70mm;
-            margin: 0 auto;
-            padding: 0;
-            box-sizing: border-box;
-            overflow: hidden;
-            font-size: 12px;
+            font-size: 11px; /* Requested size 11px */
             font-weight: bold;
             color: #000;
+            margin: 0;
+            padding: 5px 6mm; /* Minimal margins with padding matching receipt */
+            width: 70mm; /* Force 70mm width to prevent stretching */
+            box-sizing: border-box;
+            overflow: hidden;
         }
-        .center { text-align: center; }
-        .bold { font-weight: bold; }
-        .header { font-size: 24px; }
-        .section-header { font-size: 18px; margin-top: 15px; }
-        .table { width: 100%; border-collapse: collapse; }
-        .table th, .table td { padding: 5px; }
-        .table .label { text-align: left; }
-        .table .value { text-align: right; }
-        .cashier-section { margin-top: 15px; }
+        .header {
+            text-align: center;
+            margin-bottom: 5px;
+        }
+        .header h1 {
+            font-size: 14px;
+            margin: 0 0 2px 0;
+            text-transform: uppercase;
+        }
+        .header p {
+            margin: 1px 0;
+        }
+        .separator {
+            border-top: 1px dashed #000;
+            margin: 4px 0;
+        }
+        .section-header {
+            text-align: center;
+            font-size: 13px;
+            margin: 8px 0 4px 0;
+            text-transform: uppercase;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            text-align: left;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 2px;
+            font-size: 11px;
+        }
+        td {
+            padding: 2px 0;
+            vertical-align: top;
+            word-wrap: break-word;
+        }
+        .label {
+            text-align: left;
+        }
+        .value {
+            text-align: right;
+        }
+        .total-row {
+            font-weight: 900;
+            font-size: 13px;
+            margin-top: 4px;
+            border-top: 1px dashed #000;
+            padding-top: 4px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 10px;
+        }
+        /* Cashier breakdown styling */
+        .cashier-block {
+            margin-bottom: 8px;
+            border-bottom: 1px dotted #ccc;
+            padding-bottom: 4px;
+        }
+        .cashier-name {
+            font-weight: 900;
+            text-transform: uppercase;
+            border-bottom: 1px dashed #000;
+            margin-bottom: 2px;
+        }
+        .cashier-row {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Flex rows for totals */
+        .flex-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 2px 0;
+        }
+
     </style>
 </head>
 <body>
-    <div class="center">
-        <h1 class="header bold">{{businessName}}</h1>
+    <div class="header">
+        <h1>{{businessName}}</h1>
         <p>{{businessAddress}}</p>
         <p>Tel: {{businessPhone}}</p>
     </div>
-    <hr>
-    <div class="center">
-        <h2 class="section-header bold">DAILY SALES REPORT</h2>
+
+    <div class="separator"></div>
+
+    <div class="header">
+        <h2 style="font-size: 14px; margin: 4px 0;">DAILY SALES REPORT</h2>
         <p>{{date}}</p>
     </div>
-    <hr>
+
     {{itemSalesSection}}
-    <div class="center">
-        <h2 class="section-header bold">CASHIER SUMMARY</h2>
+
+    <div class="separator"></div>
+
+    <div class="section-header">
+        CASHIER SUMMARY
     </div>
+
+    <div class="separator"></div>
+
     <div class="cashier-section">
         {{cashierBreakdown}}
     </div>
-    <hr>
-    <div class="center">
-        <h2 class="section-header bold">GRAND TOTALS</h2>
+
+    <div class="separator"></div>
+
+    <div class="section-header">
+        GRAND TOTALS
     </div>
-    <hr>
-    <table class="table">
-        <tbody>
-            <tr>
-                <td class="label">Total Cash:</td>
-                <td class="value">{{totalCash}}</td>
-            </tr>
-            <tr>
-                <td class="label">Total M-Pesa:</td>
-                <td class="value">{{totalMpesa}}</td>
-            </tr>
-            <tr>
-                <td class="label">Total Credit:</td>
-                <td class="value">{{totalCredit}}</td>
-            </tr>
-        </tbody>
-    </table>
-    <hr>
-    <table class="table">
-        <tbody>
-            <tr class="bold">
-                <td class="label">GRAND TOTAL:</td>
-                <td class="value">{{grandTotal}}</td>
-            </tr>
-        </tbody>
-    </table>
-    <hr>
-    <div class="center">
+
+    <div class="separator"></div>
+
+    <div class="flex-row">
+        <span>Total Cash:</span>
+        <span>{{totalCash}}</span>
+    </div>
+    <div class="flex-row">
+        <span>Total M-Pesa:</span>
+        <span>{{totalMpesa}}</span>
+    </div>
+    <div class="flex-row">
+        <span>Total Credit:</span>
+        <span>{{totalCredit}}</span>
+    </div>
+
+    <div class="separator"></div>
+
+    <div class="flex-row total-row">
+        <span>GRAND TOTAL:</span>
+        <span>{{grandTotal}}</span>
+    </div>
+
+    <div class="separator"></div>
+
+    <div class="footer">
         <p>End of Day Report</p>
     </div>
 </body>

@@ -151,29 +151,28 @@ async function generateClosingReport(reportData, businessSetup, detailed = true)
             return `
                 <tr>
                     <td class="label">${item.name}</td>
-                    <td class="center">${item.quantity}</td>
+                    <td class="qty" style="text-align: center;">${item.quantity}</td>
                     <td class="value">${item.total.toFixed(0)}</td>
                 </tr>
             `;
         }).join('');
 
         itemSalesSection = `
-            <div class="center">
-                <h2 class="section-header bold">ITEM SALES REPORT</h2>
-            </div>
-            <table class="table">
+            <div class="section-header">ITEM SALES REPORT</div>
+            <div class="separator"></div>
+            <table>
                 <thead>
-                    <tr class="bold" style="border-bottom: 1px dashed black;">
-                        <td class="label">Item</td>
-                        <td class="center">Qty</td>
-                        <td class="value">Total</td>
+                    <tr>
+                        <th class="label">Item</th>
+                        <th class="qty" style="text-align: center;">Qty</th>
+                        <th class="value">Total</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${rows}
                 </tbody>
             </table>
-            <hr>
+            <div class="separator"></div>
         `;
     }
 
@@ -182,18 +181,18 @@ async function generateClosingReport(reportData, businessSetup, detailed = true)
     // Generate Cashier Breakdown HTML
     const cashierBreakdownHtml = reportData.cashiers ? reportData.cashiers.map(cashier => {
         return `
-            <div style="margin-bottom: 10px; border-bottom: 1px dashed #ccc; padding-bottom: 5px;">
-                <p style="font-weight: bold; margin: 2px 0;">Cashier: ${cashier.cashierName}</p>
-                <div style="display: flex; justify-content: space-between; font-size: 11px;">
+            <div class="cashier-block">
+                <div class="cashier-name">Cashier: ${cashier.cashierName}</div>
+                <div class="cashier-row">
                     <span>Cash:</span><span>${cashier.cashTotal.toFixed(0)}</span>
                 </div>
-                <div style="display: flex; justify-content: space-between; font-size: 11px;">
+                <div class="cashier-row">
                     <span>M-Pesa:</span><span>${cashier.mpesaTotal.toFixed(0)}</span>
                 </div>
-                <div style="display: flex; justify-content: space-between; font-size: 11px;">
+                <div class="cashier-row">
                     <span>Credit:</span><span>${cashier.creditTotal.toFixed(0)}</span>
                 </div>
-                <div style="display: flex; justify-content: space-between; font-weight: bold; margin-top: 2px;">
+                <div class="cashier-row" style="font-weight: 900; margin-top: 2px;">
                     <span>Total:</span><span>${cashier.totalSales.toFixed(0)}</span>
                 </div>
             </div>

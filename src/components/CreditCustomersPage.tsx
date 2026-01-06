@@ -126,7 +126,7 @@ export default function CreditCustomersPage() {
     if (!customer || !customer.transactions) {
       return [];
     }
-    return transactions.filter(t => customer.transactions.includes(t.id));
+    return transactions.filter(t => customer.transactions?.includes(t.id));
   };
 
   const getCustomerHistory = (customer: CreditCustomer) => {

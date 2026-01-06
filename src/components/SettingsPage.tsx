@@ -38,7 +38,9 @@ export default function SettingsPage() {
     lastSyncTime,
     processSyncQueue,
     pushDataToServer,
-    archiveTransactions
+    archiveTransactions,
+    deleteTransactions,
+    transactions
   } = usePosStore();
 
   const [activeTab, setActiveTab] = useState<'business' | 'users' | 'security' | 'sync' | 'devices' | 'printers' | 'updates' | 'data'>('business');
@@ -46,6 +48,10 @@ export default function SettingsPage() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [pruneDays, setPruneDays] = useState(30);
   const [showAddUser, setShowAddUser] = useState(false);
+  const [deleteDateRange, setDeleteDateRange] = useState({
+    start: new Date().toISOString().split('T')[0],
+    end: new Date().toISOString().split('T')[0]
+  });
 
   // User QR State
   const [showUserQr, setShowUserQr] = useState<User | null>(null);
@@ -541,12 +547,10 @@ export default function SettingsPage() {
                     Manage storage and optimize performance by archiving old data.
                 </p>
 
-                <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-xl">
-                    <h3 className="font-bold text-red-800 mb-2">Delete Old Receipts</h3>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-xl mb-6">
+                    <h3 className="font-bold text-red-800 mb-2">Archive Old Receipts (Preserve Stats)</h3>
                     <p className="text-sm text-red-700 mb-4">
-                        This operation will permanently delete transaction records older than the specified number of days.
-                        <br/><br/>
-                        <strong>Note:</strong> Sales totals and reports will be preserved in the archives, but detailed receipt lookups (e.g., reprinting old receipts) will no longer be available for the deleted period.
+                        This operation will delete transaction details older than the specified number of days but <strong>preserves sales totals</strong> in daily summaries.
                     </p>
 
                     <div className="flex items-end gap-4">
@@ -562,22 +566,89 @@ export default function SettingsPage() {
                         </div>
                         <button
                             onClick={async () => {
-                                if (confirm(`Are you sure you want to delete receipts older than ${pruneDays} days? This cannot be undone.`)) {
+                                if (confirm(`Are you sure you want to archive receipts older than ${pruneDays} days? Details will be lost but stats kept.`)) {
                                     try {
                                         await archiveTransactions(pruneDays);
-                                        alert('Data pruned successfully.');
+                                        alert('Data archived successfully.');
                                     } catch (e) {
                                         console.error(e);
-                                        alert('Failed to prune data.');
+                                        alert('Failed to archive data.');
                                     }
                                 }
                             }}
                             className="flex items-center bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg shadow-sm transition-colors mb-[1px]"
                         >
                             <Trash2 className="w-5 h-5 mr-2" />
-                            Delete Receipts
+                            Archive
                         </button>
                     </div>
+                </div>
+
+                <div className="bg-red-100 border border-red-300 rounded-lg p-6 max-w-xl">
+                    <div className="flex items-center gap-2 mb-2">
+                        <AlertTriangle className="w-5 h-5 text-red-700" />
+                        <h3 className="font-bold text-red-800">Delete Receipts (Permanent)</h3>
+                    </div>
+                    <p className="text-sm text-red-700 mb-4">
+                        Permanently delete receipts within a specific date range. <strong>This cannot be undone.</strong> Today's receipts cannot be deleted.
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                            <input
+                                type="date"
+                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                value={deleteDateRange.start}
+                                onChange={(e) => setDeleteDateRange(prev => ({ ...prev, start: e.target.value }))}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                            <input
+                                type="date"
+                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                value={deleteDateRange.end}
+                                onChange={(e) => setDeleteDateRange(prev => ({ ...prev, end: e.target.value }))}
+                            />
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={() => {
+                            if (!deleteDateRange.start || !deleteDateRange.end) {
+                                alert("Invalid date range.");
+                                return;
+                            }
+                            const start = new Date(deleteDateRange.start);
+                            start.setHours(0, 0, 0, 0);
+                            const end = new Date(deleteDateRange.end);
+                            end.setHours(23, 59, 59, 999);
+                            const todayStr = new Date().toLocaleDateString('en-CA');
+
+                            const idsToDelete = transactions.filter(tx => {
+                                const txDate = new Date(tx.timestamp);
+                                const txDateStr = txDate.toLocaleDateString('en-CA');
+                                if (txDate < start || txDate > end) return false;
+                                if (txDateStr === todayStr) return false;
+                                return true;
+                            }).map(tx => tx.id);
+
+                            if (idsToDelete.length === 0) {
+                                alert("No eligible receipts found. Note: Today's receipts cannot be deleted.");
+                                return;
+                            }
+
+                            if (confirm(`Found ${idsToDelete.length} receipts to delete. This is PERMANENT. Proceed?`)) {
+                                deleteTransactions(idsToDelete);
+                                alert(`${idsToDelete.length} receipts deleted.`);
+                            }
+                        }}
+                        className="w-full flex items-center justify-center bg-red-700 hover:bg-red-800 text-white px-6 py-3 rounded-lg shadow-sm transition-colors"
+                    >
+                        <Trash2 className="w-5 h-5 mr-2" />
+                        Delete Specific Range
+                    </button>
                 </div>
             </div>
         )}

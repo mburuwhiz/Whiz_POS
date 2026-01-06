@@ -25,7 +25,7 @@ export default function InventoryManagement() {
   const [reconciliationData, setReconciliationData] = useState<{ [id: number]: number }>({});
 
   const categories = ['all', ...new Set(products.map(p => p.category))];
-  const productNames = [...new Set(products.map(p => p.name))];
+  const productNames = [...new Set(products.map(p => p.name).filter(Boolean))];
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = (product.name || '').toLowerCase().includes(searchTerm.toLowerCase());

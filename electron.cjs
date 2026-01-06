@@ -867,8 +867,8 @@ app.whenReady().then(async () => {
           // Sync Products (Collection: products)
           if (products.length > 0) {
               const ops = products.map(p => {
-                  // Ensure numeric types
                   const product = { ...p };
+                  delete product._id; // Strip _id
                   if (product.price) product.price = Number(product.price);
                   if (product.cost) product.cost = Number(product.cost);
                   if (product.stock) product.stock = Number(product.stock);
@@ -888,6 +888,7 @@ app.whenReady().then(async () => {
           if (users.length > 0) {
               const ops = users.map(u => {
                   const user = { ...u, userId: u.id };
+                  delete user._id; // Strip _id
                   if (user.createdAt) user.createdAt = new Date(user.createdAt);
                   return {
                       updateOne: {
@@ -904,7 +905,7 @@ app.whenReady().then(async () => {
           if (expenses.length > 0) {
             const ops = expenses.map(e => {
                 const expense = { ...e };
-                // Fix: map cashier to recordedBy to match Mongoose schema expectation if missing
+                delete expense._id; // Strip _id
                 if (expense.cashier && !expense.recordedBy) {
                     expense.recordedBy = expense.cashier;
                 }
@@ -926,6 +927,7 @@ app.whenReady().then(async () => {
           if (salaries.length > 0) {
             const ops = salaries.map(s => {
                 const salary = { ...s };
+                delete salary._id; // Strip _id
                 if (salary.amount) salary.amount = Number(salary.amount);
                 if (salary.date) salary.date = new Date(salary.date);
                 return {
@@ -943,21 +945,18 @@ app.whenReady().then(async () => {
           if (transactions.length > 0) {
               const ops = transactions.map(t => {
                   const transaction = { ...t, transactionId: t.id };
+                  delete transaction._id; // Strip _id
 
-                  // Fix: Map 'total' to 'totalAmount' for Back Office Schema Compatibility
                   if (transaction.total !== undefined) {
                       transaction.totalAmount = Number(transaction.total);
                   }
 
                   if (transaction.tax) transaction.tax = Number(transaction.tax);
                   if (transaction.subtotal) transaction.subtotal = Number(transaction.subtotal);
-                  // Ensure timestamp is a Date object for MongoDB Aggregation
                   if (transaction.timestamp) transaction.timestamp = new Date(transaction.timestamp);
 
-                  // Fix: Flatten items for simpler querying in Back Office
                   if (transaction.items && Array.isArray(transaction.items)) {
                       transaction.items = transaction.items.map(i => {
-                          // Check if it's nested like { product: {...}, quantity: 1 } (Desktop format)
                           if (i.product && i.product.id) {
                               return {
                                   productId: String(i.product.id),
@@ -966,7 +965,6 @@ app.whenReady().then(async () => {
                                   price: Number(i.product.price)
                               };
                           }
-                          // Check if it's a flat item from Mobile { id, name, price, quantity }
                           if (i.id && !i.productId) {
                                return {
                                    ...i,
@@ -994,6 +992,7 @@ app.whenReady().then(async () => {
           if (creditCustomers.length > 0) {
               const ops = creditCustomers.map(c => {
                   const customer = { ...c, customerId: c.id };
+                  delete customer._id; // Strip _id
                   if (customer.limit) customer.limit = Number(customer.limit);
                   if (customer.balance) customer.balance = Number(customer.balance);
                   if (customer.loyaltyPoints) customer.loyaltyPoints = Number(customer.loyaltyPoints);

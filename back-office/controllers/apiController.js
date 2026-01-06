@@ -5,6 +5,7 @@ const Salary = require('../models/Salary');
 const Customer = require('../models/Customer');
 const User = require('../models/User');
 const BusinessSettings = require('../models/BusinessSettings');
+const InventoryLog = require('../models/InventoryLog');
 
 exports.getData = async (req, res) => {
     try {
@@ -14,6 +15,7 @@ exports.getData = async (req, res) => {
         const salaries = await Salary.find({});
         const creditCustomers = await Customer.find({});
         const businessSetup = await BusinessSettings.findOne({});
+        const inventoryLogs = await InventoryLog.find({}).sort({ timestamp: -1 }).limit(200);
 
         const mapProduct = p => ({
             ...p.toObject(),
@@ -40,12 +42,18 @@ exports.getData = async (req, res) => {
             id: c.customerId,
         });
 
+        const mapInventoryLog = l => ({
+            ...l.toObject(),
+            id: l.logId,
+        });
+
         res.json({
             products: products.map(mapProduct),
             users: users.map(mapUser),
             expenses: expenses.map(mapExpense),
             salaries: salaries.map(mapSalary),
             creditCustomers: creditCustomers.map(mapCustomer),
+            inventoryLogs: inventoryLogs.map(mapInventoryLog),
             businessSetup: businessSetup ? businessSetup.toObject() : null
         });
     } catch (error) {
@@ -114,6 +122,11 @@ exports.fullSync = async (req, res) => {
         if (transactions) {
             for (const t of transactions) {
                 await processOperation({ type: 'new-transaction', data: t });
+            }
+        }
+        if (req.body.inventoryLogs) {
+            for (const l of req.body.inventoryLogs) {
+                await processOperation({ type: 'add-inventory-log', data: l });
             }
         }
 
@@ -293,6 +306,18 @@ async function processOperation(op) {
 
             case 'delete-credit-customer':
                 await Customer.deleteOne({ customerId: op.data.id });
+                break;
+
+            case 'add-inventory-log':
+                const logData = { ...op.data, logId: op.data.id };
+                delete logData.id;
+                delete logData._id;
+
+                await InventoryLog.updateOne(
+                    { logId: op.data.id },
+                    { $set: logData },
+                    { upsert: true }
+                );
                 break;
         }
     } catch (e) {

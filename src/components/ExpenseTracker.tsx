@@ -10,6 +10,7 @@ export default function ExpenseTracker() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [quickAddAmount, setQuickAddAmount] = useState('');
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+  const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
   const [formData, setFormData] = useState({
     description: '',
@@ -98,7 +99,8 @@ export default function ExpenseTracker() {
 
   const handleEdit = (expense: Expense) => {
       if (!isAdminOrManager) {
-        alert("Only Admins or Managers can edit expenses.");
+        setNotification({ type: 'error', message: "Only Admins or Managers can edit expenses." });
+        setTimeout(() => setNotification(null), 3000);
         return;
       }
       setFormData({
@@ -124,11 +126,14 @@ export default function ExpenseTracker() {
 
   const handleDelete = (id: string) => {
       if (!isAdminOrManager) {
-        alert("Only Admins or Managers can delete expenses.");
+        setNotification({ type: 'error', message: "Only Admins or Managers can delete expenses." });
+        setTimeout(() => setNotification(null), 3000);
         return;
       }
       if(confirm('Are you sure you want to delete this expense?')) {
           deleteExpense(id);
+          setNotification({ type: 'success', message: "Expense deleted." });
+          setTimeout(() => setNotification(null), 3000);
       }
   };
 
@@ -146,7 +151,12 @@ export default function ExpenseTracker() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 relative">
+      {notification && (
+          <div className={`fixed top-4 right-4 px-6 py-4 rounded-lg shadow-lg z-50 text-white font-medium animate-bounce ${notification.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'}`}>
+              {notification.message}
+          </div>
+      )}
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="container mx-auto px-4 py-4">

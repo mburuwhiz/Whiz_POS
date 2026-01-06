@@ -88,6 +88,42 @@
     </div>
 </div>
 
+<!-- Full Product Breakdown -->
+<div class="mt-6 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="p-6 border-b border-gray-100 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors" onclick="const el = document.getElementById('fullProductList'); el.classList.toggle('hidden'); this.querySelector('svg').classList.toggle('rotate-180');">
+        <h3 class="font-bold text-gray-900">Full Product Performance</h3>
+        <i data-lucide="chevron-down" class="w-5 h-5 text-gray-500 transition-transform duration-200"></i>
+    </div>
+    <div id="fullProductList" class="hidden border-t border-gray-100">
+        <div class="overflow-x-auto p-0">
+            <table class="w-full text-sm text-left">
+                <thead class="bg-gray-50 text-gray-600 font-medium border-b border-gray-100">
+                    <tr>
+                        <th class="px-6 py-3">Product Name</th>
+                        <th class="px-6 py-3 text-center">Quantity Sold</th>
+                        <th class="px-6 py-3 text-right">Total Revenue</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    <% if (allProducts && allProducts.length > 0) { %>
+                        <% allProducts.forEach((product) => { %>
+                        <tr class="hover:bg-gray-50/50 transition-colors">
+                            <td class="px-6 py-3 font-medium text-gray-900"><%= product.name %></td>
+                            <td class="px-6 py-3 text-center text-gray-600"><%= product.quantity %></td>
+                            <td class="px-6 py-3 text-right font-medium text-gray-900">Ksh. <%= product.revenue.toLocaleString() %></td>
+                        </tr>
+                        <% }) %>
+                    <% } else { %>
+                        <tr>
+                            <td colspan="3" class="px-6 py-8 text-center text-gray-500">No sales data available.</td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <!-- Sales Breakdown & Top Products -->
     <div class="lg:col-span-2 space-y-6">

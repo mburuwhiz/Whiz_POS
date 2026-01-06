@@ -30,6 +30,8 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
   const [newCustomerName, setNewCustomerName] = useState('');
   const [newCustomerPhone, setNewCustomerPhone] = useState('');
 
+  const customerNames = useMemo(() => [...new Set(creditCustomers.map(c => c.name))], [creditCustomers]);
+
   const filteredCustomers = useMemo(() => {
     return creditCustomers.filter(c =>
       c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -273,11 +275,15 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                         <input
                             type="text"
+                            list="mobile-customer-suggestions"
                             placeholder="Search customers..."
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
                             className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-sm"
                         />
+                        <datalist id="mobile-customer-suggestions">
+                            {customerNames.slice(0, 50).map((name, i) => <option key={i} value={name} />)}
+                        </datalist>
                     </div>
 
                     <button

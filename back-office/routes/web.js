@@ -67,6 +67,12 @@ router.get('/sales', salesController.index);
 router.get('/inventory', inventoryController.index);
 
 /**
+ * GET /inventory/logs
+ * Renders the inventory logs page.
+ */
+router.get('/inventory/logs', inventoryController.logs);
+
+/**
  * POST /inventory/add
  * Adds a new product to inventory.
  */

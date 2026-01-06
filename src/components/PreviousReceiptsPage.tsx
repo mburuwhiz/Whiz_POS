@@ -14,6 +14,7 @@ const PreviousReceiptsPage: React.FC = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
   const [dateRange, setDateRange] = useState({
     start: new Date().toISOString().split('T')[0],
     end: new Date().toISOString().split('T')[0]
@@ -62,19 +63,26 @@ const PreviousReceiptsPage: React.FC = () => {
     }).map(tx => tx.id);
 
     if (idsToDelete.length === 0) {
-        alert("No eligible receipts found to delete. Note: Today's receipts cannot be deleted.");
+        setNotification({ type: 'error', message: "No eligible receipts found. Today's receipts cannot be deleted." });
+        setTimeout(() => setNotification(null), 4000);
         return;
     }
 
     if (confirm(`Found ${idsToDelete.length} receipts to delete. This cannot be undone. Proceed?`)) {
         deleteTransactions(idsToDelete);
+        setNotification({ type: 'success', message: `${idsToDelete.length} receipts deleted successfully.` });
+        setTimeout(() => setNotification(null), 3000);
         setShowDeleteModal(false);
-        // Optional: Add log or visual feedback
     }
   };
 
   return (
-    <div className="p-4 bg-gray-100 min-h-screen">
+    <div className="p-4 bg-gray-100 min-h-screen relative">
+      {notification && (
+          <div className={`fixed top-4 right-4 px-6 py-4 rounded-lg shadow-lg z-50 text-white font-medium animate-bounce ${notification.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'}`}>
+              {notification.message}
+          </div>
+      )}
       <div className="max-w-6xl mx-auto bg-white rounded-lg shadow p-6">
         <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
           <div>

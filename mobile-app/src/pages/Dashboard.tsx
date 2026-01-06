@@ -30,6 +30,8 @@ export default function Dashboard() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
+  const productNames = useMemo(() => [...new Set(products.map(p => p.name))], [products]);
+
   const productSalesCount = useMemo(() => {
       const counts: Record<string, number> = {};
       transactions.forEach(t => {
@@ -96,12 +98,16 @@ export default function Dashboard() {
               <input
                 autoFocus
                 type="text"
+                list="mobile-product-suggestions"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search products..."
                 className="w-full bg-white/10 border border-white/10 rounded-full py-2 pl-4 pr-10 text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/50"
                 onBlur={() => !searchQuery && setIsSearchOpen(false)}
               />
+              <datalist id="mobile-product-suggestions">
+                  {productNames.slice(0, 50).map((name, i) => <option key={i} value={name} />)}
+              </datalist>
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}

@@ -1,20 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { usePosStore } from '../store/posStore';
-import { Transaction } from '../types';
+import { usePosStore, LoyaltyCustomer } from '../store/posStore';
 import { Gift, Star, Trophy, Users, TrendingUp, Award, Plus, Crown } from 'lucide-react';
-
-interface Customer {
-  id: string;
-  name: string;
-  phone: string;
-  email?: string;
-  points: number;
-  tier: 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
-  totalSpent: number;
-  visitsCount: number;
-  lastVisit: string;
-  rewards: string[];
-}
 
 interface Reward {
   id: string;
@@ -26,10 +12,9 @@ interface Reward {
 }
 
 export default function LoyaltyProgram() {
-  const { transactions, currentCashier } = usePosStore();
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const { transactions, loyaltyCustomers, addLoyaltyCustomer, updateLoyaltyCustomer } = usePosStore();
   const [rewards, setRewards] = useState<Reward[]>([]);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<LoyaltyCustomer | null>(null);
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
   const [isRedeemOpen, setIsRedeemOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -85,57 +70,7 @@ export default function LoyaltyProgram() {
     setRewards(defaultRewards);
   }, []);
 
-  // Load customers from localStorage
-  useEffect(() => {
-    const savedCustomers = localStorage.getItem('whiz-pos-loyalty-customers');
-    if (savedCustomers) {
-      try {
-        setCustomers(JSON.parse(savedCustomers));
-      } catch (error) {
-        console.error('Failed to load customers:', error);
-      }
-    }
-  }, []);
-
-  // Update customer points based on transactions
-  useEffect(() => {
-    const updatedCustomers = customers.map(customer => {
-      const customerTransactions = transactions.filter(t => 
-        t.customerName === customer.name || t.customerPhone === customer.phone
-      );
-      
-      const totalSpent = customerTransactions.reduce((sum, t) => 
-        sum + (t.total || t.items.reduce((itemSum, item) => itemSum + (item.product.price * item.quantity), 0)), 0
-      );
-      
-      const visitsCount = customerTransactions.length;
-      const lastVisit = customerTransactions.length > 0 
-        ? customerTransactions[customerTransactions.length - 1].timestamp 
-        : customer.lastVisit;
-      
-      const points = Math.floor(totalSpent / 10); // 1 point per KES 10 spent
-      
-      // Calculate tier based on total spent
-      let tier: Customer['tier'] = 'Bronze';
-      if (totalSpent >= 10000) tier = 'Platinum';
-      else if (totalSpent >= 5000) tier = 'Gold';
-      else if (totalSpent >= 2000) tier = 'Silver';
-      
-      return {
-        ...customer,
-        totalSpent,
-        visitsCount,
-        lastVisit,
-        points,
-        tier
-      };
-    });
-    
-    setCustomers(updatedCustomers);
-    localStorage.setItem('whiz-pos-loyalty-customers', JSON.stringify(updatedCustomers));
-  }, [transactions]);
-
-  const getTierColor = (tier: Customer['tier']) => {
+  const getTierColor = (tier: LoyaltyCustomer['tier']) => {
     switch (tier) {
       case 'Bronze': return 'text-orange-600 bg-orange-100';
       case 'Silver': return 'text-gray-600 bg-gray-100';
@@ -145,7 +80,7 @@ export default function LoyaltyProgram() {
     }
   };
 
-  const getTierIcon = (tier: Customer['tier']) => {
+  const getTierIcon = (tier: LoyaltyCustomer['tier']) => {
     switch (tier) {
       case 'Bronze': return <Award className="w-4 h-4" />;
       case 'Silver': return <Star className="w-4 h-4" />;
@@ -158,8 +93,8 @@ export default function LoyaltyProgram() {
   const handleAddCustomer = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const newCustomer: Customer = {
-      id: Date.now().toString(),
+    const newCustomer: LoyaltyCustomer = {
+      id: `LC${Date.now()}`,
       name: formData.name,
       phone: formData.phone,
       email: formData.email,
@@ -171,9 +106,7 @@ export default function LoyaltyProgram() {
       rewards: []
     };
 
-    setCustomers(prev => [...prev, newCustomer]);
-    localStorage.setItem('whiz-pos-loyalty-customers', JSON.stringify([...customers, newCustomer]));
-    
+    addLoyaltyCustomer(newCustomer);
     resetForm();
   };
 
@@ -182,18 +115,15 @@ export default function LoyaltyProgram() {
     setIsAddCustomerOpen(false);
   };
 
-  const handleRedeemReward = (customer: Customer, reward: Reward) => {
+  const handleRedeemReward = (customer: LoyaltyCustomer, reward: Reward) => {
     if (customer.points >= reward.pointsCost) {
-      const updatedCustomer = {
-        ...customer,
-        points: customer.points - reward.pointsCost,
-        rewards: [...customer.rewards, reward.name]
-      };
+      const updatedPoints = customer.points - reward.pointsCost;
+      const updatedRewards = [...(customer.rewards || []), reward.name];
       
-      setCustomers(prev => prev.map(c => c.id === customer.id ? updatedCustomer : c));
-      localStorage.setItem('whiz-pos-loyalty-customers', JSON.stringify(
-        customers.map(c => c.id === customer.id ? updatedCustomer : c)
-      ));
+      updateLoyaltyCustomer(customer.id, {
+          points: updatedPoints,
+          rewards: updatedRewards
+      });
       
       alert(`Successfully redeemed: ${reward.name}`);
       setIsRedeemOpen(false);
@@ -203,10 +133,10 @@ export default function LoyaltyProgram() {
     }
   };
 
-  const totalCustomers = customers.length;
-  const activeCustomers = customers.filter(c => c.visitsCount > 0).length;
-  const totalPointsIssued = customers.reduce((sum, c) => sum + c.points, 0);
-  const tierDistribution = customers.reduce((acc, customer) => {
+  const totalCustomers = loyaltyCustomers.length;
+  const activeCustomers = loyaltyCustomers.filter(c => c.visitsCount > 0).length;
+  const totalPointsIssued = loyaltyCustomers.reduce((sum, c) => sum + c.points, 0);
+  const tierDistribution = loyaltyCustomers.reduce((acc, customer) => {
     acc[customer.tier] = (acc[customer.tier] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
@@ -283,8 +213,8 @@ export default function LoyaltyProgram() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {Object.entries(tierDistribution).map(([tier, count]) => (
               <div key={tier} className="text-center p-4 bg-gray-50 rounded-lg">
-                <div className={`inline-flex items-center space-x-2 px-3 py-1 rounded-full mb-2 ${getTierColor(tier as Customer['tier'])}`}>
-                  {getTierIcon(tier as Customer['tier'])}
+                <div className={`inline-flex items-center space-x-2 px-3 py-1 rounded-full mb-2 ${getTierColor(tier as LoyaltyCustomer['tier'])}`}>
+                  {getTierIcon(tier as LoyaltyCustomer['tier'])}
                   <span className="font-medium">{tier}</span>
                 </div>
                 <p className="text-2xl font-bold text-gray-800">{count}</p>
@@ -313,7 +243,7 @@ export default function LoyaltyProgram() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {customers.map((customer) => (
+                {loyaltyCustomers.map((customer) => (
                   <tr key={customer.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
@@ -361,7 +291,7 @@ export default function LoyaltyProgram() {
               </tbody>
             </table>
             
-            {customers.length === 0 && (
+            {loyaltyCustomers.length === 0 && (
               <div className="text-center py-8">
                 <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                 <p className="text-gray-500">No customers in loyalty program</p>

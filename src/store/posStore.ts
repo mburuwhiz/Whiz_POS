@@ -160,6 +160,19 @@ export interface CreditPayment {
     transactionId?: string; // Linked to specific transaction
 }
 
+export interface LoyaltyCustomer {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  points: number;
+  tier: 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
+  totalSpent: number;
+  visitsCount: number;
+  lastVisit: string;
+  rewards: string[];
+}
+
 export interface User {
   id: string;
   name: string;
@@ -290,6 +303,7 @@ interface PosState {
   salaries: Salary[];
   businessSetup: BusinessSetup | null;
   mobileReceipts: any[];
+  loyaltyCustomers: LoyaltyCustomer[];
   
   // UI State
   isDataLoaded: boolean;
@@ -343,6 +357,8 @@ interface PosState {
   saveExpense: (expense: Expense) => void;
   updateExpense: (id: string, updates: Partial<Expense>) => void;
   deleteExpense: (id: string) => void;
+  addLoyaltyCustomer: (customer: LoyaltyCustomer) => void;
+  updateLoyaltyCustomer: (id: string, updates: Partial<LoyaltyCustomer>) => void;
   deleteTransactions: (ids: string[]) => void;
   addSalary: (salary: Salary) => void;
   deleteSalary: (id: string) => void;
@@ -401,6 +417,7 @@ export const usePosStore = create<PosState>()(
       creditCustomers: [],
       creditPayments: [],
       inventoryLogs: [],
+      loyaltyCustomers: [],
       users: [],
       expenses: [],
       salaries: [],
@@ -628,6 +645,28 @@ export const usePosStore = create<PosState>()(
             }
         }
 
+        // Handle Loyalty Points (if customer is identified)
+        if (creditCustomerName) {
+            const loyaltyCustomer = state.loyaltyCustomers.find(c => c.name === creditCustomerName);
+            if (loyaltyCustomer) {
+                const newTotalSpent = loyaltyCustomer.totalSpent + total;
+                let newTier: LoyaltyCustomer['tier'] = loyaltyCustomer.tier;
+                if (newTotalSpent >= 10000) newTier = 'Platinum';
+                else if (newTotalSpent >= 5000) newTier = 'Gold';
+                else if (newTotalSpent >= 2000) newTier = 'Silver';
+
+                const pointsEarned = Math.floor(total / 10);
+
+                state.updateLoyaltyCustomer(loyaltyCustomer.id, {
+                    points: loyaltyCustomer.points + pointsEarned,
+                    totalSpent: newTotalSpent,
+                    visitsCount: loyaltyCustomer.visitsCount + 1,
+                    lastVisit: new Date().toISOString(),
+                    tier: newTier
+                });
+            }
+        }
+
         state.clearCart();
         state.closeCheckout();
 
@@ -744,6 +783,26 @@ export const usePosStore = create<PosState>()(
             state.addToSyncQueue({ type: 'update-credit-customer', data: { id, updates } });
             return { creditCustomers: updatedCustomers };
         });
+      },
+
+      addLoyaltyCustomer: (customer) => {
+          set((state) => {
+              const updatedCustomers = [...state.loyaltyCustomers, customer];
+              saveDataToFile('loyalty-customers.json', updatedCustomers);
+              state.addToSyncQueue({ type: 'add-loyalty-customer', data: customer });
+              return { loyaltyCustomers: updatedCustomers };
+          });
+      },
+
+      updateLoyaltyCustomer: (id, updates) => {
+          set((state) => {
+              const updatedCustomers = state.loyaltyCustomers.map(c =>
+                  c.id === id ? { ...c, ...updates } : c
+              );
+              saveDataToFile('loyalty-customers.json', updatedCustomers);
+              state.addToSyncQueue({ type: 'update-loyalty-customer', data: { id, updates } });
+              return { loyaltyCustomers: updatedCustomers };
+          });
       },
 
       addCreditPayment: (customerId: string, amount: number, transactionId?: string) => {
@@ -1019,6 +1078,7 @@ export const usePosStore = create<PosState>()(
           const newExpenses = mergeData(state.expenses, serverData.expenses || []);
           const newSalaries = mergeData(state.salaries, serverData.salaries || []);
           const newCreditCustomers = mergeData(state.creditCustomers, serverData.creditCustomers || []);
+          const newLoyaltyCustomers = mergeData(state.loyaltyCustomers, serverData.loyaltyCustomers || []);
 
           let newBusinessSetup = state.businessSetup;
           if (serverData.businessSetup) {
@@ -1035,6 +1095,7 @@ export const usePosStore = create<PosState>()(
             expenses: newExpenses as Expense[],
             salaries: newSalaries as Salary[],
             creditCustomers: newCreditCustomers as CreditCustomer[],
+            loyaltyCustomers: newLoyaltyCustomers as LoyaltyCustomer[],
             businessSetup: newBusinessSetup as BusinessSetup,
           });
 
@@ -1043,6 +1104,7 @@ export const usePosStore = create<PosState>()(
           saveDataToFile('expenses.json', newExpenses);
           saveDataToFile('salaries.json', newSalaries);
           saveDataToFile('credit-customers.json', newCreditCustomers);
+          saveDataToFile('loyalty-customers.json', newLoyaltyCustomers);
           saveDataToFile('business-setup.json', newBusinessSetup);
 
         } catch (error) {
@@ -1377,7 +1439,7 @@ export const usePosStore = create<PosState>()(
               set({ businessSetup: prefillSetup });
           }
 
-          const fileNames = ['products.json', 'users.json', 'transactions.json', 'credit-customers.json', 'expenses.json', 'salaries.json', 'credit-payments.json', 'inventory-logs.json', 'daily-summaries.json'];
+          const fileNames = ['products.json', 'users.json', 'transactions.json', 'credit-customers.json', 'expenses.json', 'salaries.json', 'credit-payments.json', 'inventory-logs.json', 'daily-summaries.json', 'loyalty-customers.json'];
           const dataMap = {
             'products.json': 'products',
             'users.json': 'users',
@@ -1387,7 +1449,8 @@ export const usePosStore = create<PosState>()(
             'salaries.json': 'salaries',
             'credit-payments.json': 'creditPayments',
             'inventory-logs.json': 'inventoryLogs',
-            'daily-summaries.json': 'dailySummaries'
+            'daily-summaries.json': 'dailySummaries',
+            'loyalty-customers.json': 'loyaltyCustomers'
           };
 
           for (const fileName of fileNames) {

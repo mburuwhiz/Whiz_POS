@@ -1,0 +1,63 @@
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+        <h2 class="text-2xl font-bold text-gray-900">Loyalty Program</h2>
+        <p class="text-sm text-gray-500">Manage loyalty members and view points.</p>
+    </div>
+</div>
+
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left">
+            <thead class="bg-gray-50 text-gray-600 font-medium border-b border-gray-100">
+                <tr>
+                    <th class="px-6 py-3">Customer</th>
+                    <th class="px-6 py-3">Tier</th>
+                    <th class="px-6 py-3 text-center">Points</th>
+                    <th class="px-6 py-3 text-right">Total Spent</th>
+                    <th class="px-6 py-3 text-center">Visits</th>
+                    <th class="px-6 py-3">Last Visit</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                <% if (customers && customers.length > 0) { %>
+                    <% customers.forEach(customer => { %>
+                    <tr class="hover:bg-gray-50/50 transition-colors">
+                        <td class="px-6 py-3">
+                            <div class="font-medium text-gray-900"><%= customer.name %></div>
+                            <div class="text-xs text-gray-500"><%= customer.phone %></div>
+                        </td>
+                        <td class="px-6 py-3">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium
+                                <%= customer.tier === 'Platinum' ? 'bg-purple-100 text-purple-700' :
+                                   customer.tier === 'Gold' ? 'bg-yellow-100 text-yellow-700' :
+                                   customer.tier === 'Silver' ? 'bg-gray-100 text-gray-700' :
+                                   'bg-orange-100 text-orange-700' %>">
+                                <%= customer.tier %>
+                            </span>
+                        </td>
+                        <td class="px-6 py-3 text-center font-bold text-yellow-600">
+                            <%= customer.points %>
+                        </td>
+                        <td class="px-6 py-3 text-right font-medium text-gray-900">
+                            Ksh. <%= (customer.totalSpent || 0).toLocaleString() %>
+                        </td>
+                        <td class="px-6 py-3 text-center text-gray-600">
+                            <%= customer.visitsCount || 0 %>
+                        </td>
+                        <td class="px-6 py-3 text-gray-500 text-xs">
+                            <%= customer.lastVisit ? new Date(customer.lastVisit).toLocaleDateString() : 'N/A' %>
+                        </td>
+                    </tr>
+                    <% }) %>
+                <% } else { %>
+                    <tr>
+                        <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                            <i data-lucide="users" class="w-12 h-12 mx-auto mb-3 text-gray-300"></i>
+                            <p>No loyalty members found.</p>
+                        </td>
+                    </tr>
+                <% } %>
+            </tbody>
+        </table>
+    </div>
+</div>

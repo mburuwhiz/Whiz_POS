@@ -2,6 +2,7 @@ import React from 'react';
 import { usePosStore } from '../store/posStore';
 import { Plus } from 'lucide-react';
 import cartPlaceholder from '../assets/cart.png';
+import { useBarcodeScanner } from '../hooks/useBarcodeScanner';
 
 const CART_PLACEHOLDER = cartPlaceholder;
 
@@ -13,6 +14,13 @@ export default function ProductGrid() {
   const { products, transactions, addToCart } = usePosStore();
   const [searchTerm, setSearchTerm] = React.useState('');
   const [selectedCategory, setSelectedCategory] = React.useState('All');
+
+  useBarcodeScanner((code) => {
+      const product = products.find(p => p.id.toString() === code);
+      if (product) {
+          addToCart(product);
+      }
+  });
 
   // Calculate product popularity based on sales quantity
   const productSalesCount = React.useMemo(() => {

@@ -6,6 +6,7 @@ const Customer = require('../models/Customer');
 const User = require('../models/User');
 const BusinessSettings = require('../models/BusinessSettings');
 const InventoryLog = require('../models/InventoryLog');
+const LoyaltyCustomer = require('../models/LoyaltyCustomer');
 
 exports.getData = async (req, res) => {
     try {
@@ -14,6 +15,7 @@ exports.getData = async (req, res) => {
         const expenses = await Expense.find({});
         const salaries = await Salary.find({});
         const creditCustomers = await Customer.find({});
+        const loyaltyCustomers = await LoyaltyCustomer.find({});
         const businessSetup = await BusinessSettings.findOne({});
         const inventoryLogs = await InventoryLog.find({}).sort({ timestamp: -1 }).limit(200);
 
@@ -53,6 +55,7 @@ exports.getData = async (req, res) => {
             expenses: expenses.map(mapExpense),
             salaries: salaries.map(mapSalary),
             creditCustomers: creditCustomers.map(mapCustomer),
+            loyaltyCustomers: loyaltyCustomers.map(c => ({...c.toObject(), id: c.customerId})),
             inventoryLogs: inventoryLogs.map(mapInventoryLog),
             businessSetup: businessSetup ? businessSetup.toObject() : null
         });
@@ -127,6 +130,11 @@ exports.fullSync = async (req, res) => {
         if (req.body.inventoryLogs) {
             for (const l of req.body.inventoryLogs) {
                 await processOperation({ type: 'add-inventory-log', data: l });
+            }
+        }
+        if (req.body.loyaltyCustomers) {
+            for (const c of req.body.loyaltyCustomers) {
+                await processOperation({ type: 'add-loyalty-customer', data: c });
             }
         }
 
@@ -316,6 +324,23 @@ async function processOperation(op) {
                 await InventoryLog.updateOne(
                     { logId: op.data.id },
                     { $set: logData },
+                    { upsert: true }
+                );
+                break;
+
+            case 'add-loyalty-customer':
+            case 'update-loyalty-customer':
+                const lCustData = op.type === 'update-loyalty-customer' ? op.data.updates : op.data;
+                const lCustId = op.type === 'update-loyalty-customer' ? op.data.id : op.data.id;
+
+                const lUpdate = { ...lCustData };
+                if (lCustId) lUpdate.customerId = lCustId;
+                delete lUpdate.id;
+                delete lUpdate._id;
+
+                await LoyaltyCustomer.updateOne(
+                    { customerId: lCustId },
+                    { $set: lUpdate },
                     { upsert: true }
                 );
                 break;

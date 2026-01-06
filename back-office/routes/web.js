@@ -10,6 +10,7 @@ const reportsController = require('../controllers/reportsController');
 const usersController = require('../controllers/usersController');
 const settingsController = require('../controllers/settingsController');
 const salariesController = require('../controllers/salariesController');
+const loyaltyController = require('../controllers/loyaltyController');
 
 /**
  * Middleware to require authentication for protected routes.
@@ -131,6 +132,12 @@ router.post('/credit/payment/:id', creditController.recordPayment);
  * Deletes a credit customer.
  */
 router.post('/credit/delete/:id', creditController.deleteCustomer);
+
+/**
+ * GET /loyalty
+ * Renders the loyalty program page.
+ */
+router.get('/loyalty', loyaltyController.index);
 
 /**
  * GET /salaries

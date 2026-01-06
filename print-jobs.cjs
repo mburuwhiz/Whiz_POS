@@ -159,6 +159,36 @@ async function generateClosingReport(reportData, businessSetup, detailed = true)
     let globalMpesa = 0;
     let globalCredit = 0;
 
+    // Generate Global Items Summary
+    let globalItemsHtml = '';
+    if (detailed && reportData.itemSales && reportData.itemSales.length > 0) {
+         const globalRows = reportData.itemSales.map(item => `
+            <tr>
+                <td style="text-align: left; padding: 2px;">${item.name}</td>
+                <td style="text-align: center; padding: 2px;">${item.quantity}</td>
+                <td style="text-align: right; padding: 2px;">${item.total.toFixed(2)}</td>
+            </tr>
+        `).join('');
+
+        globalItemsHtml = `
+            <div style="margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px;">
+                <h3 style="margin: 0 0 5px 0; font-size: 14px; text-transform: uppercase; text-align: center;">ALL ITEMS SOLD</h3>
+                <table style="width: 100%; font-size: 12px; margin-bottom: 10px; border-collapse: collapse;">
+                    <thead style="border-bottom: 1px solid #000;">
+                        <tr>
+                            <th style="text-align: left;">Product</th>
+                            <th style="text-align: center;">Qty</th>
+                            <th style="text-align: right;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${globalRows}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
     // Generate Cashier Sections (Items + Summary)
     const cashierSections = reportData.cashiers ? reportData.cashiers.map(cashier => {
         globalCash += cashier.cashTotal || 0;
@@ -210,7 +240,7 @@ async function generateClosingReport(reportData, businessSetup, detailed = true)
         `;
     }).join('') : '';
 
-    template = template.replace('{{cashierSections}}', cashierSections);
+    template = template.replace('{{cashierSections}}', globalItemsHtml + cashierSections);
 
     // Grand Total Footer
     template = template.replace('{{totalCash}}', `Ksh. ${globalCash.toFixed(2)}`);

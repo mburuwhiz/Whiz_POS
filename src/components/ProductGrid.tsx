@@ -29,6 +29,7 @@ export default function ProductGrid() {
 
   // Extract unique categories
   const categories = ['All', ...new Set(products.map(p => p.category).filter(Boolean))];
+  const productNames = [...new Set(products.map(p => p.name))];
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch = (product.name || '').toLowerCase().includes(searchTerm.toLowerCase());
@@ -51,11 +52,15 @@ export default function ProductGrid() {
           <h2 className="text-xl font-semibold text-gray-800">Products</h2>
           <input
             type="text"
+            list="product-suggestions"
             placeholder="Search for products..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="border border-gray-300 rounded-lg px-4 py-2"
           />
+          <datalist id="product-suggestions">
+            {productNames.map(name => <option key={name} value={name} />)}
+          </datalist>
         </div>
 
         {/* Categories Tab */}

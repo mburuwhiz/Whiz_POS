@@ -94,7 +94,13 @@ export default function ExpenseTracker() {
     setQuickAddAmount('');
   };
 
+  const isAdminOrManager = currentCashier?.role === 'admin' || currentCashier?.role === 'manager';
+
   const handleEdit = (expense: Expense) => {
+      if (!isAdminOrManager) {
+        alert("Only Admins or Managers can edit expenses.");
+        return;
+      }
       setFormData({
           description: expense.description,
           amount: expense.amount.toString(),
@@ -117,10 +123,17 @@ export default function ExpenseTracker() {
   };
 
   const handleDelete = (id: string) => {
+      if (!isAdminOrManager) {
+        alert("Only Admins or Managers can delete expenses.");
+        return;
+      }
       if(confirm('Are you sure you want to delete this expense?')) {
-          deleteExpense(id); // Assuming this action exists in store or I need to add it
+          deleteExpense(id);
       }
   };
+
+  // Unique descriptions for autocomplete
+  const expenseDescriptions = [...new Set(expenses.map(e => e.description))];
 
   const resetForm = () => {
     setFormData({
@@ -275,7 +288,12 @@ export default function ExpenseTracker() {
                 </thead>
                 <tbody>
                   {filteredExpenses.slice(0, 20).map((expense) => (
-                    <tr key={expense.id} className="border-b hover:bg-gray-50">
+                    <tr
+                        key={expense.id}
+                        className="border-b hover:bg-gray-50 cursor-pointer"
+                        onClick={() => handleDuplicate(expense)}
+                        title="Click to add similar expense"
+                    >
                       <td className="py-3 px-6">
                         <div>
                           <div className="text-sm text-gray-800">
@@ -381,12 +399,18 @@ export default function ExpenseTracker() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                   <input
                     type="text"
+                    list="expense-suggestions"
                     value={formData.description}
                     onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Enter expense description"
                     autoFocus
                   />
+                  <datalist id="expense-suggestions">
+                    {expenseDescriptions.map((desc, i) => (
+                        <option key={i} value={desc} />
+                    ))}
+                  </datalist>
                 </div>
                 
                 <div>

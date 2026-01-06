@@ -25,6 +25,7 @@ export default function InventoryManagement() {
   const [reconciliationData, setReconciliationData] = useState<{ [id: number]: number }>({});
 
   const categories = ['all', ...new Set(products.map(p => p.category))];
+  const productNames = [...new Set(products.map(p => p.name))];
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = (product.name || '').toLowerCase().includes(searchTerm.toLowerCase());
@@ -253,11 +254,15 @@ export default function InventoryManagement() {
               <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
               <input
                 type="text"
+                list="inventory-suggestions"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search products..."
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
+              <datalist id="inventory-suggestions">
+                  {productNames.map(name => <option key={name} value={name} />)}
+              </datalist>
             </div>
             
             <div className="flex items-center space-x-2">

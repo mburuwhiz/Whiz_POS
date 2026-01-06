@@ -13,6 +13,7 @@ export default function Dashboard() {
     currentUser,
     products,
     categories,
+    transactions,
     cart,
     addToCart,
     updateCartQuantity,
@@ -29,13 +30,28 @@ export default function Dashboard() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
+  const productSalesCount = useMemo(() => {
+      const counts: Record<string, number> = {};
+      transactions.forEach(t => {
+          t.items.forEach(item => {
+              const id = item.product?.id || item.id;
+              if (id) counts[id] = (counts[id] || 0) + item.quantity;
+          });
+      });
+      return counts;
+  }, [transactions]);
+
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
       const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
       const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesCategory && matchesSearch;
+    }).sort((a, b) => {
+        const countA = productSalesCount[a.id] || 0;
+        const countB = productSalesCount[b.id] || 0;
+        return countB - countA;
     });
-  }, [products, selectedCategory, searchQuery]);
+  }, [products, selectedCategory, searchQuery, productSalesCount]);
 
   const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);

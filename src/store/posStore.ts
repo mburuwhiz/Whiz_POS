@@ -343,6 +343,7 @@ interface PosState {
   saveExpense: (expense: Expense) => void;
   updateExpense: (id: string, updates: Partial<Expense>) => void;
   deleteExpense: (id: string) => void;
+  deleteTransactions: (ids: string[]) => void;
   addSalary: (salary: Salary) => void;
   deleteSalary: (id: string) => void;
   saveBusinessSetup: (setup: BusinessSetup) => void;
@@ -1113,7 +1114,14 @@ export const usePosStore = create<PosState>()(
       printMobileReceipt: (receipt) => {
         const state = get();
         if (window.electron) {
-            window.electron.printReceipt(receipt, state.businessSetup, true);
+            // Print as Original (false)
+            window.electron.printReceipt(receipt, state.businessSetup, false);
+
+            // Save to Local Transactions (Old Receipts)
+            if (!state.transactions.some(t => t.id === receipt.id)) {
+                 state.saveTransaction(receipt);
+            }
+
             state.deleteMobileReceipt(receipt);
         }
       },
@@ -1161,7 +1169,22 @@ export const usePosStore = create<PosState>()(
           t.timestamp.startsWith(date) && t.status === 'completed'
         );
 
-        // Group by Cashier first
+        // Calculate Global Items Sold
+        const globalItemSalesMap = new Map<string, { name: string; quantity: number; total: number }>();
+        dayTransactions.forEach(t => {
+            t.items.forEach(item => {
+                const name = item.product.name;
+                if (!globalItemSalesMap.has(name)) {
+                    globalItemSalesMap.set(name, { name, quantity: 0, total: 0 });
+                }
+                const record = globalItemSalesMap.get(name)!;
+                record.quantity += item.quantity;
+                record.total += (item.quantity * item.product.price);
+            });
+        });
+        const itemSales = Array.from(globalItemSalesMap.values()).sort((a, b) => b.total - a.total);
+
+        // Group by Cashier
         const cashierNames = [...new Set(dayTransactions.map(t => t.cashier || 'Unknown'))];
 
         const cashiers: any[] = cashierNames.map(name => {
@@ -1203,7 +1226,7 @@ export const usePosStore = create<PosState>()(
         return {
           date,
           cashiers,
-          itemSales: [], // Redundant for this report style but kept for type compat
+          itemSales,
           grandTotal: totalCash + totalMpesa + totalCredit,
           totalCash,
           totalMpesa,
@@ -1232,6 +1255,15 @@ export const usePosStore = create<PosState>()(
           return { users: updatedUsers };
         });
       },
+
+  deleteTransactions: (ids) => {
+    set((state) => {
+      const updatedTransactions = state.transactions.filter(t => !ids.includes(t.id));
+      saveDataToFile('transactions.json', updatedTransactions);
+      ids.forEach(id => state.addToSyncQueue({ type: 'delete-transaction', data: { id } }));
+      return { transactions: updatedTransactions };
+    });
+  },
 
       addProduct: async (product) => {
         const state = get();

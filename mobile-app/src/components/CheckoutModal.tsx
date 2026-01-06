@@ -77,13 +77,19 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
     setIsProcessing(true);
 
     // Map items to match Desktop format { product: ..., quantity: ... }
+    // Optimize payload by stripping unnecessary product details (images, etc)
     const formattedItems = cart.map(item => ({
-        product: item,
+        product: {
+            id: item.id,
+            name: item.name,
+            price: item.price,
+            category: item.category
+        },
         quantity: item.quantity
     }));
 
-    // Short ID format: MOBREC + last 6 digits of timestamp
-    const transactionId = `MOBREC${Date.now().toString().slice(-6)}`;
+    // Standard TXN format
+    const transactionId = `TXN${Date.now()}`;
 
     const transaction = {
       id: transactionId,
@@ -93,9 +99,9 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
       timestamp: new Date().toISOString(),
       cashierId: currentUser?.id,
       cashierName: currentUser?.name,
-      cashier: currentUser?.name, // Added for compatibility with Desktop/Print templates
+      cashier: currentUser?.name || 'Mobile User',
       creditCustomerId: selectedCustomer?.id,
-      creditCustomer: selectedCustomer?.name, // Fix: Changed to creditCustomer to match Desktop store property
+      creditCustomer: selectedCustomer?.name,
       creditCustomerName: selectedCustomer?.name,
       status: 'completed'
     };

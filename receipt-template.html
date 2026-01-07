@@ -13,10 +13,15 @@
             font-size: 10.5px;
             font-weight: bold;
             color: #000;
-            margin: 0 auto; /* Center content on page */
-            padding: 5px 6mm; /* Safe padding for thermal printers */
+            margin: 0;
+            padding: 0;
             width: {{paperWidth}}mm; /* Force explicit width to match setting */
+            max-width: {{paperWidth}}mm;
+        }
+        .container {
+            padding: 5px 6mm; /* Safe padding for thermal printers */
             box-sizing: border-box;
+            width: 100%;
         }
         .header {
             text-align: center;
@@ -99,75 +104,77 @@
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>{{businessName}}</h1>
-        <p>{{location}}</p>
-        <p>{{address}}</p>
-        <p>{{phone}}</p>
-    </div>
-
-    <div class="separator"></div>
-
-    <div class="info">
-        <p>Receipt #: {{receiptId}}</p>
-        <p>Date: {{date}}</p>
-        <p>Customer: {{customer}}</p>
-    </div>
-
-    <div class="separator"></div>
-
-    <table>
-        <thead>
-            <tr>
-                <th>Item</th>
-                <th class="qty">Qty</th>
-                <th class="price">Price</th>
-            </tr>
-        </thead>
-        <tbody>
-            {{itemsHtml}}
-        </tbody>
-    </table>
-
-    <div class="separator"></div>
-
-    <div class="totals">
-        <div class="row">
-            <span>Subtotal:</span>
-            <span>{{subtotal}}</span>
+    <div class="container">
+        <div class="header">
+            <h1>{{businessName}}</h1>
+            <p>{{location}}</p>
+            <p>{{address}}</p>
+            <p>{{phone}}</p>
         </div>
-        <div class="row">
-            <span>Tax:</span>
-            <span>{{tax}}</span>
+
+        <div class="separator"></div>
+
+        <div class="info">
+            <p>Receipt #: {{receiptId}}</p>
+            <p>Date: {{date}}</p>
+            <p>Customer: {{customer}}</p>
         </div>
-        <div class="row total-row">
-            <span>TOTAL:</span>
-            <span>{{total}}</span>
+
+        <div class="separator"></div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th class="qty">Qty</th>
+                    <th class="price">Price</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{itemsHtml}}
+            </tbody>
+        </table>
+
+        <div class="separator"></div>
+
+        <div class="totals">
+            <div class="row">
+                <span>Subtotal:</span>
+                <span>{{subtotal}}</span>
+            </div>
+            <div class="row">
+                <span>Tax:</span>
+                <span>{{tax}}</span>
+            </div>
+            <div class="row total-row">
+                <span>TOTAL:</span>
+                <span>{{total}}</span>
+            </div>
         </div>
-    </div>
 
-    <div class="separator"></div>
+        <div class="separator"></div>
 
-    <div class="info">
-        <div class="payment-line">
-            <span>Payment : {{paymentMethod}}</span>
-            <span>Served By: {{servedBy}}</span>
+        <div class="info">
+            <div class="payment-line">
+                <span>Payment : {{paymentMethod}}</span>
+                <span>Served By: {{servedBy}}</span>
+            </div>
         </div>
+
+        <div style="text-align: center;">
+            {{mpesaDetails}}
+        </div>
+
+        <div class="separator"></div>
+
+        <div class="footer">
+            <p>{{receiptHeader}}</p>
+            {{receiptFooter}}
+        </div>
+
+        <div class="separator"></div>
+
+        {{developerFooter}}
     </div>
-
-    <div style="text-align: center;">
-        {{mpesaDetails}}
-    </div>
-
-    <div class="separator"></div>
-
-    <div class="footer">
-        <p>{{receiptHeader}}</p>
-        {{receiptFooter}}
-    </div>
-
-    <div class="separator"></div>
-
-    {{developerFooter}}
 </body>
 </html>

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { usePosStore } from '../store/posStore';
 import { useNavigate } from 'react-router-dom';
-import { RefreshCcw, Search, Undo2 } from 'lucide-react';
+import { RefreshCcw, Search, Undo2, Trash2 } from 'lucide-react';
+import DeleteReceiptsModal from './DeleteReceiptsModal';
 
 const PreviousReceiptsPage: React.FC = () => {
   const transactions = usePosStore((state) => state.transactions);
@@ -11,12 +12,15 @@ const PreviousReceiptsPage: React.FC = () => {
   const currentCashier = usePosStore((state) => state.currentCashier);
 
   // Check if current user is admin or manager
-  const isAdminOrManager = users.find(u => u.id === currentCashier?.id)?.role === 'admin' ||
-                           users.find(u => u.id === currentCashier?.id)?.role === 'manager';
+  const isAdminOrManager = useMemo(() => {
+    const user = users.find(u => u.id === currentCashier?.id);
+    return user?.role === 'admin' || user?.role === 'manager';
+  }, [users, currentCashier]);
 
   const navigate = useNavigate();
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const handleReprint = (transactionId: string) => {
     reprintTransaction(transactionId);
@@ -28,16 +32,24 @@ const PreviousReceiptsPage: React.FC = () => {
     }
   };
 
-  // Sort transactions by date descending
-  const sortedTransactions = [...transactions].sort((a, b) =>
-    new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-  );
+  // Sort transactions by date descending - Memoized
+  const sortedTransactions = useMemo(() => {
+    return [...transactions].sort((a, b) =>
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
+  }, [transactions]);
 
-  const filteredTransactions = sortedTransactions.filter(tx =>
+  // Filter transactions - Memoized
+  const filteredTransactions = useMemo(() => {
+    return sortedTransactions.filter(tx =>
       tx.id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    );
+  }, [sortedTransactions, searchTerm]);
 
-  const transactionIds = [...new Set(transactions.map(t => t.id))];
+  // Unique IDs for datalist - Memoized
+  const transactionIds = useMemo(() => {
+     return [...new Set(transactions.map(t => t.id))];
+  }, [transactions]);
 
   return (
     <div className="p-4 bg-gray-100 min-h-screen relative">
@@ -49,6 +61,16 @@ const PreviousReceiptsPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3 w-full md:w-auto">
+             {isAdminOrManager && (
+                 <button
+                    onClick={() => setIsDeleteModalOpen(true)}
+                    className="flex items-center space-x-2 bg-red-100 text-red-700 hover:bg-red-200 px-4 py-2 rounded-lg font-medium transition-colors"
+                 >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Delete Receipts</span>
+                 </button>
+             )}
+
              <div className="relative flex-1 md:w-64">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
@@ -58,6 +80,7 @@ const PreviousReceiptsPage: React.FC = () => {
                     list="receipt-ids"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
+                    autoComplete="off"
                 />
                 <datalist id="receipt-ids">
                     {transactionIds.slice(0, 100).map(id => <option key={id} value={id} />)}
@@ -137,9 +160,8 @@ const PreviousReceiptsPage: React.FC = () => {
                     <div className="flex flex-col items-center justify-center text-gray-400">
                         <Search className="w-12 h-12 mb-4 opacity-20" />
                         <h3 className="text-lg font-medium text-gray-600 mb-2">Receipt Not Found</h3>
-                        <p className="max-w-xs mx-auto text-center">
-                            The receipt number you entered either doesn't exist or has been deleted.
-                            Please check the number and try again.
+                        <p className="max-w-xs mx-auto text-center font-medium">
+                            Receipt either didn't exist or was deleted, check your receipts no again
                         </p>
                     </div>
                   </td>
@@ -149,6 +171,11 @@ const PreviousReceiptsPage: React.FC = () => {
           </table>
         </div>
       </div>
+
+      <DeleteReceiptsModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+      />
     </div>
   );
 };

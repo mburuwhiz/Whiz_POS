@@ -1,22 +1,37 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { usePosStore } from '../store/posStore';
 import { Printer, Trash2, Smartphone, User } from 'lucide-react';
 
 const MobileReceiptsPage = () => {
-  const { mobileReceipts, loadMobileReceipts, printMobileReceipt, deleteMobileReceipt } = usePosStore(state => ({
+  const { mobileReceipts, loadMobileReceipts, printMobileReceipt, deleteMobileReceipt, currentCashier } = usePosStore(state => ({
     mobileReceipts: state.mobileReceipts,
     loadMobileReceipts: state.loadMobileReceipts,
     printMobileReceipt: state.printMobileReceipt,
-    deleteMobileReceipt: state.deleteMobileReceipt
+    deleteMobileReceipt: state.deleteMobileReceipt,
+    currentCashier: state.currentCashier
   }));
 
   useEffect(() => {
     loadMobileReceipts();
   }, [loadMobileReceipts]);
 
+  // Filter receipts based on logged-in user
+  // If user is Admin/Manager, show all.
+  // If user is Cashier, show ONLY their receipts.
+  const filteredReceipts = useMemo(() => {
+      if (!currentCashier) return [];
+      if (currentCashier.role === 'admin' || currentCashier.role === 'manager') {
+          return mobileReceipts;
+      }
+      return mobileReceipts.filter(r =>
+          (r.cashierName || r.cashierId || '').toLowerCase() === currentCashier.name.toLowerCase() ||
+          (r.cashier || '').toLowerCase() === currentCashier.name.toLowerCase()
+      );
+  }, [mobileReceipts, currentCashier]);
+
   // Group receipts by Cashier
-  const receiptsByCashier = mobileReceipts.reduce((acc, receipt) => {
-      const cashier = receipt.cashierName || receipt.cashierId || 'Unknown User';
+  const receiptsByCashier = filteredReceipts.reduce((acc, receipt) => {
+      const cashier = receipt.cashierName || receipt.cashierId || receipt.cashier || 'Unknown User';
       if (!acc[cashier]) acc[cashier] = [];
       acc[cashier].push(receipt);
       return acc;
@@ -33,15 +48,15 @@ const MobileReceiptsPage = () => {
           <p className="text-gray-500">Print pending receipts from mobile devices.</p>
         </div>
         <div className="bg-blue-100 text-blue-700 px-4 py-2 rounded-full font-bold">
-          {mobileReceipts.length} Pending
+          {filteredReceipts.length} Pending
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {mobileReceipts.length === 0 ? (
+        {filteredReceipts.length === 0 ? (
           <div className="h-64 flex flex-col items-center justify-center text-gray-400">
             <Printer className="w-16 h-16 mb-4 opacity-20" />
-            <p className="text-lg">No pending mobile receipts</p>
+            <p className="text-lg">No pending mobile receipts for you</p>
           </div>
         ) : (
           <div className="space-y-8">

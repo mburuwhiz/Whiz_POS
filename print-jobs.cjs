@@ -159,7 +159,7 @@ async function generateClosingReport(reportData, businessSetup, detailed = true)
     let globalMpesa = 0;
     let globalCredit = 0;
 
-    // Generate Global Items Summary
+    // 1. GLOBAL ALL ITEMS SOLD SECTION
     let globalItemsHtml = '';
     if (detailed && reportData.itemSales && reportData.itemSales.length > 0) {
          const globalRows = reportData.itemSales.map(item => `
@@ -176,7 +176,7 @@ async function generateClosingReport(reportData, businessSetup, detailed = true)
                 <table style="width: 100%; font-size: 12px; margin-bottom: 10px; border-collapse: collapse;">
                     <thead style="border-bottom: 1px solid #000;">
                         <tr>
-                            <th style="text-align: left;">Product</th>
+                            <th style="text-align: left;">Item</th>
                             <th style="text-align: center;">Qty</th>
                             <th style="text-align: right;">Total</th>
                         </tr>
@@ -189,13 +189,15 @@ async function generateClosingReport(reportData, businessSetup, detailed = true)
         `;
     }
 
-    // Generate Cashier Sections (Items + Summary)
+    // 2. CASHIER DETAILED SECTIONS
+    // "The report will be like: All items sold item qty total cashier 1 report items sold item qty total payments summary cash Mpesa credit total"
+
     const cashierSections = reportData.cashiers ? reportData.cashiers.map(cashier => {
         globalCash += cashier.cashTotal || 0;
         globalMpesa += cashier.mpesaTotal || 0;
         globalCredit += cashier.creditTotal || 0;
 
-        // Items Table
+        // Items Table for Cashier
         let itemsTableHtml = '';
         if (detailed) {
             const itemsRows = cashier.items.map(item => `
@@ -206,20 +208,27 @@ async function generateClosingReport(reportData, businessSetup, detailed = true)
                 </tr>
             `).join('');
 
-            itemsTableHtml = `
-                <table style="width: 100%; font-size: 12px; margin-bottom: 10px; border-collapse: collapse;">
-                    <thead style="border-bottom: 1px solid #000;">
-                        <tr>
-                            <th style="text-align: left;">Product</th>
-                            <th style="text-align: center;">Qty</th>
-                            <th style="text-align: right;">Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${itemsRows}
-                    </tbody>
-                </table>
-            `;
+            if (cashier.items && cashier.items.length > 0) {
+                itemsTableHtml = `
+                    <div style="margin-bottom: 5px;">
+                        <h4 style="margin: 0 0 2px 0; font-size: 12px; font-weight: bold;">Items Sold:</h4>
+                        <table style="width: 100%; font-size: 12px; margin-bottom: 5px; border-collapse: collapse;">
+                            <thead style="border-bottom: 1px dashed #000;">
+                                <tr>
+                                    <th style="text-align: left;">Item</th>
+                                    <th style="text-align: center;">Qty</th>
+                                    <th style="text-align: right;">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${itemsRows}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } else {
+                itemsTableHtml = `<p style="font-size: 12px; font-style: italic;">No items sold.</p>`;
+            }
         }
 
         return `
@@ -228,12 +237,13 @@ async function generateClosingReport(reportData, businessSetup, detailed = true)
 
                 ${itemsTableHtml}
 
-                <div class="summary" style="font-size: 12px;">
+                <div class="summary" style="font-size: 12px; background-color: #f0f0f0; padding: 5px; border-radius: 4px;">
+                    <h4 style="margin: 0 0 2px 0; font-size: 12px; font-weight: bold; text-decoration: underline;">Payments Summary</h4>
                     <div style="display: flex; justify-content: space-between;"><span>Cash:</span><span>${cashier.cashTotal.toFixed(2)}</span></div>
                     <div style="display: flex; justify-content: space-between;"><span>M-Pesa:</span><span>${cashier.mpesaTotal.toFixed(2)}</span></div>
                     <div style="display: flex; justify-content: space-between;"><span>Credit:</span><span>${cashier.creditTotal.toFixed(2)}</span></div>
-                    <div style="display: flex; justify-content: space-between; font-weight: bold; border-top: 1px dashed #000; margin-top: 2px; padding-top: 2px;">
-                        <span>User Total:</span><span>${cashier.totalSales.toFixed(2)}</span>
+                    <div style="display: flex; justify-content: space-between; font-weight: bold; border-top: 1px solid #000; margin-top: 2px; padding-top: 2px;">
+                        <span>Total:</span><span>${cashier.totalSales.toFixed(2)}</span>
                     </div>
                 </div>
             </div>

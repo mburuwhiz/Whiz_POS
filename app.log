@@ -19,3 +19,11 @@
 [dev:electron] [32998:0107/075558.727250:ERROR:env.cc(258)] The platform failed to initialize.  Exiting.
 [dev:electron] /app/node_modules/electron/dist/electron exited with signal SIGSEGV
 [dev:electron] npm run dev:electron exited with code 1
+[dev:vite] 9:44:23 AM [vite] hmr update /src/components/PreviousReceiptsPage.tsx, /src/index.css
+[dev:vite] 9:46:07 AM [vite] hmr update /src/components/ExpenseTracker.tsx, /src/index.css
+[dev:vite] 9:46:38 AM [vite] page reload receipt-template.html
+[dev:vite] 9:47:27 AM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html
+[dev:vite] 9:47:58 AM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html
+[dev:vite] 9:47:58 AM [vite] page reload dist/__appImage-x64/LICENSES.chromium.html
+[dev:vite] 9:48:53 AM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html
+[dev:vite] npm run dev:vite exited with code SIGTERM

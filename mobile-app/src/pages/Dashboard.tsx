@@ -36,7 +36,7 @@ export default function Dashboard() {
       const counts: Record<string, number> = {};
       transactions.forEach(t => {
           t.items.forEach(item => {
-              const id = item.product?.id || item.id;
+              const id = item.id;
               if (id) counts[id] = (counts[id] || 0) + item.quantity;
           });
       });

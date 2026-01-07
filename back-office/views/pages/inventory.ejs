@@ -72,7 +72,12 @@
         <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-6 flex gap-4">
             <div class="flex-1 relative">
                 <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i>
-                <input type="text" placeholder="Search products..." class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                <input type="text" list="product-suggestions" placeholder="Search products..." class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                <datalist id="product-suggestions">
+                    <% products.forEach(function(p) { %>
+                        <option value="<%= p.name %>">
+                    <% }); %>
+                </datalist>
             </div>
             <select class="px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white text-gray-600 focus:ring-2 focus:ring-blue-500 outline-none">
                 <option>Newest First</option>

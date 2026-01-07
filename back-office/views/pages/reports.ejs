@@ -19,6 +19,22 @@
     </form>
 </div>
 
+<!-- Charts Section -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+        <h3 class="text-sm font-bold text-gray-700 mb-4">Sales Trend</h3>
+        <div class="relative h-64">
+             <canvas id="salesChart"></canvas>
+        </div>
+    </div>
+    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+        <h3 class="text-sm font-bold text-gray-700 mb-4">Payment Methods</h3>
+        <div class="relative h-64 flex justify-center">
+             <canvas id="paymentChart"></canvas>
+        </div>
+    </div>
+</div>
+
 <!-- Summary Cards -->
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
     <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
@@ -189,3 +205,73 @@
         </div>
     </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Sales Trend Chart
+    const salesCtx = document.getElementById('salesChart').getContext('2d');
+
+    // Group transactions by date
+    const transactions = <%- JSON.stringify(transactions || []) %>;
+    const salesByDate = {};
+    transactions.forEach(t => {
+        const date = new Date(t.timestamp).toLocaleDateString();
+        salesByDate[date] = (salesByDate[date] || 0) + t.total;
+    });
+
+    const labels = Object.keys(salesByDate).reverse(); // Reverse for chronological order if sorted desc
+    const data = Object.values(salesByDate).reverse();
+
+    new Chart(salesCtx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Sales (Ksh)',
+                data: data,
+                borderColor: '#2563eb',
+                backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: true, grid: { display: false } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+
+    // Payment Method Chart
+    const payCtx = document.getElementById('paymentChart').getContext('2d');
+    const paymentData = {
+        cash: <%= salesSummary.cash %>,
+        mpesa: <%= salesSummary.mpesa %>,
+        credit: <%= salesSummary.credit %>
+    };
+
+    new Chart(payCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Cash', 'M-Pesa', 'Credit'],
+            datasets: [{
+                data: [paymentData.cash, paymentData.mpesa, paymentData.credit],
+                backgroundColor: ['#22c55e', '#a855f7', '#f97316'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+</script>

@@ -1,16 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useMobileStore } from '../store/mobileStore';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, Receipt, Calendar, CreditCard, ChevronLeft, ChevronRight, LayoutGrid, Layers, Printer } from 'lucide-react';
+import { ArrowLeft, Search, Receipt, Calendar, CreditCard, ChevronLeft, ChevronRight, LayoutGrid, Layers, Printer, Share2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { api } from '../services/api';
+import { toPng } from 'html-to-image';
+import { Share } from '@capacitor/share';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 
 export default function TransactionsPage() {
   const navigate = useNavigate();
-  const { transactions, currentUser } = useMobileStore();
+  const { transactions, currentUser, businessSetup } = useMobileStore();
   const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'list' | 'deck'>('deck'); // Default to deck per request
+  const [viewMode, setViewMode] = useState<'list' | 'deck'>('deck');
   const [deckIndex, setDeckIndex] = useState(0);
+  const receiptRef = useRef<HTMLDivElement>(null);
 
   // Filter for CURRENT USER only
   const myTransactions = transactions.filter(t =>
@@ -29,6 +33,40 @@ export default function TransactionsPage() {
     } catch (e) {
       alert('Failed to print receipt. Check connection.');
     }
+  };
+
+  const handleShare = async (transaction: any) => {
+      if (!receiptRef.current) return;
+
+      try {
+          // Generate Image from DOM
+          const dataUrl = await toPng(receiptRef.current, { quality: 0.95, backgroundColor: '#ffffff' });
+
+          // Save to temporary file (Capacitor Share often needs a file URI)
+          const fileName = `receipt_${transaction.id}.png`;
+          const savedFile = await Filesystem.writeFile({
+              path: fileName,
+              data: dataUrl,
+              directory: Directory.Cache
+          });
+
+          // Share
+          await Share.share({
+              title: `Receipt - ${businessSetup.businessName}`,
+              text: `Receipt for transaction ${transaction.id} from ${businessSetup.businessName}`,
+              url: savedFile.uri,
+              dialogTitle: 'Share Receipt'
+          });
+
+      } catch (error) {
+          console.error("Share failed", error);
+          // Fallback for web testing
+          if ((window as any).navigator.share) {
+             // ...
+          } else {
+             alert("Sharing not supported in this environment or failed.");
+          }
+      }
   };
 
   // Deck Navigation
@@ -135,57 +173,79 @@ export default function TransactionsPage() {
 
             {currentCard && (
                 <div className="w-full max-w-sm bg-white text-slate-900 rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in duration-300">
-                    {/* Receipt Header Visual */}
-                    <div className="bg-sky-500 p-6 text-white text-center relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white to-transparent"></div>
-                        <Receipt className="w-12 h-12 mx-auto mb-2 relative z-10" />
-                        <h2 className="text-2xl font-bold relative z-10">KES {currentCard.total.toLocaleString()}</h2>
-                        <div className="text-sky-100 text-sm font-mono mt-1 relative z-10">#{currentCard.id}</div>
-                    </div>
 
-                    <div className="p-6 flex-1 overflow-y-auto">
-                        <div className="flex justify-between items-center mb-4 pb-4 border-b border-slate-100">
-                            <span className="text-slate-500 text-sm">Date</span>
-                            <span className="font-medium text-sm">{new Date(currentCard.timestamp).toLocaleString()}</span>
+                    {/* Printable/Shareable Area */}
+                    <div ref={receiptRef} className="bg-white">
+                        {/* Receipt Header Visual */}
+                        <div className="bg-slate-900 p-6 text-white text-center relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white to-transparent"></div>
+                            <div className="relative z-10 flex flex-col items-center">
+                                <h2 className="text-xl font-bold uppercase tracking-widest mb-1">{businessSetup.businessName}</h2>
+                                <div className="w-16 h-1 bg-sky-500 rounded-full mb-4"></div>
+
+                                <h2 className="text-3xl font-bold text-sky-400">KES {currentCard.total.toLocaleString()}</h2>
+                                <div className="text-slate-400 text-sm font-mono mt-1">#{currentCard.id}</div>
+                            </div>
                         </div>
 
-                        <div className="space-y-3 mb-6">
-                            {currentCard.items.map((item: any, idx: number) => (
-                                <div key={idx} className="flex justify-between items-start text-sm">
-                                    <div className="flex gap-2">
-                                        <span className="font-bold text-slate-400">{item.quantity}x</span>
-                                        <span className="text-slate-700">{item.product?.name || item.name}</span>
+                        <div className="p-6 bg-white">
+                            <div className="flex justify-between items-center mb-6 pb-4 border-b border-dashed border-slate-200">
+                                <span className="text-slate-500 text-sm">Date</span>
+                                <span className="font-bold text-sm text-slate-800">{new Date(currentCard.timestamp).toLocaleString()}</span>
+                            </div>
+
+                            <div className="space-y-3 mb-6">
+                                {currentCard.items.map((item: any, idx: number) => (
+                                    <div key={idx} className="flex justify-between items-start text-sm group">
+                                        <div className="flex gap-3">
+                                            <span className="font-bold text-slate-900 w-6">{item.quantity}x</span>
+                                            <div className="flex flex-col">
+                                                <span className="text-slate-700 font-medium">{item.product?.name || item.name}</span>
+                                                <span className="text-[10px] text-slate-400">@{item.price}</span>
+                                            </div>
+                                        </div>
+                                        <span className="font-bold text-slate-900">{(item.product?.price * item.quantity || item.price * item.quantity).toLocaleString()}</span>
                                     </div>
-                                    <span className="font-medium">{(item.product?.price || item.price * item.quantity).toLocaleString()}</span>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
 
-                        <div className="bg-slate-50 rounded-xl p-4 space-y-2">
-                             <div className="flex justify-between text-sm">
-                                 <span className="text-slate-500">Payment</span>
-                                 <span className="font-bold uppercase">{currentCard.paymentMethod}</span>
-                             </div>
-                             {currentCard.creditCustomer && (
-                                 <div className="flex justify-between text-sm">
-                                     <span className="text-slate-500">Customer</span>
-                                     <span className="font-medium">{currentCard.creditCustomer}</span>
-                                 </div>
-                             )}
+                            <div className="bg-slate-50 rounded-xl p-4 space-y-3 border border-slate-100">
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-slate-500">Subtotal</span>
+                                    <span className="font-medium">{(currentCard.subtotal || currentCard.total).toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-slate-500">Payment</span>
+                                    <span className="font-bold uppercase text-sky-600">{currentCard.paymentMethod}</span>
+                                </div>
+                                {currentCard.creditCustomer && (
+                                    <div className="flex justify-between text-sm pt-2 border-t border-dashed border-slate-200">
+                                        <span className="text-slate-500">Customer</span>
+                                        <span className="font-medium">{currentCard.creditCustomer}</span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
-                    <div className="p-4 bg-slate-50 border-t border-slate-100">
+                    <div className="p-4 bg-slate-50 border-t border-slate-100 grid grid-cols-2 gap-3">
                         <button
                             onClick={() => handleReprint(currentCard)}
                             className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-800 transition-colors"
                         >
-                            <Printer className="w-5 h-5" />
-                            Reprint Receipt
+                            <Printer className="w-4 h-4" />
+                            Reprint
                         </button>
-                        <div className="text-center mt-3 text-xs text-slate-400">
-                            Receipt {deckIndex + 1} of {filteredTransactions.length}
-                        </div>
+                        <button
+                            onClick={() => handleShare(currentCard)}
+                            className="w-full py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors"
+                        >
+                            <Share2 className="w-4 h-4" />
+                            Share
+                        </button>
+                    </div>
+                    <div className="bg-slate-50 pb-2 text-center text-[10px] text-slate-400">
+                         {deckIndex + 1} / {filteredTransactions.length}
                     </div>
                 </div>
             )}

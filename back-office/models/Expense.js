@@ -32,12 +32,19 @@ const ExpenseSchema = new mongoose.Schema({
 
   /**
    * Name of the user who recorded the expense.
-   * 'recordedBy' is the legacy field, 'cashier' is the field synced from Desktop.
-   * We keep both or unify them. The controller maps 'cashier' to 'recordedBy'.
-   * But adding 'cashier' here explicitly ensures data persistence if mapping fails or changes.
    */
   recordedBy: String,
-  cashier: String
+  cashier: String,
+
+  /**
+   * Associated Supplier ID
+   */
+  supplierId: String,
+
+  /**
+   * Associated Supplier Name (denormalized for display)
+   */
+  supplierName: String
 }, { timestamps: true });
 
 module.exports = mongoose.model('Expense', ExpenseSchema);

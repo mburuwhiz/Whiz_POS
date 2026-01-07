@@ -182,6 +182,16 @@ export interface User {
   createdAt: string;
 }
 
+export interface Supplier {
+  id: string;
+  name: string;
+  contact: string;
+  location: string;
+  active: boolean;
+  notes?: string;
+  createdAt: string;
+}
+
 export interface Expense {
   id: string;
   description: string;
@@ -190,6 +200,8 @@ export interface Expense {
   timestamp: string;
   cashier: string;
   receipt?: string;
+  supplierId?: string;
+  supplierName?: string;
 }
 
 export interface Salary {
@@ -299,6 +311,7 @@ interface PosState {
   creditPayments: CreditPayment[];
   inventoryLogs: InventoryLog[];
   users: User[];
+  suppliers: Supplier[];
   expenses: Expense[];
   salaries: Salary[];
   businessSetup: BusinessSetup | null;
@@ -366,6 +379,9 @@ interface PosState {
   addUser: (user: User) => void;
   updateUser: (id: string, updates: Partial<User>) => void;
   deleteUser: (id: string) => void;
+  addSupplier: (supplier: Supplier) => void;
+  updateSupplier: (id: string, updates: Partial<Supplier>) => void;
+  deleteSupplier: (id: string) => void;
 
   // Sync operations
   addToSyncQueue: (operation: any) => void;
@@ -419,6 +435,7 @@ export const usePosStore = create<PosState>()(
       inventoryLogs: [],
       loyaltyCustomers: [],
       users: [],
+      suppliers: [],
       expenses: [],
       salaries: [],
       businessSetup: null,
@@ -903,6 +920,35 @@ export const usePosStore = create<PosState>()(
         });
       },
 
+      addSupplier: (supplier) => {
+        set((state) => {
+          const updatedSuppliers = [...state.suppliers, supplier];
+          saveDataToFile('suppliers.json', updatedSuppliers);
+          state.addToSyncQueue({ type: 'add-supplier', data: supplier });
+          return { suppliers: updatedSuppliers };
+        });
+      },
+
+      updateSupplier: (id, updates) => {
+        set((state) => {
+          const updatedSuppliers = state.suppliers.map(s =>
+            s.id === id ? { ...s, ...updates } : s
+          );
+          saveDataToFile('suppliers.json', updatedSuppliers);
+          state.addToSyncQueue({ type: 'update-supplier', data: { id, updates } });
+          return { suppliers: updatedSuppliers };
+        });
+      },
+
+      deleteSupplier: (id) => {
+        set((state) => {
+          const updatedSuppliers = state.suppliers.filter(s => s.id !== id);
+          saveDataToFile('suppliers.json', updatedSuppliers);
+          state.addToSyncQueue({ type: 'delete-supplier', data: { id } });
+          return { suppliers: updatedSuppliers };
+        });
+      },
+
       saveBusinessSetup: (setup) => {
         saveDataToFile('business-setup.json', setup);
         set((state) => {
@@ -1075,6 +1121,7 @@ export const usePosStore = create<PosState>()(
           const newSalaries = mergeData(state.salaries, serverData.salaries || []);
           const newCreditCustomers = mergeData(state.creditCustomers, serverData.creditCustomers || []);
           const newLoyaltyCustomers = mergeData(state.loyaltyCustomers, serverData.loyaltyCustomers || []);
+          const newSuppliers = mergeData(state.suppliers, serverData.suppliers || []);
 
           let newBusinessSetup = state.businessSetup;
           if (serverData.businessSetup) {
@@ -1093,6 +1140,7 @@ export const usePosStore = create<PosState>()(
             creditCustomers: newCreditCustomers as CreditCustomer[],
             loyaltyCustomers: newLoyaltyCustomers as LoyaltyCustomer[],
             businessSetup: newBusinessSetup as BusinessSetup,
+            suppliers: newSuppliers as Supplier[],
           });
 
           saveDataToFile('products.json', newProducts);
@@ -1102,6 +1150,7 @@ export const usePosStore = create<PosState>()(
           saveDataToFile('credit-customers.json', newCreditCustomers);
           saveDataToFile('loyalty-customers.json', newLoyaltyCustomers);
           saveDataToFile('business-setup.json', newBusinessSetup);
+          saveDataToFile('suppliers.json', newSuppliers);
 
         } catch (error) {
           console.error('Failed to process sync data:', error);
@@ -1152,6 +1201,19 @@ export const usePosStore = create<PosState>()(
                    return {
                        creditCustomers: state.creditCustomers.map(c =>
                            c.id === data.id ? { ...c, ...data.updates } : c
+                       )
+                   };
+               });
+            } else if (type === 'add-supplier') {
+               set(state => {
+                   if (state.suppliers.some(s => s.id === data.id)) return {};
+                   return { suppliers: [...state.suppliers, data] };
+               });
+            } else if (type === 'update-supplier') {
+               set(state => {
+                   return {
+                       suppliers: state.suppliers.map(s =>
+                           s.id === data.id ? { ...s, ...data.updates } : s
                        )
                    };
                });
@@ -1435,7 +1497,7 @@ export const usePosStore = create<PosState>()(
               set({ businessSetup: prefillSetup });
           }
 
-          const fileNames = ['products.json', 'users.json', 'transactions.json', 'credit-customers.json', 'expenses.json', 'salaries.json', 'credit-payments.json', 'inventory-logs.json', 'daily-summaries.json', 'loyalty-customers.json'];
+          const fileNames = ['products.json', 'users.json', 'transactions.json', 'credit-customers.json', 'expenses.json', 'salaries.json', 'credit-payments.json', 'inventory-logs.json', 'daily-summaries.json', 'loyalty-customers.json', 'suppliers.json'];
           const dataMap = {
             'products.json': 'products',
             'users.json': 'users',
@@ -1446,7 +1508,8 @@ export const usePosStore = create<PosState>()(
             'credit-payments.json': 'creditPayments',
             'inventory-logs.json': 'inventoryLogs',
             'daily-summaries.json': 'dailySummaries',
-            'loyalty-customers.json': 'loyaltyCustomers'
+            'loyalty-customers.json': 'loyaltyCustomers',
+            'suppliers.json': 'suppliers'
           };
 
           for (const fileName of fileNames) {
@@ -1491,6 +1554,7 @@ export const usePosStore = create<PosState>()(
           expenses: [],
           salaries: [],
           creditCustomers: [],
+          suppliers: [],
         });
 
         // 3. Trigger the business setup printout.
@@ -1606,7 +1670,8 @@ export const usePosStore = create<PosState>()(
                 salaries: state.salaries,
                 customers: state.creditCustomers,
                 transactions: state.transactions,
-                businessSetup: state.businessSetup
+                businessSetup: state.businessSetup,
+                suppliers: state.suppliers
             };
 
             const response = await fetch(`${apiUrl}/api/sync/full`, {
@@ -1650,7 +1715,8 @@ export const usePosStore = create<PosState>()(
         products: state.products ? state.products.slice(-100) : [],
         inventoryProducts: state.inventoryProducts,
         loyaltyCustomers: state.loyaltyCustomers,
-        syncHistory: state.syncHistory ? state.syncHistory.slice(-50) : []
+        syncHistory: state.syncHistory ? state.syncHistory.slice(-50) : [],
+        suppliers: state.suppliers,
       })
     }
   )

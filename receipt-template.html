@@ -13,18 +13,21 @@
             font-size: 10.5px;
             font-weight: bold;
             color: #000;
-            margin: 0 auto;
+            /*
+               Strictly left-aligned (margin: 0) to ensure thermal printers start printing from the correct edge.
+               Centered alignment causes issues on receipt printers that expect left-aligned content.
+            */
+            margin: 0;
             padding: 0;
             /*
                Width is set to 70mm explicitly as requested by user to ensure 10mm margins on 80mm paper
-               (5mm on each side if centered, or 10mm total).
-               This overrides the full {{paperWidth}} usage for content, keeping it safe from thermal printer edges.
+               (10mm on the right if left-aligned).
             */
             width: 70mm;
             max-width: 70mm;
         }
         .container {
-            padding: 5px 0; /* Vertical padding only, horizontal is handled by body width */
+            padding: 5px 0; /* Vertical padding only */
             box-sizing: border-box;
             width: 100%;
         }
@@ -156,7 +159,7 @@
                 <span>Subtotal:</span>
                 <span>{{subtotal}}</span>
             </div>
-            <!-- Tax line removed as per request and screenshot -->
+            <!-- Tax line removed as per request -->
             <div class="row total-row">
                 <span>TOTAL:</span>
                 <span>{{total}}</span>

@@ -13,13 +13,18 @@
             font-size: 10.5px;
             font-weight: bold;
             color: #000;
-            margin: 0;
+            margin: 0 auto;
             padding: 0;
-            width: {{paperWidth}}mm; /* Force explicit width to match setting */
-            max-width: {{paperWidth}}mm;
+            /*
+               Width is set to 70mm explicitly as requested by user to ensure 10mm margins on 80mm paper
+               (5mm on each side if centered, or 10mm total).
+               This overrides the full {{paperWidth}} usage for content, keeping it safe from thermal printer edges.
+            */
+            width: 70mm;
+            max-width: 70mm;
         }
         .container {
-            padding: 5px 6mm; /* Safe padding for thermal printers */
+            padding: 5px 0; /* Vertical padding only, horizontal is handled by body width */
             box-sizing: border-box;
             width: 100%;
         }
@@ -59,14 +64,22 @@
             vertical-align: top;
             word-wrap: break-word; /* Ensure long names wrap */
         }
+
+        /* 4-Column Layout Styles */
+        /* Item column takes remaining space */
         .qty {
             width: 15%;
             text-align: center;
         }
         .price {
+            width: 20%;
+            text-align: right;
+        }
+        .total {
             width: 25%;
             text-align: right;
         }
+
         .totals {
             margin-top: 5px;
         }
@@ -127,7 +140,8 @@
                 <tr>
                     <th>Item</th>
                     <th class="qty">Qty</th>
-                    <th class="price">Price</th>
+                    <th class="price">@</th>
+                    <th class="total">Total</th>
                 </tr>
             </thead>
             <tbody>
@@ -142,10 +156,7 @@
                 <span>Subtotal:</span>
                 <span>{{subtotal}}</span>
             </div>
-            <div class="row">
-                <span>Tax:</span>
-                <span>{{tax}}</span>
-            </div>
+            <!-- Tax line removed as per request and screenshot -->
             <div class="row total-row">
                 <span>TOTAL:</span>
                 <span>{{total}}</span>
@@ -156,8 +167,8 @@
 
         <div class="info">
             <div class="payment-line">
-                <span>Payment : {{paymentMethod}}</span>
                 <span>Served By: {{servedBy}}</span>
+                <span>Payment : {{paymentMethod}}</span>
             </div>
         </div>
 

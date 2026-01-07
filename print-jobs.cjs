@@ -42,17 +42,21 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
     const tax = transaction.tax || 0;
     const paymentMethod = transaction.paymentMethod ? transaction.paymentMethod.toUpperCase() : 'CASH';
 
-    // Set dynamic paper width (default 80mm)
+    // Set dynamic paper width (default 80mm) - replace all occurrences
     const paperWidth = businessSetup?.printerPaperWidth || 80;
-    template = template.replace('{{paperWidth}}', paperWidth);
+    template = template.replace(/\{\{paperWidth\}\}/g, paperWidth);
 
     template = template.replace('{{businessName}}', businessSetup?.businessName || 'WHIZ POS');
-    template = template.replace('{{location}}', 'KAGWE | ' + (businessSetup?.phone || ''));
+    template = template.replace('{{location}}', 'Kagwe Town | ' + (businessSetup?.phone || ''));
     template = template.replace('{{address}}', businessSetup?.address || '');
     template = template.replace('{{phone}}', '');
     template = template.replace('{{receiptId}}', transaction.id + (isReprint ? ' (REPRINT)' : ''));
     template = template.replace('{{date}}', formatDate(transaction.timestamp));
-    template = template.replace('{{servedBy}}', transaction.cashier || 'Cashier');
+
+    // Served By - First Name Only
+    const cashierName = transaction.cashier || 'Cashier';
+    const servedByFirstName = cashierName.split(' ')[0];
+    template = template.replace('{{servedBy}}', servedByFirstName);
 
     let customerName = 'Walk Through Customer';
     if (paymentMethod === 'CREDIT' && transaction.creditCustomer) {
@@ -62,6 +66,7 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
 
     template = template.replace('{{paymentMethod}}', paymentMethod);
     template = template.replace('{{subtotal}}', `Ksh ${subtotal.toFixed(2)}`);
+    // Tax line is removed from template, but keeping replacement just in case user re-adds placeholder or to be safe
     template = template.replace('{{tax}}', `Ksh ${tax.toFixed(2)}`);
     template = template.replace('{{total}}', `Ksh ${total.toFixed(2)}`);
 
@@ -72,7 +77,7 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
     const footerHtml = footerText ? `<p>${footerText}</p>` : '';
     template = template.replace('{{receiptFooter}}', footerHtml);
 
-    // Generate Items HTML
+    // Generate Items HTML (4 Columns: Item, Qty, Price, Total)
     const items = transaction.items || [];
     const itemsHtml = items.map(item => {
         const product = item.product || {};
@@ -86,6 +91,7 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
             <td>${product.name || 'Unknown Item'}</td>
             <td class="qty">${quantity}</td>
             <td class="price">${price.toFixed(2)}</td>
+            <td class="total">${lineTotal.toFixed(2)}</td>
         </tr>
     `}).join('');
     template = template.replace('{{itemsHtml}}', itemsHtml);
@@ -190,8 +196,6 @@ async function generateClosingReport(reportData, businessSetup, detailed = true)
     }
 
     // 2. CASHIER DETAILED SECTIONS
-    // "The report will be like: All items sold item qty total cashier 1 report items sold item qty total payments summary cash Mpesa credit total"
-
     const cashierSections = reportData.cashiers ? reportData.cashiers.map(cashier => {
         globalCash += cashier.cashTotal || 0;
         globalMpesa += cashier.mpesaTotal || 0;

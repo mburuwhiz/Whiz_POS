@@ -23,7 +23,8 @@ import {
   Monitor,
   Printer,
   Shield,
-  Clock
+  Clock,
+  AlertTriangle
 } from 'lucide-react';
 
 export default function SettingsPage() {

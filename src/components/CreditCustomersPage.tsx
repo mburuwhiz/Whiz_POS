@@ -126,14 +126,14 @@ export default function CreditCustomersPage() {
     if (!customer || !customer.transactions) {
       return [];
     }
-    return transactions.filter(t => customer.transactions?.includes(t.id));
+    return transactions.filter(t => (customer.transactions || []).includes(t.id));
   };
 
   const getCustomerHistory = (customer: CreditCustomer) => {
       // 1. Get all credit sales for this customer
       const sales = transactions.filter(t =>
           (t.paymentMethod === 'credit' && t.creditCustomer === customer.name) ||
-          customer.transactions.includes(t.id)
+          (customer.transactions || []).includes(t.id)
       ).map(t => {
           // Calculate how much of this specific transaction has been paid
           const paymentsForThisTxn = creditPayments

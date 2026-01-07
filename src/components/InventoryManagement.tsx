@@ -28,7 +28,7 @@ export default function InventoryManagement() {
   const productNames = [...new Set(products.map(p => p.name).filter(Boolean))];
 
   const filteredProducts = products.filter(product => {
-    const matchesSearch = (product.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (product.name || '').toLowerCase().includes((searchTerm || '').toLowerCase());
     const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });

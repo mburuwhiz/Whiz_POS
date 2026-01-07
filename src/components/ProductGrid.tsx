@@ -50,7 +50,7 @@ export default function ProductGrid() {
      if (countB !== countA) {
        return countB - countA;
      }
-     return a.name.localeCompare(b.name);
+     return (a.name || '').localeCompare(b.name || '');
   });
 
   return (

@@ -1,11 +1,18 @@
 import React, { useState } from 'react';
 import { usePosStore } from '../store/posStore';
 import { useNavigate } from 'react-router-dom';
-import { RefreshCcw, Search } from 'lucide-react';
+import { RefreshCcw, Search, Undo2 } from 'lucide-react';
 
 const PreviousReceiptsPage: React.FC = () => {
   const transactions = usePosStore((state) => state.transactions);
   const reprintTransaction = usePosStore((state) => state.reprintTransaction);
+  const reverseTransaction = usePosStore((state) => state.reverseTransaction);
+  const users = usePosStore((state) => state.users);
+  const currentCashier = usePosStore((state) => state.currentCashier);
+
+  // Check if current user is admin or manager
+  const isAdminOrManager = users.find(u => u.id === currentCashier?.id)?.role === 'admin' ||
+                           users.find(u => u.id === currentCashier?.id)?.role === 'manager';
 
   const navigate = useNavigate();
 
@@ -13,6 +20,12 @@ const PreviousReceiptsPage: React.FC = () => {
 
   const handleReprint = (transactionId: string) => {
     reprintTransaction(transactionId);
+  };
+
+  const handleReverse = (transactionId: string) => {
+    if (confirm('Are you sure you want to reverse this transaction? This will refund the amount and restore stock.')) {
+        reverseTransaction(transactionId);
+    }
   };
 
   // Sort transactions by date descending
@@ -85,7 +98,14 @@ const PreviousReceiptsPage: React.FC = () => {
                     </td>
                     <td className="px-6 py-4">{tx.cashier}</td>
                     <td className="px-6 py-4">{tx.items.length} items</td>
-                    <td className="px-6 py-4 font-bold text-gray-800">Ksh. {tx.total.toFixed(2)}</td>
+                    <td className="px-6 py-4 font-bold text-gray-800">
+                        {tx.status === 'refunded' ? (
+                            <span className="text-red-500 line-through">Ksh. {tx.total.toFixed(2)}</span>
+                        ) : (
+                            <span>Ksh. {tx.total.toFixed(2)}</span>
+                        )}
+                         {tx.status === 'refunded' && <span className="block text-xs text-red-600 font-bold uppercase">Reversed</span>}
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-center space-x-3">
                         <button
@@ -96,6 +116,17 @@ const PreviousReceiptsPage: React.FC = () => {
                             <RefreshCcw className="w-4 h-4 mr-1" />
                             Reprint
                         </button>
+
+                        {isAdminOrManager && tx.status !== 'refunded' && (
+                            <button
+                                onClick={() => handleReverse(tx.id)}
+                                className="text-red-600 hover:text-red-800 flex items-center"
+                                title="Reverse Transaction"
+                            >
+                                <Undo2 className="w-4 h-4 mr-1" />
+                                Reverse
+                            </button>
+                        )}
                       </div>
                     </td>
                   </tr>

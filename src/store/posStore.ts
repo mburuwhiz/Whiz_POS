@@ -688,31 +688,24 @@ export const usePosStore = create<PosState>()(
              const transaction = state.transactions.find(t => t.id === transactionId);
              if (!transaction) return {};
 
-             // 1. Mark transaction as refunded or remove it? User said "reversed or deleted".
-             // Refunded status preserves history but filters can hide it. Deleted removes it.
-             // Let's go with "refunded" status update for audit trail, but filter out from reports if needed.
-             // Actually, user said "sale can be fully reversed or deleted".
-             // Let's implement Delete for simplicity to match "deleted" requirement.
-             const updatedTransactions = state.transactions.filter(t => t.id !== transactionId);
+             // 1. Mark transaction as 'reversed' status, do NOT delete it, so we have a record.
+             // Or user said "reverse... incase invalid".
+             // If we delete, we lose record. If we reverse, we keep record but marked as reversed.
+             // Let's mark as reversed status and filter it out in calculations/reports where necessary?
+             // Actually, usually a reversal is a new negative transaction or just updating status.
+             // Given the previous requirement of "deleting receipts", user might want it GONE from sales but kept for audit?
+             // "ability to reverse a transaction in the old receipts incase an invalid or sale was incomplete or wrong items"
+             // Best practice: Update status to 'refunded'/'reversed' and restore stock.
+
+             const updatedTransactions = state.transactions.map(t =>
+                 t.id === transactionId ? { ...t, status: 'refunded' } : t
+             );
 
              // 2. Restore Stock
-             if (transaction.items) {
-                 transaction.items.forEach(item => {
-                     const product = state.products.find(p => p.id === item.product.id);
-                     if (product && typeof product.stock === 'number') {
-                         // We can't call state.updateProduct here easily because we are inside set()
-                         // So we map products directly.
-                         // But we should use the update logic to ensure consistency.
-                         // Since we are in set(), we can update products array.
-                     }
-                 });
-             }
-
-             // Re-map products to restore stock
              const updatedProducts = state.products.map(p => {
                  const item = transaction.items.find(i => i.product.id === p.id);
-                 if (item) {
-                     return { ...p, stock: (p.stock || 0) + item.quantity };
+                 if (item && typeof p.stock === 'number') {
+                     return { ...p, stock: p.stock + item.quantity };
                  }
                  return p;
              });
@@ -726,7 +719,9 @@ export const usePosStore = create<PosState>()(
                              ...c,
                              totalCredit: Math.max(0, (c.totalCredit || 0) - transaction.total),
                              balance: Math.max(0, (c.balance || 0) - transaction.total),
-                             transactions: c.transactions.filter(tid => tid !== transactionId),
+                             // We don't remove the transaction ID, but the balance decreases.
+                             // The transaction itself is now 'refunded' so it shouldn't count towards debt?
+                             // But we just subtracted the total.
                              lastUpdated: new Date().toISOString()
                          };
                      }
@@ -739,14 +734,15 @@ export const usePosStore = create<PosState>()(
              saveDataToFile('products.json', updatedProducts);
              saveDataToFile('credit-customers.json', updatedCreditCustomers);
 
-             // Sync deletion/updates
-             state.addToSyncQueue({ type: 'delete-transaction', data: { id: transactionId } });
-             // For products and customers, we queue updates
-             // Ideally we should queue individual product updates but for bulk restore...
-             // Let's just queue the delete-transaction and let backend handle logic?
-             // No, offline first. We need to queue updates.
+             // Sync
+             state.addToSyncQueue({ type: 'update-transaction', data: { id: transactionId, updates: { status: 'refunded' } } });
              transaction.items.forEach(item => {
-                 state.addToSyncQueue({ type: 'update-product', data: { id: item.product.id, updates: { stock: (item.product.stock || 0) + item.quantity } } });
+                if (item.product && item.product.id) {
+                     const currentProduct = updatedProducts.find(p => p.id === item.product.id);
+                     if (currentProduct) {
+                         state.addToSyncQueue({ type: 'update-product', data: { id: item.product.id, updates: { stock: currentProduct.stock } } });
+                     }
+                }
              });
 
              return {

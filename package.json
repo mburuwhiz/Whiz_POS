@@ -47,6 +47,7 @@
     "mongoose": "^9.0.1",
     "node-cmd": "^5.0.0",
     "node-fetch": "^2.7.0",
+    "playwright": "^1.57.0",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-chartjs-2": "^5.3.1",

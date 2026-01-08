@@ -15,11 +15,15 @@
             color: #000;
             margin: 0;
             padding: 0;
-            width: {{paperWidth}}mm; /* Force explicit width to match setting */
-            max-width: {{paperWidth}}mm;
+            /*
+               Strictly 70mm width.
+               We use margin-right to ensure no overflow if container is wider.
+            */
+            width: 70mm;
+            max-width: 70mm;
         }
         .container {
-            padding: 5px 6mm; /* Safe padding for thermal printers */
+            padding: 5px 0;
             box-sizing: border-box;
             width: 100%;
         }
@@ -48,6 +52,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
+            table-layout: fixed; /* Enforce strict column widths */
         }
         th {
             text-align: left;
@@ -57,16 +62,16 @@
         td {
             padding: 2px 0;
             vertical-align: top;
-            word-wrap: break-word; /* Ensure long names wrap */
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
-        .qty {
-            width: 15%;
-            text-align: center;
-        }
-        .price {
-            width: 25%;
-            text-align: right;
-        }
+
+        /* 4-Column Layout Styles - Adjusted for 70mm */
+        th:nth-child(1), td:nth-child(1) { width: 40%; } /* Item */
+        th:nth-child(2), td:nth-child(2) { width: 15%; text-align: center; } /* Qty */
+        th:nth-child(3), td:nth-child(3) { width: 20%; text-align: right; } /* Price */
+        th:nth-child(4), td:nth-child(4) { width: 25%; text-align: right; } /* Total */
+
         .totals {
             margin-top: 5px;
         }
@@ -98,7 +103,7 @@
         .payment-line {
             display: flex;
             justify-content: space-between;
-            flex-wrap: wrap; /* Allow wrapping if text is too long */
+            flex-wrap: wrap;
             font-size: 12px;
         }
     </style>
@@ -127,7 +132,8 @@
                 <tr>
                     <th>Item</th>
                     <th class="qty">Qty</th>
-                    <th class="price">Price</th>
+                    <th class="price">@</th>
+                    <th class="total">Total</th>
                 </tr>
             </thead>
             <tbody>
@@ -142,10 +148,6 @@
                 <span>Subtotal:</span>
                 <span>{{subtotal}}</span>
             </div>
-            <div class="row">
-                <span>Tax:</span>
-                <span>{{tax}}</span>
-            </div>
             <div class="row total-row">
                 <span>TOTAL:</span>
                 <span>{{total}}</span>
@@ -156,8 +158,8 @@
 
         <div class="info">
             <div class="payment-line">
-                <span>Payment : {{paymentMethod}}</span>
                 <span>Served By: {{servedBy}}</span>
+                <span>Payment : {{paymentMethod}}</span>
             </div>
         </div>
 

@@ -7,7 +7,7 @@ import ReportsPage from '../components/ReportsPage';
 import CreditCustomersPage from '../components/CreditCustomersPage';
 import DailyClosingScreen from '../components/DailyClosingScreen';
 import SettingsPage from '../components/SettingsPage';
-import ExpenseTracker from '../components/ExpenseTracker';
+import EnhancedExpenseTracker from '../components/EnhancedExpenseTracker';
 import SyncEngine from '../components/SyncEngine';
 import Dashboard from '../components/Dashboard';
 import InventoryManagement from '../components/InventoryManagement';
@@ -82,7 +82,7 @@ const MainNavigator = () => {
         } />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/customers" element={<CreditCustomersPage />} />
-        <Route path="/expenses" element={<ExpenseTracker />} />
+        <Route path="/expenses" element={<EnhancedExpenseTracker />} />
         <Route path="/salaries" element={<SalariesPage />} />
         <Route path="/closing" element={<DailyClosingScreen />} />
         <Route path="/sync" element={<OfflineSyncStatus />} />

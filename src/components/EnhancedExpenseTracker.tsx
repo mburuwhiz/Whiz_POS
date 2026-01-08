@@ -1,8 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
-import React from 'react';
 import { usePosStore } from '../store/posStore';
 import { Expense, Supplier } from '../store/posStore';
-import { Plus, Edit2, Trash2, Receipt, Calendar, DollarSign, TrendingUp, FileText, User, Phone, MapPin, Search } from 'lucide-react';
+import { Plus, Edit2, Trash2, FileText, Phone, MapPin, Search } from 'lucide-react';
 
 const EXPENSE_CATEGORIES = [
   'Supplies', 'Equipment', 'Rent', 'Utilities', 'Marketing', 

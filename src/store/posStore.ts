@@ -367,7 +367,7 @@ interface PosState {
   saveCreditCustomer: (customer: CreditCustomer) => void;
   updateCreditCustomer: (id: string, updates: Partial<CreditCustomer>) => void;
   deleteCreditCustomer: (id: string) => void;
-  saveExpense: (expense: Expense) => void;
+  addExpense: (expense: Expense) => void;
   updateExpense: (id: string, updates: Partial<Expense>) => void;
   deleteExpense: (id: string) => void;
   addLoyaltyCustomer: (customer: LoyaltyCustomer) => void;
@@ -873,7 +873,7 @@ export const usePosStore = create<PosState>()(
         });
       },
 
-      saveExpense: (expense) => {
+      addExpense: (expense) => {
         set((state) => {
           const updatedExpenses = [expense, ...state.expenses];
           saveDataToFile('expenses.json', updatedExpenses);

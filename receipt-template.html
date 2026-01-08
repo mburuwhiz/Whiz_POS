@@ -6,19 +6,26 @@
     <style>
         @page {
             margin: 0;
-            size: 80mm auto; /* Force 80mm width */
+            size: 80mm auto; /* Physical paper size */
         }
         body {
             font-family: Arial, sans-serif;
-            font-size: 10.5px;
+            font-size: 10.5px; /* Corrected font size */
             font-weight: bold;
             color: #000;
             margin: 0;
             padding: 0;
-            width: 80mm; /* Strictly 80mm width */
+
+            /*
+               Content width restricted to 70mm to prevent stretching
+               and "unused spaces".
+               margin-left: 5mm centers it on 80mm paper (5mm + 70mm + 5mm = 80mm).
+            */
+            width: 70mm;
+            margin-left: 5mm;
         }
         .container {
-            padding: 5px 4mm; /* 4mm left and right padding */
+            padding: 5px 0; /* Vertical padding only; side spacing handled by body margin */
             box-sizing: border-box;
             width: 100%;
         }
@@ -61,7 +68,7 @@
             overflow-wrap: break-word;
         }
 
-        /* 4-Column Layout Styles - Adjusted for 70mm content area (approx) */
+        /* 4-Column Layout Styles - Adjusted for 70mm content area */
         th:nth-child(1), td:nth-child(1) { width: 40%; } /* Item */
         th:nth-child(2), td:nth-child(2) { width: 15%; text-align: center; } /* Qty */
         th:nth-child(3), td:nth-child(3) { width: 20%; text-align: right; } /* Price */

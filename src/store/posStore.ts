@@ -382,6 +382,7 @@ interface PosState {
   addSupplier: (supplier: Supplier) => void;
   updateSupplier: (id: string, updates: Partial<Supplier>) => void;
   deleteSupplier: (id: string) => void;
+  migrateLegacyExpenses: () => Promise<void>;
 
   // Sync operations
   addToSyncQueue: (operation: any) => void;
@@ -947,6 +948,51 @@ export const usePosStore = create<PosState>()(
           state.addToSyncQueue({ type: 'delete-supplier', data: { id } });
           return { suppliers: updatedSuppliers };
         });
+      },
+
+      migrateLegacyExpenses: async () => {
+        const state = get();
+
+        // 1. Ensure "Others" Supplier exists
+        let othersSupplier = state.suppliers.find(s => s.name === 'Others');
+        let updatedSuppliers = [...state.suppliers];
+
+        if (!othersSupplier) {
+            othersSupplier = {
+                id: `SUP${Date.now()}`,
+                name: 'Others',
+                contact: '0740 841 168',
+                location: '02-00223 Kagwe',
+                active: true,
+                notes: 'Legacy Data Container',
+                createdAt: new Date().toISOString()
+            };
+            updatedSuppliers.push(othersSupplier);
+            state.addToSyncQueue({ type: 'add-supplier', data: othersSupplier });
+        }
+
+        // 2. Find legacy expenses (missing supplierId)
+        const expensesToMigrate = state.expenses.filter(e => !e.supplierId);
+
+        if (expensesToMigrate.length === 0 && state.suppliers.length === updatedSuppliers.length) {
+            return; // Nothing to do
+        }
+
+        const updatedExpenses = state.expenses.map(e => {
+            if (!e.supplierId) {
+                // Queue update for each expense migration
+                // Note: We create a local modified object. The queue needs the ID and updates.
+                const updates = { supplierId: othersSupplier!.id, supplierName: 'Others' };
+                state.addToSyncQueue({ type: 'update-expense', data: { id: e.id, updates } });
+                return { ...e, ...updates };
+            }
+            return e;
+        });
+
+        // 3. Save Changes
+        set({ suppliers: updatedSuppliers, expenses: updatedExpenses });
+        await saveDataToFile('suppliers.json', updatedSuppliers);
+        await saveDataToFile('expenses.json', updatedExpenses);
       },
 
       saveBusinessSetup: (setup) => {

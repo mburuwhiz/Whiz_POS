@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import React from 'react';
 import { usePosStore } from '../store/posStore';
 import { Expense, Supplier } from '../store/posStore';
@@ -10,7 +10,23 @@ const EXPENSE_CATEGORIES = [
 ];
 
 export default function EnhancedExpenseTracker() {
-  const { expenses, suppliers, currentCashier, addExpense, updateExpense, deleteExpense, addSupplier, updateSupplier, deleteSupplier } = usePosStore();
+  const {
+      expenses,
+      suppliers,
+      currentCashier,
+      addExpense,
+      updateExpense,
+      deleteExpense,
+      addSupplier,
+      updateSupplier,
+      deleteSupplier,
+      migrateLegacyExpenses
+  } = usePosStore();
+
+  // Trigger migration of legacy expenses on mount
+  useEffect(() => {
+      migrateLegacyExpenses();
+  }, []);
 
   // State for Supplier Detail View
   const [selectedSupplierId, setSelectedSupplierId] = useState<string | null>(null);
@@ -39,47 +55,13 @@ export default function EnhancedExpenseTracker() {
   // Filter States
   const [searchQuery, setSearchQuery] = useState('');
 
-  // --- Derived Data: Virtual Suppliers from Legacy Expenses ---
-  // Create virtual suppliers for unique expense descriptions (that don't have supplierId)
-  // to support legacy data visualization as per request.
-  const derivedSuppliers = useMemo(() => {
-    const virtualMap = new Map<string, Supplier>();
-
-    // Existing real suppliers
-    suppliers.forEach(s => virtualMap.set(s.id, s));
-
-    // Process expenses to find "Legacy Suppliers"
-    expenses.forEach(exp => {
-      if (!exp.supplierId) {
-        // Use description as supplier name for legacy items
-        const legacyName = exp.description.trim();
-        const virtualId = `legacy-${legacyName}`; // Unique ID for virtual supplier
-
-        if (!virtualMap.has(virtualId)) {
-            // Check if we already have a real supplier with this name to avoid dups in display
-            const existingReal = suppliers.find(s => s.name.toLowerCase() === legacyName.toLowerCase());
-            if (!existingReal) {
-                virtualMap.set(virtualId, {
-                    id: virtualId,
-                    name: legacyName,
-                    contact: '',
-                    location: 'Legacy Record',
-                    active: true,
-                    createdAt: exp.timestamp,
-                    notes: 'Auto-generated from legacy expense'
-                });
-            }
-        }
-      }
-    });
-
-    return Array.from(virtualMap.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }, [expenses, suppliers]);
-
-  const filteredSuppliers = derivedSuppliers.filter(s =>
-    s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (s.contact && s.contact.includes(searchQuery))
-  );
+  // Filtered Suppliers List
+  const filteredSuppliers = useMemo(() => {
+    return suppliers.filter(s =>
+        s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (s.contact && s.contact.includes(searchQuery))
+    ).sort((a, b) => a.name.localeCompare(b.name));
+  }, [suppliers, searchQuery]);
 
   // --- Actions: Supplier ---
 
@@ -126,11 +108,14 @@ export default function EnhancedExpenseTracker() {
   };
 
   const handleDeleteSupplier = (id: string) => {
-      if (id.startsWith('legacy-')) {
-          alert("Cannot delete a virtual supplier. Delete the underlying expenses instead.");
-          return;
-      }
-      if (confirm("Delete this supplier?")) {
+      // Prevent deleting "Others" if it contains data or is critical, but usually user can decide.
+      // Maybe warn if expenses exist?
+      const hasExpenses = expenses.some(e => e.supplierId === id);
+      const msg = hasExpenses
+        ? "This supplier has recorded expenses. Deleting it will keep the expenses but unlink them. Continue?"
+        : "Delete this supplier?";
+
+      if (confirm(msg)) {
           deleteSupplier(id);
           if (selectedSupplierId === id) setSelectedSupplierId(null);
       }
@@ -142,35 +127,19 @@ export default function EnhancedExpenseTracker() {
     e.preventDefault();
     if (!selectedSupplierId) return;
 
-    // If it's a legacy virtual supplier, we can't add to it directly unless we convert it?
-    // For now, if adding to legacy, we just create a new expense with that description.
-    // Ideally, user should create a real supplier.
-    
-    // Determine Supplier ID and Name to save
-    let finalSupplierId = selectedSupplierId;
-    let finalSupplierName = '';
-
-    const supplier = derivedSuppliers.find(s => s.id === selectedSupplierId);
-    if (supplier) {
-        finalSupplierName = supplier.name;
-        // If adding to a legacy supplier, we treat it as just a description match for now
-        // OR we should prompt to create real supplier?
-        // Let's attach the ID if it's not legacy.
-        if (selectedSupplierId.startsWith('legacy-')) {
-            finalSupplierId = ''; // No real link, relies on description matching name
-        }
-    }
+    const supplier = suppliers.find(s => s.id === selectedSupplierId);
+    if (!supplier) return;
 
     const expenseData: Expense = {
       id: editingExpense?.id || `EXP${Date.now()}`,
-      description: expenseFormData.description, // User entered description (e.g., "Flour")
+      description: expenseFormData.description,
       amount: parseFloat(expenseFormData.amount),
       category: expenseFormData.category,
       receipt: expenseFormData.receiptUrl,
       timestamp: editingExpense?.timestamp || new Date().toISOString(),
       cashier: currentCashier?.name || 'Unknown',
-      supplierId: finalSupplierId === '' ? undefined : finalSupplierId,
-      supplierName: finalSupplierName
+      supplierId: supplier.id,
+      supplierName: supplier.name
     };
 
     if (editingExpense) {
@@ -216,19 +185,14 @@ export default function EnhancedExpenseTracker() {
   // --- Render ---
 
   // Get expenses for selected supplier
-  const selectedSupplier = derivedSuppliers.find(s => s.id === selectedSupplierId);
+  const selectedSupplier = suppliers.find(s => s.id === selectedSupplierId);
+
   const supplierExpenses = useMemo(() => {
       if (!selectedSupplier) return [];
 
-      return expenses.filter(exp => {
-          // Match by ID
-          if (exp.supplierId === selectedSupplier.id) return true;
-          // Match by Name (Legacy fallback)
-          if (!exp.supplierId && selectedSupplier.id.startsWith('legacy-')) {
-              return exp.description.trim().toLowerCase() === selectedSupplier.name.toLowerCase();
-          }
-          return false;
-      }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      return expenses
+        .filter(exp => exp.supplierId === selectedSupplier.id)
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [expenses, selectedSupplier]);
 
   return (
@@ -287,22 +251,20 @@ export default function EnhancedExpenseTracker() {
                                 <div>
                                     <div className="flex justify-between items-start mb-2">
                                         <h3 className="text-lg font-bold text-gray-800">{supplier.name}</h3>
-                                        {!supplier.id.startsWith('legacy-') && (
-                                            <div className="flex space-x-1">
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); openSupplierForm(supplier); }}
-                                                    className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                                                >
-                                                    <Edit2 className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handleDeleteSupplier(supplier.id); }}
-                                                    className="p-1 text-red-600 hover:bg-red-50 rounded"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        )}
+                                        <div className="flex space-x-1">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); openSupplierForm(supplier); }}
+                                                className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                                            >
+                                                <Edit2 className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleDeleteSupplier(supplier.id); }}
+                                                className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     </div>
                                     <div className="space-y-1 text-sm text-gray-600">
                                         {supplier.contact && (
@@ -323,7 +285,6 @@ export default function EnhancedExpenseTracker() {
                                     <span className={`px-2 py-1 rounded-full ${supplier.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
                                         {supplier.active ? 'Active' : 'Inactive'}
                                     </span>
-                                    {/* Count Expenses if possible, tricky with legacy mapping here efficiently without filtering all, but okay for small scale */}
                                     <span className="text-gray-500 flex items-center space-x-1">
                                         <FileText className="w-4 h-4" />
                                         <span>View Records</span>

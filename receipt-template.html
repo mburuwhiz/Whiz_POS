@@ -13,21 +13,17 @@
             font-size: 10.5px;
             font-weight: bold;
             color: #000;
-            /*
-               Strictly left-aligned (margin: 0) to ensure thermal printers start printing from the correct edge.
-               Centered alignment causes issues on receipt printers that expect left-aligned content.
-            */
             margin: 0;
             padding: 0;
             /*
-               Width is set to 70mm explicitly as requested by user to ensure 10mm margins on 80mm paper
-               (10mm on the right if left-aligned).
+               Strictly 70mm width.
+               We use margin-right to ensure no overflow if container is wider.
             */
             width: 70mm;
             max-width: 70mm;
         }
         .container {
-            padding: 5px 0; /* Vertical padding only */
+            padding: 5px 0;
             box-sizing: border-box;
             width: 100%;
         }
@@ -56,6 +52,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
+            table-layout: fixed; /* Enforce strict column widths */
         }
         th {
             text-align: left;
@@ -65,23 +62,15 @@
         td {
             padding: 2px 0;
             vertical-align: top;
-            word-wrap: break-word; /* Ensure long names wrap */
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
-        /* 4-Column Layout Styles */
-        /* Item column takes remaining space */
-        .qty {
-            width: 15%;
-            text-align: center;
-        }
-        .price {
-            width: 20%;
-            text-align: right;
-        }
-        .total {
-            width: 25%;
-            text-align: right;
-        }
+        /* 4-Column Layout Styles - Adjusted for 70mm */
+        th:nth-child(1), td:nth-child(1) { width: 40%; } /* Item */
+        th:nth-child(2), td:nth-child(2) { width: 15%; text-align: center; } /* Qty */
+        th:nth-child(3), td:nth-child(3) { width: 20%; text-align: right; } /* Price */
+        th:nth-child(4), td:nth-child(4) { width: 25%; text-align: right; } /* Total */
 
         .totals {
             margin-top: 5px;
@@ -114,7 +103,7 @@
         .payment-line {
             display: flex;
             justify-content: space-between;
-            flex-wrap: wrap; /* Allow wrapping if text is too long */
+            flex-wrap: wrap;
             font-size: 12px;
         }
     </style>
@@ -159,7 +148,6 @@
                 <span>Subtotal:</span>
                 <span>{{subtotal}}</span>
             </div>
-            <!-- Tax line removed as per request -->
             <div class="row total-row">
                 <span>TOTAL:</span>
                 <span>{{total}}</span>

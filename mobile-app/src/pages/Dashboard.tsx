@@ -30,23 +30,33 @@ export default function Dashboard() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  const productNames = useMemo(() => [...new Set(products.map(p => p.name))], [products]);
+  const productNames = useMemo(() => {
+      if (!products) return [];
+      return [...new Set(products.map(p => p.name))];
+  }, [products]);
 
   const productSalesCount = useMemo(() => {
       const counts: Record<string, number> = {};
+      if (!transactions) return counts;
+
       transactions.forEach(t => {
-          t.items.forEach(item => {
-              const id = item.id;
-              if (id) counts[id] = (counts[id] || 0) + item.quantity;
-          });
+          if (t && t.items) {
+              t.items.forEach(item => {
+                  const id = item.id;
+                  if (id) counts[id] = (counts[id] || 0) + item.quantity;
+              });
+          }
       });
       return counts;
   }, [transactions]);
 
   const filteredProducts = useMemo(() => {
+    if (!products) return [];
+
     return products.filter(product => {
+      if (!product) return false;
       const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
-      const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = product.name?.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesCategory && matchesSearch;
     }).sort((a, b) => {
         const countA = productSalesCount[a.id] || 0;

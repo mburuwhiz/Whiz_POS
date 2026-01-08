@@ -42,9 +42,8 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
     const tax = transaction.tax || 0;
     const paymentMethod = transaction.paymentMethod ? transaction.paymentMethod.toUpperCase() : 'CASH';
 
-    // Set dynamic paper width (default 80mm) - replace all occurrences
-    const paperWidth = businessSetup?.printerPaperWidth || 80;
-    template = template.replace(/\{\{paperWidth\}\}/g, paperWidth);
+    // Note: Paper width is now hardcoded to 80mm in receipt-template.html as per user request.
+    // Dynamic replacement removed.
 
     template = template.replace('{{businessName}}', businessSetup?.businessName || 'WHIZ POS');
     template = template.replace('{{location}}', 'Kagwe Town | ' + (businessSetup?.phone || ''));

@@ -1,7 +1,7 @@
 {
   "name": "whiz-pos",
   "private": true,
-  "version": "5.2.4",
+  "version": "6.0.1",
   "type": "module",
   "main": "electron.cjs",
   "homepage": ".",

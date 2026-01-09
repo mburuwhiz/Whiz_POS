@@ -332,9 +332,9 @@ function startApiServer() {
             ]);
 
             // Filter transactions? Mobile might not need ALL history.
-            // But for now, sending last 100 might be safer to avoid huge payloads.
+            // But for now, sending last 1000 might be safer to avoid huge payloads.
             // posStore handles partial updates.
-            const limitedTransactions = Array.isArray(transactions) ? transactions.slice(0, 200) : [];
+            const limitedTransactions = Array.isArray(transactions) ? transactions.slice(0, 1000) : [];
 
             // Rewrite image URLs to be accessible via HTTP
             const ipAddress = getLocalIpAddress();

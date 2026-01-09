@@ -174,15 +174,24 @@ export default function Dashboard() {
     const productSales = new Map<string, { quantity: number; revenue: number; name: string }>();
 
     filteredTransactions.forEach(transaction => {
+      if (!transaction || !Array.isArray(transaction.items)) return;
+
       transaction.items.forEach(item => {
-        const existing = productSales.get(item.product.id) || { 
+        if (!item || !item.product || !item.product.id) return;
+
+        const productId = String(item.product.id);
+        const productName = item.product.name || 'Unknown Product';
+        const productPrice = item.product.price || 0;
+
+        const existing = productSales.get(productId) || {
           quantity: 0, 
           revenue: 0, 
-          name: item.product.name 
+          name: productName
         };
-        productSales.set(item.product.id, {
-          quantity: existing.quantity + item.quantity,
-          revenue: existing.revenue + (item.product.price * item.quantity),
+
+        productSales.set(productId, {
+          quantity: existing.quantity + (item.quantity || 0),
+          revenue: existing.revenue + (productPrice * (item.quantity || 0)),
           name: existing.name
         });
       });

@@ -476,6 +476,11 @@ function startApiServer() {
                     const userId = data.id || data.userId;
                     const newUsers = users.filter(u => u.userId !== userId);
                     await writeJsonFile('users.json', newUsers);
+
+                } else if (type === 'delete-transaction') {
+                    const transactions = await readJsonFile('transactions.json');
+                    const newTransactions = transactions.filter(t => t.id !== data.id);
+                    await writeJsonFile('transactions.json', newTransactions);
                 }
             }
 

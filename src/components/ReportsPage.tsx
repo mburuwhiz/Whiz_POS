@@ -94,13 +94,19 @@ export default function ReportsPage() {
     const productSales: { [key: string]: { quantity: number; revenue: number } } = {};
     
     filteredTransactions.forEach(transaction => {
+      if (!transaction || !Array.isArray(transaction.items)) return;
+
       transaction.items.forEach(item => {
-        const key = item.product.name;
+        if (!item || !item.product) return;
+
+        const key = item.product?.name || (item as any).name || 'Unknown Product';
+        const price = item.product?.price || 0;
+
         if (!productSales[key]) {
           productSales[key] = { quantity: 0, revenue: 0 };
         }
-        productSales[key].quantity += item.quantity;
-        productSales[key].revenue += item.product.price * item.quantity;
+        productSales[key].quantity += (item.quantity || 0);
+        productSales[key].revenue += price * (item.quantity || 0);
       });
     });
 

@@ -67,7 +67,7 @@ export default function ProductGrid() {
             className="border border-gray-300 rounded-lg px-4 py-2"
           />
           <datalist id="product-suggestions">
-            {productNames.map(name => <option key={name} value={name} />)}
+            {productNames.map((name, index) => <option key={`${name}-${index}`} value={name} />)}
           </datalist>
         </div>
 

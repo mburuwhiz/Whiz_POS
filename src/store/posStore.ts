@@ -1338,14 +1338,20 @@ export const usePosStore = create<PosState>()(
         // Calculate Global Items Sold
         const globalItemSalesMap = new Map<string, { name: string; quantity: number; total: number }>();
         dayTransactions.forEach(t => {
+            if (!t || !Array.isArray(t.items)) return;
+
             t.items.forEach(item => {
-                const name = item.product.name;
+                if (!item || !item.product) return;
+
+                const name = item.product.name || 'Unknown Product';
+                const price = item.product.price || 0;
+
                 if (!globalItemSalesMap.has(name)) {
                     globalItemSalesMap.set(name, { name, quantity: 0, total: 0 });
                 }
                 const record = globalItemSalesMap.get(name)!;
-                record.quantity += item.quantity;
-                record.total += (item.quantity * item.product.price);
+                record.quantity += (item.quantity || 0);
+                record.total += ((item.quantity || 0) * price);
             });
         });
         const itemSales = Array.from(globalItemSalesMap.values()).sort((a, b) => b.total - a.total);
@@ -1362,14 +1368,20 @@ export const usePosStore = create<PosState>()(
           // Items sold by this cashier
           const itemSalesMap = new Map<string, { name: string; quantity: number; total: number }>();
           transactions.forEach(t => {
+              if (!t || !Array.isArray(t.items)) return;
+
               t.items.forEach(item => {
-                  const name = item.product.name;
+                  if (!item || !item.product) return;
+
+                  const name = item.product.name || 'Unknown Product';
+                  const price = item.product.price || 0;
+
                   if (!itemSalesMap.has(name)) {
                       itemSalesMap.set(name, { name, quantity: 0, total: 0 });
                   }
                   const record = itemSalesMap.get(name)!;
-                  record.quantity += item.quantity;
-                  record.total += (item.quantity * item.product.price);
+                  record.quantity += (item.quantity || 0);
+                  record.total += ((item.quantity || 0) * price);
               });
           });
           const items = Array.from(itemSalesMap.values()).sort((a, b) => b.total - a.total);

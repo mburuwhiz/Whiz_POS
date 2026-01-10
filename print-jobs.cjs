@@ -169,21 +169,21 @@ async function generateClosingReport(reportData, businessSetup, detailed = true)
     if (detailed && reportData.itemSales && reportData.itemSales.length > 0) {
          const globalRows = reportData.itemSales.map(item => `
             <tr>
-                <td style="text-align: left; padding: 2px;">${item.name}</td>
-                <td style="text-align: center; padding: 2px;">${item.quantity}</td>
-                <td style="text-align: right; padding: 2px;">${item.total.toFixed(2)}</td>
+                <td style="text-align: left; padding: 2px; width: 50%; word-wrap: break-word;">${item.name}</td>
+                <td style="text-align: center; padding: 2px; width: 20%;">${item.quantity}</td>
+                <td style="text-align: right; padding: 2px; width: 30%;">${item.total.toFixed(2)}</td>
             </tr>
         `).join('');
 
         globalItemsHtml = `
-            <div style="margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px;">
-                <h3 style="margin: 0 0 5px 0; font-size: 14px; text-transform: uppercase; text-align: center;">ALL ITEMS SOLD</h3>
-                <table style="width: 100%; font-size: 12px; margin-bottom: 10px; border-collapse: collapse;">
-                    <thead style="border-bottom: 1px solid #000;">
+            <div style="margin-bottom: 5px; border-bottom: 1px dashed #000; padding-bottom: 5px;">
+                <h3 style="margin: 0 0 5px 0; font-size: 12px; text-transform: uppercase; text-align: center;">ALL ITEMS SOLD</h3>
+                <table style="width: 100%; font-size: 10.5px; margin-bottom: 5px; border-collapse: collapse;">
+                    <thead style="border-bottom: 1px dashed #000;">
                         <tr>
-                            <th style="text-align: left;">Item</th>
-                            <th style="text-align: center;">Qty</th>
-                            <th style="text-align: right;">Total</th>
+                            <th style="text-align: left; width: 50%;">Item</th>
+                            <th style="text-align: center; width: 20%;">Qty</th>
+                            <th style="text-align: right; width: 30%;">Total</th>
                         </tr>
                     </thead>
                     <tbody>

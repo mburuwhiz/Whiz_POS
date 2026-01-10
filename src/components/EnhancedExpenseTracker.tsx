@@ -240,7 +240,7 @@ export default function EnhancedExpenseTracker() {
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-20">
+                    <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 pb-20">
                         {filteredSuppliers.map(supplier => (
                             <div
                                 key={supplier.id}

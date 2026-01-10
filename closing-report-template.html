@@ -4,19 +4,20 @@
     <style>
         @page {
             margin: 0;
-            size: {{paperWidth}}mm auto;
+            size: 80mm auto; /* Hardcoded to 80mm as per user preference for "perfect" layout */
         }
         body {
             font-family: Arial, sans-serif;
-            width: {{paperWidth}}mm;
-            /* Left-aligned to ensure correct printing on thermal printers */
-            margin: 0;
-            padding: 5px 2mm;
-            box-sizing: border-box;
-            background-color: #fff;
-            color: #000;
-            font-size: 12px;
+            font-size: 10.5px; /* Matching receipt font size */
             font-weight: bold;
+            color: #000;
+            margin: 0;
+            padding: 0;
+
+            /* Content width restricted to 70mm to prevent stretching */
+            width: 70mm;
+            margin-left: 5mm; /* Centers content on 80mm paper */
+            box-sizing: border-box;
         }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
@@ -25,11 +26,12 @@
         .uppercase { text-transform: uppercase; }
 
         .header {
-            margin-bottom: 10px;
+            margin-bottom: 5px;
+            text-align: center;
         }
         .business-name {
             font-size: 16px;
-            margin-bottom: 5px;
+            margin-bottom: 2px;
         }
 
         hr {
@@ -39,18 +41,32 @@
         }
 
         .report-title {
-            font-size: 14px;
-            margin: 10px 0;
+            font-size: 12px;
+            margin: 5px 0;
         }
 
         .grand-total-section {
-            margin-top: 10px;
-            font-size: 14px;
+            margin-top: 5px;
+            font-size: 11px;
+        }
+
+        /* Table Styles matching Receipt */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            font-size: 10.5px;
+        }
+        th, td {
+            padding: 2px 0;
+            vertical-align: top;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
     </style>
 </head>
 <body>
-    <div class="header text-center">
+    <div class="header">
         <div class="business-name bold uppercase">{{businessName}}</div>
         <div>{{businessAddress}}</div>
         <div>{{businessPhone}}</div>
@@ -71,20 +87,20 @@
     <hr/>
 
     <div class="grand-total-section">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
              <span>Total Cash:</span>
              <span>{{totalCash}}</span>
         </div>
-        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
              <span>Total M-Pesa:</span>
              <span>{{totalMpesa}}</span>
         </div>
-        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
              <span>Total Credit:</span>
              <span>{{totalCredit}}</span>
         </div>
         <hr style="border-top: 1px dashed #000; margin: 5px 0;"/>
-        <div style="display: flex; justify-content: space-between;">
+        <div style="display: flex; justify-content: space-between; font-size: 12px;">
             <span class="bold">GRAND TOTAL:</span>
             <span class="bold">{{grandTotal}}</span>
         </div>

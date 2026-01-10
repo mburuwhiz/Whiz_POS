@@ -1754,11 +1754,6 @@ export const usePosStore = create<PosState>()(
     }),
     {
       name: 'pos-storage',
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          state.businessSetup = { ...state.businessSetup, isLoggedIn: false };
-        }
-      },
       partialize: (state) => ({
         businessSetup: state.businessSetup,
         currentCashier: state.currentCashier,

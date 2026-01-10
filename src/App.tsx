@@ -9,7 +9,7 @@ import OnScreenKeyboard from './components/OnScreenKeyboard';
 import ErrorBoundary from './components/ErrorBoundary';
 import AutoLogoutModal from './components/AutoLogoutModal';
 import { useEffect, useRef, useState } from 'react';
-import { useIdle } from 'react-use';
+import { useAutoLogout } from './hooks/useAutoLogout';
 
 function App() {
   const { businessSetup, loadInitialData, isDataLoaded, logout, currentCashier } = usePosStore(state => ({
@@ -21,27 +21,14 @@ function App() {
   }));
 
   // Auto-logoff Logic
-  // Default to 5 minutes if not set or 0
-  const idleMinutes = businessSetup?.autoLogoffMinutes || 5;
+  // Default to 5 minutes if not set or 0. Ensure at least 1 minute to prevent immediate loops if config is bad.
+  const idleMinutes = Math.max(1, businessSetup?.autoLogoffMinutes || 5);
   const idleMs = idleMinutes * 60 * 1000;
 
-  // useIdle hook initializes with the duration.
-  // Note: changing idleMs dynamically might not reset the internal timer of react-use's useIdle instantly in all versions,
-  // but it usually reacts to prop changes or re-renders.
-  const isIdle = useIdle(idleMs);
-
-  // Grace period to prevent immediate logout upon login if isIdle is lingering
-  const [gracePeriodOver, setGracePeriodOver] = useState(false);
-
-  useEffect(() => {
-    if (businessSetup?.isLoggedIn) {
-      setGracePeriodOver(false);
-      const timer = setTimeout(() => {
-        setGracePeriodOver(true);
-      }, 3000); // 3 seconds grace period after login
-      return () => clearTimeout(timer);
-    }
-  }, [businessSetup?.isLoggedIn]);
+  // Use custom hook to track idle state.
+  // Only enable tracking if explicitly enabled in settings AND logged in.
+  const isAutoLogoffEnabled = businessSetup?.isLoggedIn && (businessSetup?.autoLogoffEnabled === true);
+  const isIdle = useAutoLogout(idleMs, isAutoLogoffEnabled);
 
   useEffect(() => {
     const init = async () => {
@@ -129,8 +116,8 @@ function App() {
           <OnScreenKeyboard />
 
           {/* Auto Logoff Warning Modal */}
-          {/* Only show if logged in, feature enabled, and idle. Also respect grace period. */}
-          {businessSetup.isLoggedIn && businessSetup.autoLogoffEnabled && isIdle && gracePeriodOver && (
+          {/* Only show if logged in, feature enabled, and idle. */}
+          {isAutoLogoffEnabled && isIdle && (
             <AutoLogoutModal onLogout={logout} userName={currentCashier?.name} />
           )}
         </div>

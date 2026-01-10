@@ -44,19 +44,13 @@ export default function SettingsPage() {
     transactions
   } = usePosStore();
 
-  const [activeTab, setActiveTab] = useState<'business' | 'users' | 'security' | 'sync' | 'devices' | 'printers' | 'updates' | 'data'>('business');
+  const [activeTab, setActiveTab] = useState<'business' | 'security' | 'sync' | 'devices' | 'printers' | 'updates' | 'data'>('business');
   const [editingBusiness, setEditingBusiness] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [pruneDays, setPruneDays] = useState(30);
-  const [showAddUser, setShowAddUser] = useState(false);
   const [deleteDateRange, setDeleteDateRange] = useState({
     start: new Date().toISOString().split('T')[0],
     end: new Date().toISOString().split('T')[0]
   });
-
-  // User QR State
-  const [showUserQr, setShowUserQr] = useState<User | null>(null);
-  const [qrCodeData, setQrCodeData] = useState('');
 
   const [businessData, setBusinessData] = useState({
     businessName: '',
@@ -139,61 +133,6 @@ export default function SettingsPage() {
     setEditingBusiness(false);
   };
 
-  const handleUserFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const value = e.target.type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value;
-    setUserData({ ...userData, [e.target.name]: value });
-  };
-
-  const handleAddUser = () => {
-    if (!userData.name || !userData.pin) return;
-
-    const newUser: User = {
-      id: `user-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      isActive: userData.isActive,
-      name: userData.name,
-      pin: userData.pin,
-      role: userData.role
-    };
-    addUser(newUser);
-    resetUserForm();
-  };
-
-  const handleEditUser = (user: User) => {
-    setEditingUser(user);
-    setUserData({ name: user.name, pin: user.pin, role: user.role, isActive: user.isActive });
-    setShowAddUser(true);
-  };
-
-  const handleUpdateUser = () => {
-    if (!editingUser) return;
-    updateUser(editingUser.id, { ...editingUser, ...userData });
-    resetUserForm();
-  };
-
-  const handleDeleteUser = (userId: string) => {
-    if (window.confirm('Are you sure you want to delete this user?')) {
-      deleteUser(userId);
-    }
-  };
-
-  const handleShowQr = async (user: User) => {
-      setShowUserQr(user);
-      try {
-          const payload = { userId: user.id, pin: user.pin };
-          const dataUrl = await QRCode.toDataURL(JSON.stringify(payload));
-          setQrCodeData(dataUrl);
-      } catch (e) {
-          console.error("QR Gen Error", e);
-      }
-  };
-
-  const resetUserForm = () => {
-    setUserData({ name: '', pin: '', role: 'cashier', isActive: true });
-    setEditingUser(null);
-    setShowAddUser(false);
-  }
-
   const handleBusinessDataChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setBusinessData({ ...businessData, [e.target.name]: e.target.value });
   };
@@ -225,18 +164,6 @@ export default function SettingsPage() {
             >
               <Package className="w-5 h-5 mr-2" />
               Business
-            </button>
-            
-            <button
-              onClick={() => setActiveTab('users')}
-              className={`flex items-center px-6 py-4 font-medium border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === 'users' 
-                  ? 'border-blue-500 text-blue-600' 
-                  : 'border-transparent text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              <Users className="w-5 h-5 mr-2" />
-              Users
             </button>
 
             <button
@@ -408,57 +335,6 @@ export default function SettingsPage() {
                     </div>
                 </div>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* User Management */}
-        {activeTab === 'users' && (
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold text-gray-800">User Accounts</h2>
-              <button onClick={() => { setShowAddUser(true); setEditingUser(null); setUserData({ name: '', pin: '', role: 'cashier' }); }} className="flex items-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
-                <Plus className="w-5 h-5 mr-2" />
-                Add User
-              </button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {users.map(user => (
-                    <tr key={user.id}>
-                      <td className="px-6 py-4 whitespace-nowrap">{user.name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{user.role}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                          {user.isActive ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-3">
-                            <button onClick={() => handleEditUser(user)} className="text-blue-600 hover:text-blue-800" title="Edit">
-                                <Edit className="w-5 h-5" />
-                            </button>
-                            <button onClick={() => handleShowQr(user)} className="text-purple-600 hover:text-purple-800" title="Login Badge">
-                                <QrCode className="w-5 h-5" />
-                            </button>
-                            <button onClick={() => handleDeleteUser(user.id)} className="text-red-600 hover:text-red-800" title="Delete">
-                                <Trash2 className="w-5 h-5" />
-                            </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             </div>
           </div>
         )}
@@ -897,88 +773,6 @@ export default function SettingsPage() {
         )}
       </div>
 
-      {/* Add/Edit User Modal */}
-      {(showAddUser || editingUser) && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full">
-            <div className="p-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-6">{editingUser ? 'Edit User' : 'Add New User'}</h2>
-              <form onSubmit={(e) => { e.preventDefault(); editingUser ? handleUpdateUser() : handleAddUser(); }} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Name</label>
-                  <input type="text" name="name" value={userData.name} onChange={handleUserFormChange} required className="w-full p-3 border rounded-lg" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">PIN</label>
-                  <input type="password" name="pin" value={userData.pin} onChange={handleUserFormChange} required maxLength={4} className="w-full p-3 border rounded-lg" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Role</label>
-                  <select name="role" value={userData.role} onChange={handleUserFormChange} className="w-full p-3 border rounded-lg">
-                    <option value="cashier">Cashier</option>
-                    <option value="manager">Manager</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </div>
-
-                {editingUser && (
-                    <div className="flex items-center space-x-2">
-                        <input
-                            type="checkbox"
-                            name="isActive"
-                            id="isActive"
-                            checked={userData.isActive}
-                            onChange={handleUserFormChange}
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        />
-                        <label htmlFor="isActive" className="text-sm font-medium text-gray-700">Active Account</label>
-                    </div>
-                )}
-
-                <div className="flex justify-end space-x-3 pt-4">
-                  <button type="button" onClick={resetUserForm} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg">Cancel</button>
-                  <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg">{editingUser ? 'Update' : 'Add'}</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* User QR Badge Modal */}
-      {showUserQr && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl max-w-sm w-full overflow-hidden shadow-2xl">
-                <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-center">
-                    <div className="w-20 h-20 bg-white/20 rounded-full mx-auto mb-4 flex items-center justify-center backdrop-blur-md">
-                         <span className="text-3xl font-bold text-white">{showUserQr.name.charAt(0)}</span>
-                    </div>
-                    <h2 className="text-2xl font-bold text-white">{showUserQr.name}</h2>
-                    <p className="text-white/80 uppercase tracking-wider text-sm">{showUserQr.role}</p>
-                </div>
-
-                <div className="p-8 flex flex-col items-center gap-6">
-                    <div className="bg-white p-2 rounded-xl shadow-inner border border-gray-100">
-                        {qrCodeData ? (
-                            <img src={qrCodeData} alt="Login QR" className="w-48 h-48" />
-                        ) : (
-                            <div className="w-48 h-48 bg-gray-100 animate-pulse rounded"></div>
-                        )}
-                    </div>
-                    <p className="text-center text-gray-500 text-sm">
-                        Scan this badge with the Mobile App to log in instantly.
-                    </p>
-
-                    <button
-                        onClick={() => setShowUserQr(null)}
-                        className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
-                    >
-                        <X className="w-5 h-5" /> Close Badge
-                    </button>
-                </div>
-            </div>
-          </div>
-      )}
     </div>
   );
 }

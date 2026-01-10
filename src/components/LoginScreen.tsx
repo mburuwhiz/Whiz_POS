@@ -1,175 +1,242 @@
 import React, { useState, useEffect } from 'react';
 import { usePosStore } from '../store/posStore';
 import { User } from '../types';
-import { Store, Lock, User as UserIcon } from 'lucide-react';
+import { Card, CardContent } from './ui/card';
+import { Button } from './ui/button';
+import { cn } from '../lib/utils';
+import { Shield, User as UserIcon, Lock, Delete, ArrowRight } from 'lucide-react';
+import { useToast } from './ui/use-toast';
 
-export default function LoginScreen() {
-  const { login, users, businessSetup } = usePosStore();
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+const LoginScreen = () => {
+  const { users, login, businessSetup } = usePosStore();
+  const { toast } = useToast();
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [pin, setPin] = useState('');
-  const [loginError, setLoginError] = useState('');
+  const [error, setError] = useState('');
+  const [shake, setShake] = useState(false);
+
+  // Filter only active users for the list, but we might want to show all and disable click?
+  // Requirement: "disable user(locks user from logging in with a pop user disabled"
+  // So we show them, but when clicked or PIN entered, show error.
+  // Actually, usually disabled users are hidden or greyed out.
+  // "locks user from logging in with a pop user disabled" implies they might try.
+  // I'll show them but maybe visually dim them.
+  const displayUsers = users.sort((a, b) => a.role === 'admin' ? -1 : 1);
 
   useEffect(() => {
-    console.log('LoginScreen rendered');
-  }, []);
+    if (error) {
+      setShake(true);
+      const timer = setTimeout(() => {
+        setShake(false);
+        setError('');
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
 
-  if (!businessSetup) return null;
-
-  const handleUserSelect = (userId: string) => {
-    setSelectedUserId(userId);
+  const handleUserSelect = (user: User) => {
+    if (!user.isActive) {
+      setError('User is disabled. Contact Admin.');
+      return;
+    }
+    setSelectedUser(user);
     setPin('');
-    setLoginError('');
+    setError('');
+  };
+
+  const handleKeyPress = (key: string) => {
+    if (key === 'clear') {
+      setPin('');
+    } else if (key === 'delete') {
+      setPin(prev => prev.slice(0, -1));
+    } else if (key === 'enter') {
+      handleLogin();
+    } else {
+      if (pin.length < 4) {
+        setPin(prev => prev + key);
+      }
+    }
   };
 
   const handleLogin = () => {
-    if (!selectedUserId || pin.length !== 4) {
-      setLoginError('Please select a user and enter 4-digit PIN');
+    if (!selectedUser) return;
+
+    if (!selectedUser.isActive) {
+      setError('User account is disabled.');
       return;
     }
 
-    const selectedUser = users.find(u => u.id === selectedUserId);
-
-    if (selectedUser && selectedUser.pin === pin) {
+    if (pin === selectedUser.pin) {
+      toast("Login Successful", "success");
       login(selectedUser);
     } else {
-      setLoginError('Invalid PIN. Please try again.');
+      setError('Incorrect PIN');
       setPin('');
     }
   };
 
-  const handleKeyPress = (key: string) => {
-    if (pin.length < 4) {
-      setPin(pin + key);
-    }
-  };
-
-  const handleBackspace = () => {
-    setPin(pin.slice(0, -1));
-  };
-
-  const handleClear = () => {
-    setPin('');
-    setLoginError('');
-  };
-
-  const getSelectedUser = () => {
-    if (!selectedUserId) return null;
-    return users.find(u => u.id === selectedUserId);
-  }
+  const KeypadButton = ({ value, label, icon: Icon, onClick, className }: any) => (
+    <button
+      onClick={onClick}
+      className={cn(
+        "h-16 w-full rounded-xl text-xl font-medium transition-all active:scale-95 flex items-center justify-center",
+        "bg-white border border-slate-200 shadow-sm hover:bg-slate-50 hover:border-slate-300",
+        className
+      )}
+    >
+      {Icon ? <Icon className="w-6 h-6" /> : label || value}
+    </button>
+  );
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-sky-500 to-sky-700 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden">
-        <div className="flex">
-          {/* Left Panel - User Selection */}
-          <div className="w-1/2 bg-gray-50 p-8 border-r">
-            <div className="flex items-center space-x-3 mb-6">
-              <Store className="w-8 h-8 text-sky-500" />
-              <div>
-                <h2 className="text-2xl font-bold text-gray-800">{businessSetup.businessName}</h2>
-                <p className="text-gray-600">Select Cashier</p>
-              </div>
-            </div>
+    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+      <div className="max-w-5xl w-full grid grid-cols-1 md:grid-cols-2 gap-8 h-[600px]">
 
-            <div className="space-y-3">
-              <select
-                onChange={(e) => handleUserSelect(e.target.value)}
-                className="w-full p-4 rounded-lg border-2 border-gray-200 hover:border-gray-300 bg-white"
-              >
-                <option value="">Select a user</option>
-                {users
-                  .filter(user => user.isActive)
-                  .map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.name} ({user.role})
-                    </option>
-                  ))}
-              </select>
-            </div>
-
-            {users.filter(user => user.isActive).length === 0 && (
-              <div className="text-center py-8">
-                <p className="text-gray-500">No active users found</p>
-                <p className="text-sm text-gray-400 mt-2">Please contact your administrator</p>
-              </div>
-            )}
+        {/* Left Side: User Selection */}
+        <div className="flex flex-col h-full">
+          <div className="mb-6 text-center md:text-left">
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">
+              {businessSetup?.businessName || 'Whiz POS'}
+            </h1>
+            <p className="text-slate-500">Select your account to continue</p>
           </div>
 
-          {/* Right Panel - PIN Entry */}
-          <div className="w-1/2 p-8">
-            <div className="text-center mb-8">
-              <Lock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-800">Enter PIN</h3>
-              {selectedUserId && (
-                <p className="text-gray-600 mt-2">{getSelectedUser()?.name}</p>
-              )}
+          <Card className="flex-1 overflow-hidden flex flex-col bg-white/50 backdrop-blur-xl border-slate-200/60 shadow-xl">
+            <div className="p-4 overflow-y-auto flex-1 space-y-3 custom-scrollbar">
+              {displayUsers.map(user => (
+                <button
+                  key={user.id}
+                  onClick={() => handleUserSelect(user)}
+                  className={cn(
+                    "w-full p-4 rounded-xl flex items-center justify-between transition-all duration-200 border",
+                    selectedUser?.id === user.id
+                      ? "bg-blue-600 border-blue-600 shadow-md transform scale-[1.02]"
+                      : "bg-white border-slate-100 hover:border-blue-200 hover:bg-blue-50/50",
+                    !user.isActive && "opacity-60 grayscale"
+                  )}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={cn(
+                      "w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold shadow-sm",
+                      selectedUser?.id === user.id
+                        ? "bg-white/20 text-white"
+                        : "bg-slate-100 text-slate-600"
+                    )}>
+                      {user.name.charAt(0)}
+                    </div>
+                    <div className="text-left">
+                      <h3 className={cn(
+                        "font-semibold text-lg",
+                        selectedUser?.id === user.id ? "text-white" : "text-slate-900"
+                      )}>
+                        {user.name}
+                      </h3>
+                      <p className={cn(
+                        "text-sm capitalize flex items-center gap-1",
+                        selectedUser?.id === user.id ? "text-blue-100" : "text-slate-500"
+                      )}>
+                        {user.role === 'admin' && <Shield className="w-3 h-3" />}
+                        {user.role}
+                      </p>
+                    </div>
+                  </div>
+                  {!user.isActive && <Lock className="w-4 h-4 text-slate-400" />}
+                  {selectedUser?.id === user.id && <div className="w-2 h-2 rounded-full bg-white animate-pulse" />}
+                </button>
+              ))}
             </div>
+          </Card>
+        </div>
 
-            {/* PIN Display */}
-            <div className="mb-8">
-              <div className="flex justify-center space-x-2 mb-4">
-                {[0, 1, 2, 3].map((index) => (
+        {/* Right Side: PIN Entry */}
+        <div className="flex flex-col justify-center h-full">
+          <Card className={cn(
+            "p-8 bg-white shadow-2xl border-0 relative overflow-hidden transition-transform duration-100",
+            shake && "translate-x-[-10px]"
+          )}>
+            {/* Background decoration */}
+            <div className="absolute top-0 right-0 -mt-16 -mr-16 w-64 h-64 bg-blue-50 rounded-full blur-3xl opacity-50" />
+            <div className="absolute bottom-0 left-0 -mb-16 -ml-16 w-64 h-64 bg-purple-50 rounded-full blur-3xl opacity-50" />
+
+            <div className="relative z-10 flex flex-col h-full justify-center">
+              <div className="text-center mb-8">
+                <h2 className="text-2xl font-bold text-slate-800 mb-2">
+                  {selectedUser ? `Welcome, ${selectedUser.name}` : 'Enter PIN'}
+                </h2>
+                <p className="text-slate-500 text-sm">
+                  {selectedUser ? 'Please enter your 4-digit PIN' : 'Select a user first'}
+                </p>
+              </div>
+
+              {/* PIN Dots */}
+              <div className="flex justify-center gap-4 mb-8">
+                {[0, 1, 2, 3].map((i) => (
                   <div
-                    key={index}
-                    className={`w-4 h-4 rounded-full ${
-                      index < pin.length ? 'bg-sky-500' : 'bg-gray-300'
-                    }`}
+                    key={i}
+                    className={cn(
+                      "w-4 h-4 rounded-full transition-all duration-300",
+                      pin.length > i
+                        ? "bg-blue-600 scale-110 shadow-blue-200 shadow-lg"
+                        : "bg-slate-200"
+                    )}
                   />
                 ))}
               </div>
-              
-              {loginError && (
-                <div className="text-red-500 text-sm text-center animate-pulse">
-                  {loginError}
+
+              {/* Error Message */}
+              <div className="h-6 mb-4 text-center">
+                {error && (
+                  <span className="text-red-500 text-sm font-medium animate-in fade-in slide-in-from-top-1">
+                    {error}
+                  </span>
+                )}
+              </div>
+
+              {/* Keypad */}
+              <div className="space-y-3">
+                <div className="grid grid-cols-3 gap-3">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                    <KeypadButton
+                      key={num}
+                      value={num}
+                      onClick={() => handleKeyPress(num.toString())}
+                      className={!selectedUser && "opacity-50 cursor-not-allowed"}
+                    />
+                  ))}
+                  <KeypadButton
+                    label="C"
+                    onClick={() => handleKeyPress('clear')}
+                    className="text-red-500 font-bold hover:bg-red-50 hover:border-red-200"
+                  />
+                  <KeypadButton
+                    value={0}
+                    onClick={() => handleKeyPress('0')}
+                    className={!selectedUser && "opacity-50 cursor-not-allowed"}
+                  />
+                  <KeypadButton
+                    icon={Delete}
+                    onClick={() => handleKeyPress('delete')}
+                    className="text-orange-500 hover:bg-orange-50 hover:border-orange-200"
+                  />
                 </div>
-              )}
-            </div>
-
-            {/* Number Pad */}
-            <div className="grid grid-cols-3 gap-3 mb-6">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
                 <button
-                  key={num}
-                  onClick={() => handleKeyPress(num.toString())}
-                  className="p-4 bg-gray-100 hover:bg-gray-200 rounded-lg text-lg font-semibold transition-colors"
+                  onClick={() => handleKeyPress('enter')}
+                  className="w-full h-14 bg-blue-600 text-white rounded-xl text-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 flex items-center justify-center gap-2 active:scale-95"
                 >
-                  {num}
+                  Enter <ArrowRight className="w-5 h-5" />
                 </button>
-              ))}
-              
-              <button
-                onClick={handleClear}
-                className="p-4 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg font-medium transition-colors"
-              >
-                Clear
-              </button>
-              
-              <button
-                onClick={() => handleKeyPress('0')}
-                className="p-4 bg-gray-100 hover:bg-gray-200 rounded-lg text-lg font-semibold transition-colors"
-              >
-                0
-              </button>
-              
-              <button
-                onClick={handleBackspace}
-                className="p-4 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                ←
-              </button>
+              </div>
             </div>
-
-            {/* Login Button */}
-            <button
-              onClick={handleLogin}
-              disabled={!selectedUserId || pin.length !== 4}
-              className="w-full py-3 bg-sky-500 text-white rounded-lg font-semibold hover:bg-sky-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
-            >
-              Login
-            </button>
-          </div>
+          </Card>
         </div>
+      </div>
+
+      {/* Footer Branding */}
+      <div className="fixed bottom-4 text-center text-slate-400 text-xs">
+        Whiz POS System v6.0 &copy; {new Date().getFullYear()}
       </div>
     </div>
   );
-}
+};
+
+export default LoginScreen;

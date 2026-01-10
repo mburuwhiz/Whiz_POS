@@ -138,6 +138,10 @@ const Navigation = () => {
               <Settings className="w-5 h-5" />
               <span>Settings</span>
             </NavLink>
+            <NavLink to="/users" className={navLinkClasses}>
+              <UserCheck className="w-5 h-5" />
+              <span>Users</span>
+            </NavLink>
           </NavGroup>
         )}
 

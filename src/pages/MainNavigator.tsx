@@ -22,6 +22,7 @@ import PreviousReceiptsPage from '../components/PreviousReceiptsPage';
 import MobileReceiptsPage from './MobileReceiptsPage';
 import SalariesPage from './SalariesPage';
 import DeveloperPage from './DeveloperPage';
+import UsersPage from './UsersPage';
 
 const MainNavigator = () => {
   const { businessSetup, users } = usePosStore();
@@ -98,6 +99,7 @@ const MainNavigator = () => {
         <Route path="/mobile-receipts" element={<MobileReceiptsPage />} />
         <Route path="/manage" element={<SettingsPage />} />
         <Route path="/developer" element={<DeveloperPage />} />
+        <Route path="/users" element={<UsersPage />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </AppLayout>

@@ -1512,21 +1512,41 @@ export const usePosStore = create<PosState>()(
 
       updateUser: (id, updates) => {
         set((state) => {
+          // If updating the currently logged-in user, apply changes to session or logout if disabled
+          let newCurrentCashier = state.currentCashier;
+          if (state.currentCashier && state.currentCashier.id === id) {
+              if (updates.isActive === false) {
+                  // User disabled themselves or was disabled
+                  newCurrentCashier = null;
+                  state.businessSetup = { ...state.businessSetup, isLoggedIn: false };
+              } else {
+                  // Update session details
+                  newCurrentCashier = { ...state.currentCashier, ...updates };
+              }
+          }
+
           const updatedUsers = state.users.map(user =>
             user.id === id ? { ...user, ...updates } : user
           );
           saveDataToFile('users.json', updatedUsers);
           state.addToSyncQueue({ type: 'update-user', data: { id, updates } });
-          return { users: updatedUsers };
+          return { users: updatedUsers, currentCashier: newCurrentCashier };
         });
       },
 
       deleteUser: (id) => {
         set((state) => {
+          // Logout if deleting current user
+          let newCurrentCashier = state.currentCashier;
+          if (state.currentCashier && state.currentCashier.id === id) {
+              newCurrentCashier = null;
+              state.businessSetup = { ...state.businessSetup, isLoggedIn: false };
+          }
+
           const updatedUsers = state.users.filter(user => user.id !== id);
           saveDataToFile('users.json', updatedUsers);
           state.addToSyncQueue({ type: 'delete-user', data: { id } });
-          return { users: updatedUsers };
+          return { users: updatedUsers, currentCashier: newCurrentCashier };
         });
       },
 

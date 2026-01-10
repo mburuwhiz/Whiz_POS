@@ -850,6 +850,46 @@ app.whenReady().then(async () => {
       }
   });
 
+  ipcMain.handle('direct-db-delete', async (event, mongoUri, ops) => {
+      if (!mongoUri) return { success: false, error: 'MongoDB URI is missing' };
+      if (!ops || !Array.isArray(ops) || ops.length === 0) return { success: true };
+
+      let client;
+      try {
+          client = new MongoClient(mongoUri);
+          await client.connect();
+          const db = client.db();
+
+          // Group by type/collection
+          const collectionMap = {
+              'delete-user': { collection: 'users', idField: 'userId' },
+              'delete-product': { collection: 'products', idField: 'productId' },
+              'delete-expense': { collection: 'expenses', idField: 'expenseId' },
+              'delete-salary': { collection: 'salaries', idField: 'salaryId' },
+              'delete-transaction': { collection: 'transactions', idField: 'transactionId' },
+              'delete-credit-customer': { collection: 'customers', idField: 'customerId' },
+              'delete-supplier': { collection: 'suppliers', idField: 'supplierId' }
+          };
+
+          for (const op of ops) {
+              const config = collectionMap[op.type];
+              if (config) {
+                  const id = op.data.id || op.data.userId || op.data.productId || op.data.expenseId || op.data.salaryId || op.data.transactionId || op.data.customerId;
+                  if (id) {
+                      await db.collection(config.collection).deleteOne({ [config.idField]: id });
+                  }
+              }
+          }
+
+          return { success: true };
+      } catch (e) {
+          console.error("Direct DB Delete Failed", e);
+          return { success: false, error: e.message };
+      } finally {
+          if (client) await client.close();
+      }
+  });
+
   ipcMain.handle('direct-db-push', async (event, mongoUri) => {
       if (!mongoUri) return { success: false, error: 'MongoDB URI is missing' };
 

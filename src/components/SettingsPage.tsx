@@ -80,7 +80,8 @@ export default function SettingsPage() {
   const [userData, setUserData] = useState({
     name: '',
     pin: '',
-    role: 'cashier' as 'admin' | 'manager' | 'cashier'
+    role: 'cashier' as 'admin' | 'manager' | 'cashier',
+    isActive: true
   });
 
   const [apiConfig, setApiConfig] = useState<{ apiUrl: string, apiKey: string, qrCodeDataUrl: string } | null>(null);
@@ -139,7 +140,8 @@ export default function SettingsPage() {
   };
 
   const handleUserFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setUserData({ ...userData, [e.target.name]: e.target.value });
+    const value = e.target.type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value;
+    setUserData({ ...userData, [e.target.name]: value });
   };
 
   const handleAddUser = () => {
@@ -148,8 +150,10 @@ export default function SettingsPage() {
     const newUser: User = {
       id: `user-${Date.now()}`,
       createdAt: new Date().toISOString(),
-      isActive: true,
-      ...userData
+      isActive: userData.isActive,
+      name: userData.name,
+      pin: userData.pin,
+      role: userData.role
     };
     addUser(newUser);
     resetUserForm();
@@ -157,7 +161,7 @@ export default function SettingsPage() {
 
   const handleEditUser = (user: User) => {
     setEditingUser(user);
-    setUserData({ name: user.name, pin: user.pin, role: user.role });
+    setUserData({ name: user.name, pin: user.pin, role: user.role, isActive: user.isActive });
     setShowAddUser(true);
   };
 
@@ -185,7 +189,7 @@ export default function SettingsPage() {
   };
 
   const resetUserForm = () => {
-    setUserData({ name: '', pin: '', role: 'cashier' });
+    setUserData({ name: '', pin: '', role: 'cashier', isActive: true });
     setEditingUser(null);
     setShowAddUser(false);
   }
@@ -916,6 +920,21 @@ export default function SettingsPage() {
                     <option value="admin">Admin</option>
                   </select>
                 </div>
+
+                {editingUser && (
+                    <div className="flex items-center space-x-2">
+                        <input
+                            type="checkbox"
+                            name="isActive"
+                            id="isActive"
+                            checked={userData.isActive}
+                            onChange={handleUserFormChange}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <label htmlFor="isActive" className="text-sm font-medium text-gray-700">Active Account</label>
+                    </div>
+                )}
+
                 <div className="flex justify-end space-x-3 pt-4">
                   <button type="button" onClick={resetUserForm} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg">Cancel</button>
                   <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg">{editingUser ? 'Update' : 'Add'}</button>

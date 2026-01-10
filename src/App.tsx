@@ -22,13 +22,20 @@ function App() {
 
   // Auto-logoff Logic
   // Default to 5 minutes if not set or 0. Ensure at least 1 minute to prevent immediate loops if config is bad.
-  const idleMinutes = Math.max(1, businessSetup?.autoLogoffMinutes || 5);
+  const idleMinutes = Math.max(1, Number(businessSetup?.autoLogoffMinutes) || 5);
   const idleMs = idleMinutes * 60 * 1000;
 
   // Use custom hook to track idle state.
   // Only enable tracking if explicitly enabled in settings AND logged in.
   const isAutoLogoffEnabled = businessSetup?.isLoggedIn && (businessSetup?.autoLogoffEnabled === true);
   const isIdle = useAutoLogout(idleMs, isAutoLogoffEnabled);
+
+  // Debug log for auto-logoff
+  useEffect(() => {
+    if (isAutoLogoffEnabled) {
+      console.log(`Auto-logoff configured: ${idleMinutes} minutes (${idleMs}ms)`);
+    }
+  }, [isAutoLogoffEnabled, idleMinutes, idleMs]);
 
   useEffect(() => {
     const init = async () => {

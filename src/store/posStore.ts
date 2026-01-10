@@ -84,7 +84,18 @@ declare global {
 // Helper function for saving data via Electron's main process
 const saveDataToFile = async (fileName: string, data: any) => {
   if (window.electron) {
-    return await window.electron.saveData(fileName, data);
+    try {
+      const result = await window.electron.saveData(fileName, data);
+      if (!result.success) {
+        console.error(`Failed to save ${fileName}:`, result.error);
+      } else {
+        // console.debug(`Successfully saved ${fileName}`);
+      }
+      return result;
+    } catch (e) {
+      console.error(`Exception while saving ${fileName}:`, e);
+      return { success: false, error: e };
+    }
   } else {
     console.warn('Electron API not available. Data not saved to disk.');
     return { success: true }; // Prevent crashes in a pure web environment

@@ -12,6 +12,9 @@ export function useAutoLogout(timeoutMs: number, isEnabled: boolean) {
   const [isIdle, setIsIdle] = useState(false);
   const lastActivityRef = useRef(Date.now());
 
+  // Enforce a hard minimum of 1 minute (60000ms) to prevent immediate logout loops
+  const safeTimeoutMs = Math.max(60000, timeoutMs);
+
   useEffect(() => {
     // Reset state when enabled/disabled or timeout changes
     setIsIdle(false);
@@ -21,11 +24,14 @@ export function useAutoLogout(timeoutMs: number, isEnabled: boolean) {
       return;
     }
 
+    console.log(`Auto-logout enabled. Timeout: ${safeTimeoutMs}ms`);
+
     const events = ['mousedown', 'mousemove', 'keydown', 'touchstart', 'scroll', 'click'];
 
     const resetTimer = () => {
       lastActivityRef.current = Date.now();
       if (isIdle) {
+          console.log('User activity detected, resetting idle state.');
           setIsIdle(false);
       }
     };
@@ -35,8 +41,10 @@ export function useAutoLogout(timeoutMs: number, isEnabled: boolean) {
 
     // Check for idle state periodically
     const interval = setInterval(() => {
-      if (Date.now() - lastActivityRef.current > timeoutMs) {
+      const elapsed = Date.now() - lastActivityRef.current;
+      if (elapsed > safeTimeoutMs) {
         if (!isIdle) {
+            console.warn(`User idle detected. Elapsed: ${elapsed}ms > Timeout: ${safeTimeoutMs}ms`);
             setIsIdle(true);
         }
       }
@@ -46,7 +54,7 @@ export function useAutoLogout(timeoutMs: number, isEnabled: boolean) {
       events.forEach(event => window.removeEventListener(event, resetTimer));
       clearInterval(interval);
     };
-  }, [timeoutMs, isEnabled, isIdle]);
+  }, [safeTimeoutMs, isEnabled, isIdle]);
 
   return isIdle;
 }

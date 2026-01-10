@@ -67,9 +67,10 @@ async function ensureAppDirs() {
 async function readJsonFile(filename) {
     try {
         const data = await fs.readFile(path.join(userDataPath, filename), 'utf-8');
+        if (!data || data.trim() === '') return []; // Handle empty file
         return JSON.parse(data);
     } catch (e) {
-        return []; // Default to empty array or object depending on usage, but array is safer for lists
+        return [];
     }
 }
 
@@ -653,12 +654,15 @@ app.whenReady().then(async () => {
   ipcMain.handle('read-data', async (event, fileName) => {
     const filePath = path.join(userDataPath, fileName);
     try {
-      // Always try to read from the userData path first.
       const data = await fs.readFile(filePath, 'utf-8');
+      // Handle empty or whitespace-only files
+      if (!data || data.trim() === '') {
+          return { success: true, data: [] }; // Default to array, safest for most stores
+      }
       return { success: true, data: JSON.parse(data) };
     } catch (error) {
       if (error.code === 'ENOENT') {
-        // If the file doesn't exist in userData, *then* try to seed it from default assets
+        // Seed logic...
         try {
           let seedPath;
           if (app.isPackaged) {
@@ -670,11 +674,18 @@ app.whenReady().then(async () => {
           }
 
           const seedData = await fs.readFile(seedPath, 'utf-8');
-          await fs.writeFile(filePath, seedData); // Copy seed data to userData path
+          await fs.writeFile(filePath, seedData);
           return { success: true, data: JSON.parse(seedData) };
         } catch (seedError) {
-          return { success: true, data: null };
+          // If seeding fails, write an empty array to prevent future read errors
+          await fs.writeFile(filePath, '[]');
+          return { success: true, data: [] };
         }
+      } else if (error instanceof SyntaxError) {
+          // Handle corrupted JSON
+          console.error(`Corrupted JSON in ${fileName}, resetting to empty array.`);
+          await fs.writeFile(filePath, '[]');
+          return { success: true, data: [] };
       }
       console.error(`Failed to read data from ${fileName}:`, error);
       return { success: false, error: error.message };

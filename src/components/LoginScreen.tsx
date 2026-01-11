@@ -8,19 +8,14 @@ import { Shield, User as UserIcon, Lock, Delete, ArrowRight } from 'lucide-react
 import { useToast } from './ui/use-toast';
 
 const LoginScreen = () => {
-  const { users, login, businessSetup } = usePosStore();
+  const { users, setSession, businessSetup } = usePosStore();
   const { toast } = useToast();
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [shake, setShake] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Filter only active users for the list, but we might want to show all and disable click?
-  // Requirement: "disable user(locks user from logging in with a pop user disabled"
-  // So we show them, but when clicked or PIN entered, show error.
-  // Actually, usually disabled users are hidden or greyed out.
-  // "locks user from logging in with a pop user disabled" implies they might try.
-  // I'll show them but maybe visually dim them.
   const displayUsers = users.sort((a, b) => a.role === 'admin' ? -1 : 1);
 
   useEffect(() => {
@@ -45,6 +40,8 @@ const LoginScreen = () => {
   };
 
   const handleKeyPress = (key: string) => {
+    if (isLoading) return; // Block input while loading
+
     if (key === 'clear') {
       setPin('');
     } else if (key === 'delete') {
@@ -58,20 +55,47 @@ const LoginScreen = () => {
     }
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!selectedUser) return;
+    if (isLoading) return;
 
     if (!selectedUser.isActive) {
       setError('User account is disabled.');
       return;
     }
 
-    if (pin === selectedUser.pin) {
-      toast("Login Successful", "success");
-      login(selectedUser);
-    } else {
-      setError('Incorrect PIN');
-      setPin('');
+    if (pin.length < 4) {
+        setError('Enter 4-digit PIN');
+        return;
+    }
+
+    setIsLoading(true);
+
+    try {
+        if (window.electron && window.electron.auth) {
+            const result = await window.electron.auth.login(selectedUser.id, pin, 'desktop-main');
+            if (result.success && result.token && result.user) {
+                toast("Login Successful", "success");
+                setSession(result.user, result.token);
+            } else {
+                setError(result.error || 'Login failed');
+                setPin('');
+            }
+        } else {
+            // Fallback for dev/web environment (Simulate Strict Auth)
+            if (pin === selectedUser.pin) {
+                toast("Login Successful (Dev Mode)", "success");
+                setSession(selectedUser, 'dev-token');
+            } else {
+                setError('Incorrect PIN');
+                setPin('');
+            }
+        }
+    } catch (e) {
+        setError('System Error during Login');
+        console.error(e);
+    } finally {
+        setIsLoading(false);
     }
   };
 
@@ -89,7 +113,7 @@ const LoginScreen = () => {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
       <div className="max-w-6xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden flex h-[700px]">
 
         {/* Left Side: User Selection (Scrollable) */}
@@ -172,7 +196,7 @@ const LoginScreen = () => {
                   {selectedUser ? `Hello, ${selectedUser.name.split(' ')[0]}` : 'Welcome'}
                 </h2>
                 <p className="text-slate-500 font-medium">
-                  {selectedUser ? 'Enter your PIN to access the terminal' : 'Please select a user account'}
+                  {selectedUser ? (isLoading ? 'Verifying credentials...' : 'Enter your PIN to access the terminal') : 'Please select a user account'}
                 </p>
               </div>
 
@@ -185,7 +209,8 @@ const LoginScreen = () => {
                       "w-4 h-4 rounded-full transition-all duration-200 ring-2 ring-offset-2",
                       pin.length > i
                         ? "bg-blue-600 ring-blue-600 scale-110"
-                        : "bg-slate-200 ring-transparent"
+                        : "bg-slate-200 ring-transparent",
+                      isLoading && "animate-pulse bg-blue-400"
                     )}
                   />
                 ))}
@@ -204,7 +229,7 @@ const LoginScreen = () => {
                       <button
                         key={num}
                         onClick={() => handleKeyPress(num.toString())}
-                        disabled={!selectedUser}
+                        disabled={!selectedUser || isLoading}
                         className="h-16 rounded-2xl text-2xl font-semibold bg-slate-50 hover:bg-white hover:shadow-md hover:scale-105 active:scale-95 border border-slate-200 text-slate-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {num}
@@ -212,20 +237,22 @@ const LoginScreen = () => {
                     ))}
                     <button
                         onClick={() => handleKeyPress('clear')}
-                        className="h-16 rounded-2xl text-lg font-bold bg-red-50 text-red-600 hover:bg-red-100 border border-red-100 transition-all active:scale-95"
+                        disabled={isLoading}
+                        className="h-16 rounded-2xl text-lg font-bold bg-red-50 text-red-600 hover:bg-red-100 border border-red-100 transition-all active:scale-95 disabled:opacity-50"
                     >
                         CLR
                     </button>
                     <button
                         onClick={() => handleKeyPress('0')}
-                        disabled={!selectedUser}
+                        disabled={!selectedUser || isLoading}
                         className="h-16 rounded-2xl text-2xl font-semibold bg-slate-50 hover:bg-white hover:shadow-md hover:scale-105 active:scale-95 border border-slate-200 text-slate-700 transition-all disabled:opacity-50"
                     >
                         0
                     </button>
                     <button
                         onClick={() => handleKeyPress('delete')}
-                        className="h-16 rounded-2xl flex items-center justify-center font-bold bg-slate-50 hover:bg-orange-50 text-slate-600 hover:text-orange-600 border border-slate-200 hover:border-orange-200 transition-all active:scale-95"
+                        disabled={isLoading}
+                        className="h-16 rounded-2xl flex items-center justify-center font-bold bg-slate-50 hover:bg-orange-50 text-slate-600 hover:text-orange-600 border border-slate-200 hover:border-orange-200 transition-all active:scale-95 disabled:opacity-50"
                     >
                         DEL
                     </button>
@@ -233,13 +260,24 @@ const LoginScreen = () => {
 
                  <button
                     onClick={() => handleKeyPress('enter')}
-                    disabled={!selectedUser || pin.length < 4}
+                    disabled={!selectedUser || pin.length < 4 || isLoading}
                     className="w-full h-16 bg-slate-900 text-white rounded-2xl text-xl font-bold hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed"
                  >
-                    Access POS <ArrowRight className="w-5 h-5" />
+                    {isLoading ? 'Verifying...' : 'Access POS'} <ArrowRight className="w-5 h-5" />
                  </button>
               </div>
            </div>
+        </div>
+      </div>
+
+      {/* Moving Footer */}
+      <div className="fixed bottom-0 left-0 w-full bg-slate-900 text-slate-400 py-3 overflow-hidden z-50">
+        <div className="animate-marquee whitespace-nowrap flex gap-10">
+          {[1, 2, 3, 4].map((i) => (
+             <span key={i} className="text-sm font-medium tracking-wide mx-8">
+               Developed and managed by Whiz Tech KE — Call 0740 841 168 to get yours.
+             </span>
+          ))}
         </div>
       </div>
     </div>

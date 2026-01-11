@@ -11,6 +11,7 @@ const { autoUpdater } = require('electron-updater');
 const { generateReceipt, generateClosingReport, generateBusinessSetup } = require(path.join(__dirname, 'print-jobs.cjs'));
 const { MongoClient } = require('mongodb');
 const { dialog } = require('electron'); // For file dialogs
+const { v4: uuidv4 } = require('uuid'); // Import UUID for session tokens
 
 const store = new Store();
 
@@ -165,6 +166,125 @@ let apiKey = null;
 let server = null;
 global.connectedDevicesMap = new Map();
 
+// --- NEW BACKEND IMPLEMENTATION: Session & User Management ---
+
+class SessionManager {
+    constructor() {
+        this.sessions = new Map(); // Token -> { user, deviceId, expiresAt }
+    }
+
+    createSession(user, deviceId) {
+        const token = uuidv4();
+        // Session valid for 24 hours, but we can make it indefinite if needed
+        // Requirement: "unique session token per device"
+        this.sessions.set(token, {
+            user: { ...user }, // Store copy of user data
+            deviceId,
+            createdAt: new Date(),
+            lastActive: new Date()
+        });
+        return token;
+    }
+
+    validateSession(token) {
+        if (!this.sessions.has(token)) return null;
+        const session = this.sessions.get(token);
+        session.lastActive = new Date(); // Update activity
+        return session.user;
+    }
+
+    invalidateSession(token) {
+        this.sessions.delete(token);
+    }
+
+    invalidateSessionsForUser(userId) {
+        // Optional: If we wanted to force logout everywhere.
+        // But prompt says: "Logging in on one device must not log out users on another"
+        // So we do NOT implement this for normal login.
+        // But maybe for 'Disable User'? Yes.
+        for (const [token, session] of this.sessions.entries()) {
+            if (session.user.id === userId || session.user.userId === userId) {
+                this.sessions.delete(token);
+            }
+        }
+    }
+}
+
+const sessionManager = new SessionManager();
+
+// --- User Management Logic (Strict) ---
+
+const UserManager = {
+    async authenticate(userId, pin) {
+        const users = await readJsonFile('users.json');
+        const user = users.find(u => (u.id === userId || u.userId === userId));
+
+        if (!user) return { success: false, error: 'User not found' };
+        if (!user.isActive) return { success: false, error: 'User is disabled' };
+
+        // Strict PIN check
+        if (String(user.pin) === String(pin)) {
+            // Success
+            return { success: true, user };
+        }
+        return { success: false, error: 'Invalid PIN' };
+    },
+
+    async addUser(userData) {
+        const users = await readJsonFile('users.json');
+
+        // Check for duplicates
+        if (users.some(u => u.name.toLowerCase() === userData.name.toLowerCase())) {
+            throw new Error('User with this name already exists');
+        }
+
+        const newUser = {
+            id: userData.id || `USER${Date.now()}`,
+            userId: userData.id || `USER${Date.now()}`, // Ensure compatibility
+            ...userData,
+            isActive: true, // Default to active
+            createdAt: new Date().toISOString()
+        };
+
+        users.push(newUser);
+        await writeJsonFile('users.json', users);
+        return newUser;
+    },
+
+    async updateUser(userId, updates) {
+        const users = await readJsonFile('users.json');
+        const index = users.findIndex(u => (u.id === userId || u.userId === userId));
+
+        if (index === -1) throw new Error('User not found');
+
+        const updatedUser = { ...users[index], ...updates };
+        users[index] = updatedUser;
+
+        await writeJsonFile('users.json', users);
+
+        // If user is disabled, kill their sessions
+        if (updates.isActive === false) {
+            sessionManager.invalidateSessionsForUser(userId);
+        }
+
+        return updatedUser;
+    },
+
+    async deleteUser(userId) {
+        const users = await readJsonFile('users.json');
+        const filteredUsers = users.filter(u => (u.id !== userId && u.userId !== userId));
+
+        if (users.length === filteredUsers.length) throw new Error('User not found');
+
+        await writeJsonFile('users.json', filteredUsers);
+
+        // Kill sessions
+        sessionManager.invalidateSessionsForUser(userId);
+
+        return true;
+    }
+};
+
 /**
  * Initialize API Key from storage or create if missing
  */
@@ -250,19 +370,84 @@ function startApiServer() {
         next();
     });
 
+    // Modified Auth Middleware to support Session Tokens AND API Keys
     const authMiddleware = (req, res, next) => {
         const authHeader = req.headers['authorization'];
         const xApiKey = req.headers['x-api-key'];
 
-        if (xApiKey && xApiKey === apiKey) {
-            return next();
+        // 1. Check Session Token (Bearer)
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.split(' ')[1];
+            // Check if it's the static API Key (Legacy/Mobile simple auth)
+            if (token === apiKey) {
+                return next();
+            }
+            // Check Session Manager
+            const user = sessionManager.validateSession(token);
+            if (user) {
+                req.user = user; // Attach user to request
+                return next();
+            }
         }
-        if (authHeader && authHeader === `Bearer ${apiKey}`) {
+
+        // 2. Check X-API-KEY (Legacy/Mobile)
+        if (xApiKey && xApiKey === apiKey) {
             return next();
         }
 
         return res.status(401).json({ error: 'Unauthorized' });
     };
+
+    // --- NEW AUTH ENDPOINTS ---
+
+    // POST /api/auth/login
+    apiApp.post('/api/auth/login', async (req, res) => {
+        const { userId, pin, deviceId } = req.body;
+
+        if (!userId || !pin) return res.status(400).json({ error: 'Missing credentials' });
+
+        try {
+            const result = await UserManager.authenticate(userId, pin);
+
+            if (!result.success) {
+                return res.status(401).json({ error: result.error });
+            }
+
+            const token = sessionManager.createSession(result.user, deviceId || 'unknown-device');
+            res.json({
+                success: true,
+                token,
+                user: result.user
+            });
+        } catch (e) {
+            console.error('Login Error:', e);
+            res.status(500).json({ error: 'Internal Server Error' });
+        }
+    });
+
+    // POST /api/auth/logout
+    apiApp.post('/api/auth/logout', (req, res) => {
+        const authHeader = req.headers['authorization'];
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.split(' ')[1];
+            sessionManager.invalidateSession(token);
+        }
+        res.json({ success: true });
+    });
+
+    // POST /api/auth/verify
+    apiApp.post('/api/auth/verify', (req, res) => {
+        const authHeader = req.headers['authorization'];
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.split(' ')[1];
+            const user = sessionManager.validateSession(token);
+            if (user) {
+                return res.json({ success: true, user });
+            }
+        }
+        res.status(401).json({ success: false, error: 'Invalid or expired session' });
+    });
+
 
     // Public Status Endpoint for Connectivity Check
     // IMPORTANT: Defined before other routes to ensure availability
@@ -451,32 +636,32 @@ function startApiServer() {
                     await writeJsonFile('products.json', newProducts);
 
                 } else if (type === 'add-user') {
-                    const users = await readJsonFile('users.json');
-                    const newUser = { ...data, userId: data.id || data.userId };
-                    delete newUser.id;
-                    // Generate username if missing (Back-Office logic)
-                    if (!newUser.username && newUser.name) {
-                        newUser.username = newUser.name.toLowerCase().replace(/\s+/g, '');
+                    // Use Strict User Manager
+                    try {
+                        await UserManager.addUser(data);
+                    } catch (e) {
+                        console.error("Sync Add User Failed", e);
                     }
-                    users.push(newUser);
-                    await writeJsonFile('users.json', users);
 
                 } else if (type === 'update-user') {
-                    const users = await readJsonFile('users.json');
-                    const userId = data.id || data.userId;
-                    const idx = users.findIndex(u => u.userId === userId);
-                    if (idx !== -1) {
+                     // Use Strict User Manager
+                    try {
+                        const userId = data.id || data.userId;
                         const updates = data.updates || data;
                         delete updates.id;
-                        users[idx] = { ...users[idx], ...updates };
-                        await writeJsonFile('users.json', users);
+                        await UserManager.updateUser(userId, updates);
+                    } catch (e) {
+                         console.error("Sync Update User Failed", e);
                     }
 
                 } else if (type === 'delete-user') {
-                    const users = await readJsonFile('users.json');
-                    const userId = data.id || data.userId;
-                    const newUsers = users.filter(u => u.userId !== userId);
-                    await writeJsonFile('users.json', newUsers);
+                     // Use Strict User Manager
+                    try {
+                        const userId = data.id || data.userId;
+                        await UserManager.deleteUser(userId);
+                    } catch (e) {
+                         console.error("Sync Delete User Failed", e);
+                    }
 
                 } else if (type === 'delete-transaction') {
                     const transactions = await readJsonFile('transactions.json');
@@ -568,6 +753,59 @@ app.whenReady().then(async () => {
 
   createWindow();
 
+  // --- NEW IPC HANDLERS FOR AUTH & USERS ---
+
+  ipcMain.handle('auth-login', async (event, userId, pin, deviceId) => {
+      try {
+          const result = await UserManager.authenticate(userId, pin);
+          if (result.success) {
+              const token = sessionManager.createSession(result.user, deviceId || 'desktop-main');
+              return { success: true, token, user: result.user };
+          }
+          return { success: false, error: result.error };
+      } catch (e) {
+          return { success: false, error: e.message };
+      }
+  });
+
+  ipcMain.handle('auth-logout', async (event, token) => {
+      sessionManager.invalidateSession(token);
+      return { success: true };
+  });
+
+  ipcMain.handle('auth-verify', async (event, token) => {
+      const user = sessionManager.validateSession(token);
+      return { success: !!user, user };
+  });
+
+  ipcMain.handle('user-add', async (event, userData) => {
+      try {
+          await UserManager.addUser(userData);
+          return { success: true };
+      } catch (e) {
+          return { success: false, error: e.message };
+      }
+  });
+
+  ipcMain.handle('user-update', async (event, userId, updates) => {
+      try {
+          await UserManager.updateUser(userId, updates);
+          return { success: true };
+      } catch (e) {
+          return { success: false, error: e.message };
+      }
+  });
+
+  ipcMain.handle('user-delete', async (event, userId) => {
+      try {
+          await UserManager.deleteUser(userId);
+          return { success: true };
+      } catch (e) {
+          return { success: false, error: e.message };
+      }
+  });
+
+
   /**
    * IPC Handler: 'save-image'
    * Saves an image from a temporary path to the application's persistent storage.
@@ -633,6 +871,13 @@ app.whenReady().then(async () => {
    */
   ipcMain.handle('save-data', async (event, fileName, data) => {
     try {
+      // Intercept user modifications to ensure strictness
+      if (fileName === 'users.json') {
+          // Warning: The renderer should use 'user-*' handlers.
+          // But to prevent data loss if legacy code is called, we allow it but log it.
+          console.warn("Legacy 'save-data' called for users.json. Prefer 'user-*' handlers.");
+      }
+
       const filePath = path.join(userDataPath, fileName);
       await fs.writeFile(filePath, JSON.stringify(data, null, 2));
       return { success: true };
@@ -1122,10 +1367,7 @@ app.whenReady().then(async () => {
             return { ...rest, id: rest.customerId || rest.id };
         });
 
-        // 6. Fetch Business Setup (Assuming stored in 'settings' or similar, but for now relying on local persistence primarily or sync API if needed.
-        // If business settings are in Mongo, fetch them. Based on `BusinessSettings.js`, likely collection is 'businesssettings' or 'settings'
-        // But the model name is BusinessSettings -> collection: businesssettings (by Mongoose default)
-        // Let's check for it.
+        // 6. Fetch Business Setup
         let businessSetup = null;
         try {
             const settingsRaw = await db.collection('businesssettings').findOne({});

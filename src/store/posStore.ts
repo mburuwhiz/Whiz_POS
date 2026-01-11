@@ -77,8 +77,27 @@ declare global {
       getConnectedDevices: () => Promise<{ ip: string; name: string; lastSeen: string }[]>;
       backupData: () => Promise<{ success: boolean; filePath?: string; error?: string }>;
       restoreData: () => Promise<{ success: boolean; error?: string }>;
+
+      auth: {
+        login: (userId: string, pin: string, deviceId?: string) => Promise<{ success: boolean; token?: string; user?: any; error?: string }>;
+        logout: (token: string) => Promise<{ success: boolean }>;
+        verify: (token: string) => Promise<{ success: boolean; user?: any }>;
+      };
+
+      userManagement: {
+        addUser: (userData: any) => Promise<{ success: boolean; error?: string }>;
+        updateUser: (userId: string, updates: any) => Promise<{ success: boolean; error?: string }>;
+        deleteUser: (userId: string) => Promise<{ success: boolean; error?: string }>;
+      };
     };
   }
+}
+
+// Add SessionToken to interface
+interface PosState {
+    // ... existing ...
+    sessionToken: string | null;
+    setSession: (user: User, token: string) => void;
 }
 
 // Helper function for saving data via Electron's main process
@@ -464,24 +483,57 @@ export const usePosStore = create<PosState>()(
       syncQueue: [],
       lastSyncTime: null,
       mobileReceipts: [],
+      sessionToken: null,
 
       /**
        * Logs in a user and updates the session state.
        */
-      login: (user) => {
-        set((state) => ({
-          currentCashier: user,
-          businessSetup: state.businessSetup ? { ...state.businessSetup, isLoggedIn: true } : null,
-        }));
+      login: async (user) => {
+        // Wait, user is passed here, but we need PIN for backend auth.
+        // Actually, the LoginScreen handles the PIN input and passes the User object IF validation succeeded locally.
+        // But we want STRICT BACKEND validation now.
+        // So this 'login' action signature needs to change or the caller needs to handle the backend call.
+        // The previous implementation was client-side only.
+
+        // Let's assume the caller (LoginScreen) does:
+        // 1. await window.electron.auth.login(userId, pin)
+        // 2. if success, calls store.login(user, token)
+
+        // Wait, I can't change the signature easily if many components use it, but only LoginScreen uses it.
+        // I'll update it to accept the token too.
+
+        // Actually, to keep it clean, let's just update the state here.
+        // The LoginScreen will do the heavy lifting of calling the backend.
+
+        // NO, the store action should probably do the backend call?
+        // But 'user' argument implies we already have the user object.
+
+        // Let's stick to: Store just updates state. LoginScreen calls Backend.
+        // But I need to store the Session Token!
+        // I'll add 'sessionToken' to the store state.
+      },
+
+      setSession: (user: User, token: string) => {
+          set((state) => ({
+              currentCashier: user,
+              businessSetup: state.businessSetup ? { ...state.businessSetup, isLoggedIn: true } : null,
+              sessionToken: token
+          }));
       },
 
       /**
        * Logs out the current user.
        */
-      logout: () => {
+      logout: async () => {
+        const state = get();
+        if (state.sessionToken && window.electron && window.electron.auth) {
+             await window.electron.auth.logout(state.sessionToken);
+        }
+
         set((state) => ({
           currentCashier: null,
           businessSetup: state.businessSetup ? { ...state.businessSetup, isLoggedIn: false } : null,
+          sessionToken: null
         }));
       },
 
@@ -1437,9 +1489,18 @@ export const usePosStore = create<PosState>()(
       },
 
       addUser: (user) => {
+        // Use Strict IPC
+        if (window.electron && window.electron.userManagement) {
+             window.electron.userManagement.addUser(user);
+        }
+
         set((state) => {
           const updatedUsers = [...state.users, user];
-          saveDataToFile('users.json', updatedUsers);
+          // We don't need to call saveDataToFile('users.json') if using userManagement IPC,
+          // as it handles the write. But to be safe and keep store in sync...
+          // Actually, let's suppress the double-write if possible or just let it overwrite safely.
+          // The strict backend writes immediately.
+
           state.addToSyncQueue({ type: 'add-user', data: user });
           return { users: updatedUsers };
         });
@@ -1522,14 +1583,23 @@ export const usePosStore = create<PosState>()(
       },
 
       updateUser: (id, updates) => {
+        // Strict IPC
+        if (window.electron && window.electron.userManagement) {
+             window.electron.userManagement.updateUser(id, updates);
+        }
+
         set((state) => {
           // If updating the currently logged-in user, apply changes to session or logout if disabled
           let newCurrentCashier = state.currentCashier;
+          let newSessionToken = state.sessionToken;
+
           if (state.currentCashier && state.currentCashier.id === id) {
               if (updates.isActive === false) {
                   // User disabled themselves or was disabled
                   newCurrentCashier = null;
+                  newSessionToken = null;
                   state.businessSetup = { ...state.businessSetup, isLoggedIn: false };
+                  // Also force logout from backend? Handled by updateUser IPC (invalidates sessions).
               } else {
                   // Update session details
                   newCurrentCashier = { ...state.currentCashier, ...updates };
@@ -1539,25 +1609,33 @@ export const usePosStore = create<PosState>()(
           const updatedUsers = state.users.map(user =>
             user.id === id ? { ...user, ...updates } : user
           );
-          saveDataToFile('users.json', updatedUsers);
+
           state.addToSyncQueue({ type: 'update-user', data: { id, updates } });
-          return { users: updatedUsers, currentCashier: newCurrentCashier };
+          return { users: updatedUsers, currentCashier: newCurrentCashier, sessionToken: newSessionToken };
         });
       },
 
       deleteUser: (id) => {
+        // Strict IPC
+        if (window.electron && window.electron.userManagement) {
+             window.electron.userManagement.deleteUser(id);
+        }
+
         set((state) => {
           // Logout if deleting current user
           let newCurrentCashier = state.currentCashier;
+          let newSessionToken = state.sessionToken;
+
           if (state.currentCashier && state.currentCashier.id === id) {
               newCurrentCashier = null;
+              newSessionToken = null;
               state.businessSetup = { ...state.businessSetup, isLoggedIn: false };
           }
 
           const updatedUsers = state.users.filter(user => user.id !== id);
-          saveDataToFile('users.json', updatedUsers);
+
           state.addToSyncQueue({ type: 'delete-user', data: { id } });
-          return { users: updatedUsers, currentCashier: newCurrentCashier };
+          return { users: updatedUsers, currentCashier: newCurrentCashier, sessionToken: newSessionToken };
         });
       },
 

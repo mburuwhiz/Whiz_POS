@@ -113,8 +113,8 @@ const LoginScreen = () => {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-      <div className="max-w-6xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden flex h-[700px]">
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 pb-20">
+      <div className="max-w-6xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden flex h-[700px] z-10 relative">
 
         {/* Left Side: User Selection (Scrollable) */}
         <div className="w-1/2 bg-slate-50 border-r border-slate-100 flex flex-col">
@@ -271,7 +271,7 @@ const LoginScreen = () => {
       </div>
 
       {/* Moving Footer */}
-      <div className="fixed bottom-0 left-0 w-full bg-slate-900 text-slate-400 py-3 overflow-hidden z-50">
+      <div className="fixed bottom-0 left-0 w-full bg-slate-900 text-slate-400 py-3 overflow-hidden z-0">
         <div className="animate-marquee whitespace-nowrap flex gap-10">
           {[1, 2, 3, 4].map((i) => (
              <span key={i} className="text-sm font-medium tracking-wide mx-8">

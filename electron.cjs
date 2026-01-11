@@ -170,6 +170,28 @@ global.connectedDevicesMap = new Map();
 class SessionManager {
     constructor() {
         this.sessions = new Map(); // Token -> { user, deviceId, expiresAt }
+        this.loadSessions();
+    }
+
+    async loadSessions() {
+        const sessions = await readJsonFile('sessions.json');
+        if (Array.isArray(sessions)) {
+            sessions.forEach(s => {
+                // Restore if valid (e.g., less than 7 days old)
+                const createdAt = new Date(s.createdAt);
+                const now = new Date();
+                const diffDays = (now - createdAt) / (1000 * 60 * 60 * 24);
+                if (diffDays < 7) {
+                    this.sessions.set(s.token, { ...s, lastActive: new Date(s.lastActive) });
+                }
+            });
+            console.log(`Restored ${this.sessions.size} sessions.`);
+        }
+    }
+
+    async saveSessions() {
+        const sessionsArray = Array.from(this.sessions.entries()).map(([token, data]) => ({ token, ...data }));
+        await writeJsonFile('sessions.json', sessionsArray);
     }
 
     createSession(user, deviceId) {
@@ -182,6 +204,7 @@ class SessionManager {
             createdAt: new Date(),
             lastActive: new Date()
         });
+        this.saveSessions();
         return token;
     }
 
@@ -189,11 +212,15 @@ class SessionManager {
         if (!this.sessions.has(token)) return null;
         const session = this.sessions.get(token);
         session.lastActive = new Date(); // Update activity
+        // Optimize: Don't save on every read, maybe debounce or periodic save?
+        // For strict persistence, let's just save.
+        // this.saveSessions();
         return session.user;
     }
 
     invalidateSession(token) {
         this.sessions.delete(token);
+        this.saveSessions();
     }
 
     invalidateSessionsForUser(userId) {
@@ -202,10 +229,12 @@ class SessionManager {
         // So we do NOT implement this for normal login.
         // But maybe for 'Disable User'? Yes.
         for (const [token, session] of this.sessions.entries()) {
+            // Strict ID check
             if (session.user.id === userId || session.user.userId === userId) {
                 this.sessions.delete(token);
             }
         }
+        this.saveSessions();
     }
 }
 
@@ -230,43 +259,63 @@ const UserManager = {
     },
 
     async addUser(userData) {
-        const users = await readJsonFile('users.json');
+        try {
+            console.log(`[UserManager] Adding user: ${userData.name}`);
+            const users = await readJsonFile('users.json');
 
-        // Check for duplicates
-        if (users.some(u => u.name.toLowerCase() === userData.name.toLowerCase())) {
-            throw new Error('User with this name already exists');
+            // Check for duplicates
+            if (users.some(u => u.name.toLowerCase() === userData.name.toLowerCase())) {
+                throw new Error('User with this name already exists');
+            }
+
+            const newUser = {
+                id: userData.id || `USER${Date.now()}`,
+                userId: userData.id || `USER${Date.now()}`, // Ensure compatibility
+                ...userData,
+                isActive: true, // Default to active
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+
+            users.push(newUser);
+            await writeJsonFile('users.json', users);
+            console.log(`[UserManager] User added successfully: ${newUser.id}`);
+            return newUser;
+        } catch (e) {
+            console.error(`[UserManager] Add failed: ${e.message}`);
+            throw e;
         }
-
-        const newUser = {
-            id: userData.id || `USER${Date.now()}`,
-            userId: userData.id || `USER${Date.now()}`, // Ensure compatibility
-            ...userData,
-            isActive: true, // Default to active
-            createdAt: new Date().toISOString()
-        };
-
-        users.push(newUser);
-        await writeJsonFile('users.json', users);
-        return newUser;
     },
 
     async updateUser(userId, updates) {
-        const users = await readJsonFile('users.json');
-        const index = users.findIndex(u => (u.id === userId || u.userId === userId));
+        try {
+            console.log(`[UserManager] Updating user: ${userId}`);
+            const users = await readJsonFile('users.json');
+            const index = users.findIndex(u => (u.id === userId || u.userId === userId));
 
-        if (index === -1) throw new Error('User not found');
+            if (index === -1) throw new Error('User not found');
 
-        const updatedUser = { ...users[index], ...updates };
-        users[index] = updatedUser;
+            const updatedUser = {
+                ...users[index],
+                ...updates,
+                updatedAt: new Date().toISOString()
+            };
+            users[index] = updatedUser;
 
-        await writeJsonFile('users.json', users);
+            await writeJsonFile('users.json', users);
+            console.log(`[UserManager] User updated successfully: ${userId}`);
 
-        // If user is disabled, kill their sessions
-        if (updates.isActive === false) {
-            sessionManager.invalidateSessionsForUser(userId);
+            // If user is disabled, kill their sessions
+            if (updates.isActive === false) {
+                console.log(`[UserManager] Invalidating sessions for disabled user: ${userId}`);
+                sessionManager.invalidateSessionsForUser(userId);
+            }
+
+            return updatedUser;
+        } catch (e) {
+            console.error(`[UserManager] Update failed: ${e.message}`);
+            throw e;
         }
-
-        return updatedUser;
     },
 
     async deleteUser(userId) {

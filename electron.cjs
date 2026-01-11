@@ -11,7 +11,6 @@ const { autoUpdater } = require('electron-updater');
 const { generateReceipt, generateClosingReport, generateBusinessSetup } = require(path.join(__dirname, 'print-jobs.cjs'));
 const { MongoClient } = require('mongodb');
 const { dialog } = require('electron'); // For file dialogs
-const { v4: uuidv4 } = require('uuid'); // Import UUID for session tokens
 
 const store = new Store();
 
@@ -174,7 +173,7 @@ class SessionManager {
     }
 
     createSession(user, deviceId) {
-        const token = uuidv4();
+        const token = crypto.randomUUID();
         // Session valid for 24 hours, but we can make it indefinite if needed
         // Requirement: "unique session token per device"
         this.sessions.set(token, {

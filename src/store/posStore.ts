@@ -1488,22 +1488,24 @@ export const usePosStore = create<PosState>()(
         return state.creditCustomers.filter(customer => (customer.balance || 0) > 0);
       },
 
-      addUser: (user) => {
-        // Use Strict IPC
+      // New: Load Users explicitly
+      loadUsers: async () => {
+          if (window.electron) {
+              const { data } = await window.electron.readData('users.json');
+              if (data) set({ users: data });
+          }
+      },
+
+      addUser: async (user) => {
+        // Strict IPC Only
         if (window.electron && window.electron.userManagement) {
-             window.electron.userManagement.addUser(user);
+             const result = await window.electron.userManagement.addUser(user);
+             if (result.success) {
+                 await get().loadUsers(); // Re-fetch to ensure sync with backend
+             }
         }
-
-        set((state) => {
-          const updatedUsers = [...state.users, user];
-          // We don't need to call saveDataToFile('users.json') if using userManagement IPC,
-          // as it handles the write. But to be safe and keep store in sync...
-          // Actually, let's suppress the double-write if possible or just let it overwrite safely.
-          // The strict backend writes immediately.
-
-          state.addToSyncQueue({ type: 'add-user', data: user });
-          return { users: updatedUsers };
-        });
+        // Do not update local state optimistically to avoid reverts
+        // Do not add to sync queue here, let backend handle it or separate sync logic
       },
 
   deleteTransactions: (ids) => {
@@ -1582,61 +1584,39 @@ export const usePosStore = create<PosState>()(
         });
       },
 
-      updateUser: (id, updates) => {
-        // Strict IPC
+      updateUser: async (id, updates) => {
+        // Strict IPC Only
         if (window.electron && window.electron.userManagement) {
-             window.electron.userManagement.updateUser(id, updates);
+             const result = await window.electron.userManagement.updateUser(id, updates);
+             if (result.success) {
+                 await get().loadUsers(); // Re-fetch
+
+                 // Handle Session Updates
+                 const state = get();
+                 if (state.currentCashier && state.currentCashier.id === id) {
+                      if (updates.isActive === false) {
+                          set({ currentCashier: null, sessionToken: null, businessSetup: { ...state.businessSetup, isLoggedIn: false } });
+                      } else {
+                          set({ currentCashier: { ...state.currentCashier, ...updates } });
+                      }
+                 }
+             }
         }
-
-        set((state) => {
-          // If updating the currently logged-in user, apply changes to session or logout if disabled
-          let newCurrentCashier = state.currentCashier;
-          let newSessionToken = state.sessionToken;
-
-          if (state.currentCashier && state.currentCashier.id === id) {
-              if (updates.isActive === false) {
-                  // User disabled themselves or was disabled
-                  newCurrentCashier = null;
-                  newSessionToken = null;
-                  state.businessSetup = { ...state.businessSetup, isLoggedIn: false };
-                  // Also force logout from backend? Handled by updateUser IPC (invalidates sessions).
-              } else {
-                  // Update session details
-                  newCurrentCashier = { ...state.currentCashier, ...updates };
-              }
-          }
-
-          const updatedUsers = state.users.map(user =>
-            user.id === id ? { ...user, ...updates } : user
-          );
-
-          state.addToSyncQueue({ type: 'update-user', data: { id, updates } });
-          return { users: updatedUsers, currentCashier: newCurrentCashier, sessionToken: newSessionToken };
-        });
       },
 
-      deleteUser: (id) => {
-        // Strict IPC
+      deleteUser: async (id) => {
+        // Strict IPC Only
         if (window.electron && window.electron.userManagement) {
-             window.electron.userManagement.deleteUser(id);
+             const result = await window.electron.userManagement.deleteUser(id);
+             if (result.success) {
+                 await get().loadUsers(); // Re-fetch
+
+                 const state = get();
+                 if (state.currentCashier && state.currentCashier.id === id) {
+                      set({ currentCashier: null, sessionToken: null, businessSetup: { ...state.businessSetup, isLoggedIn: false } });
+                 }
+             }
         }
-
-        set((state) => {
-          // Logout if deleting current user
-          let newCurrentCashier = state.currentCashier;
-          let newSessionToken = state.sessionToken;
-
-          if (state.currentCashier && state.currentCashier.id === id) {
-              newCurrentCashier = null;
-              newSessionToken = null;
-              state.businessSetup = { ...state.businessSetup, isLoggedIn: false };
-          }
-
-          const updatedUsers = state.users.filter(user => user.id !== id);
-
-          state.addToSyncQueue({ type: 'delete-user', data: { id } });
-          return { users: updatedUsers, currentCashier: newCurrentCashier, sessionToken: newSessionToken };
-        });
       },
 
       loadInitialData: async () => {

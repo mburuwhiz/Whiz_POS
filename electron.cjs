@@ -921,9 +921,9 @@ app.whenReady().then(async () => {
     try {
       // Intercept user modifications to ensure strictness
       if (fileName === 'users.json') {
-          // Warning: The renderer should use 'user-*' handlers.
-          // But to prevent data loss if legacy code is called, we allow it but log it.
-          console.warn("Legacy 'save-data' called for users.json. Prefer 'user-*' handlers.");
+          // STRICT: Do not allow overwriting users.json via legacy path
+          console.error("BLOCKED Legacy 'save-data' for users.json.");
+          return { success: false, error: "Use userManagement IPC instead." };
       }
 
       const filePath = path.join(userDataPath, fileName);

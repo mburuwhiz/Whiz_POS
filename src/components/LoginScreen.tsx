@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { usePosStore } from '../store/posStore';
 import { User } from '../types';
-import { Card, CardContent } from './ui/card';
-import { Button } from './ui/button';
 import { cn } from '../lib/utils';
-import { Shield, User as UserIcon, Lock, Delete, ArrowRight } from 'lucide-react';
+import { Shield, User as UserIcon, Lock, ArrowRight } from 'lucide-react';
 import { useToast } from './ui/use-toast';
 
 const LoginScreen = () => {
@@ -13,21 +11,9 @@ const LoginScreen = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
-  const [shake, setShake] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const displayUsers = users.sort((a, b) => a.role === 'admin' ? -1 : 1);
-
-  useEffect(() => {
-    if (error) {
-      setShake(true);
-      const timer = setTimeout(() => {
-        setShake(false);
-        setError('');
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [error]);
 
   const handleUserSelect = (user: User) => {
     if (!user.isActive) {
@@ -40,7 +26,7 @@ const LoginScreen = () => {
   };
 
   const handleKeyPress = (key: string) => {
-    if (isLoading) return; // Block input while loading
+    if (isLoading) return;
 
     if (key === 'clear') {
       setPin('');
@@ -82,7 +68,7 @@ const LoginScreen = () => {
                 setPin('');
             }
         } else {
-            // Fallback for dev/web environment (Simulate Strict Auth)
+            // Fallback for dev/web environment
             if (pin === selectedUser.pin) {
                 toast("Login Successful (Dev Mode)", "success");
                 setSession(selectedUser, 'dev-token');
@@ -99,24 +85,24 @@ const LoginScreen = () => {
     }
   };
 
-  const KeypadButton = ({ value, label, icon: Icon, onClick, className }: any) => (
-    <button
-      onClick={onClick}
-      className={cn(
-        "h-16 w-full rounded-xl text-xl font-medium transition-all active:scale-95 flex items-center justify-center",
-        "bg-white border border-slate-200 shadow-sm hover:bg-slate-50 hover:border-slate-300",
-        className
-      )}
-    >
-      {Icon ? <Icon className="w-6 h-6" /> : label || value}
-    </button>
-  );
-
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 pb-20">
-      <div className="max-w-6xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden flex h-[700px] z-10 relative">
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 relative">
 
-        {/* Left Side: User Selection (Scrollable) */}
+      {/* Moving Footer - Fixed to bottom, behind content (z-0) */}
+      <div className="fixed bottom-0 left-0 w-full bg-slate-900 text-slate-400 py-3 overflow-hidden z-0">
+        <div className="animate-marquee whitespace-nowrap flex gap-10">
+          {[1, 2, 3, 4].map((i) => (
+             <span key={i} className="text-sm font-medium tracking-wide mx-8">
+               Developed and managed by Whiz Tech KE — Call 0740 841 168 to get yours.
+             </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Main Login Card - z-10 to stay above footer */}
+      <div className="max-w-6xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden flex h-[700px] z-10 relative mb-12">
+
+        {/* Left Side: User Selection */}
         <div className="w-1/2 bg-slate-50 border-r border-slate-100 flex flex-col">
           <div className="p-8 pb-4">
             <h1 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">
@@ -179,7 +165,7 @@ const LoginScreen = () => {
           </div>
         </div>
 
-        {/* Right Side: Keypad (Fixed) */}
+        {/* Right Side: Keypad */}
         <div className="w-1/2 bg-white flex flex-col justify-center items-center p-12 relative overflow-hidden">
            {/* Decor */}
            <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-blue-50 to-purple-50 rounded-bl-full opacity-50 pointer-events-none" />
@@ -267,17 +253,6 @@ const LoginScreen = () => {
                  </button>
               </div>
            </div>
-        </div>
-      </div>
-
-      {/* Moving Footer */}
-      <div className="fixed bottom-0 left-0 w-full bg-slate-900 text-slate-400 py-3 overflow-hidden z-0">
-        <div className="animate-marquee whitespace-nowrap flex gap-10">
-          {[1, 2, 3, 4].map((i) => (
-             <span key={i} className="text-sm font-medium tracking-wide mx-8">
-               Developed and managed by Whiz Tech KE — Call 0740 841 168 to get yours.
-             </span>
-          ))}
         </div>
       </div>
     </div>

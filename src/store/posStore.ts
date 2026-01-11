@@ -1697,11 +1697,20 @@ export const usePosStore = create<PosState>()(
           createdAt: new Date().toISOString(),
         };
 
-        // 1. Save the business setup and the first admin user.
+        // 1. Save the business setup.
         await saveDataToFile('business-setup.json', fullBusinessData);
-        await saveDataToFile('users.json', [fullAdminUser]);
 
-        // 2. Update the store's state to reflect that setup is complete.
+        // 2. Add the first admin user via the secure IPC channel (users.json is blocked for direct save).
+        if (window.electron && window.electron.userManagement) {
+             try {
+                // Ensure the user ID is compatible with backend if needed, but 'addUser' handles it.
+                await window.electron.userManagement.addUser(fullAdminUser);
+             } catch (e) {
+                 console.error("Failed to add admin user during setup:", e);
+             }
+        }
+
+        // 3. Update the store's state to reflect that setup is complete.
         set({
           businessSetup: fullBusinessData,
           users: [fullAdminUser],

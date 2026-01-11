@@ -41,7 +41,14 @@ export default function ProductGrid() {
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch = (product.name || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
+    const productCategory = (product.category || 'Other').toLowerCase();
+    const targetCategory = selectedCategory.toLowerCase();
+
+    // Exact match or fallback for case sensitivity issues
+    const matchesCategory = selectedCategory === 'All' ||
+                            productCategory === targetCategory ||
+                            product.category === selectedCategory;
+
     return matchesSearch && matchesCategory;
   }).sort((a, b) => {
      // Sort by popularity (descending), then name (ascending)

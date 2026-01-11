@@ -23,7 +23,7 @@ const Header = () => {
       <div className="flex items-center space-x-4">
         <div className="flex items-center space-x-2">
           <User className="w-6 h-6 text-gray-600" />
-          <span className="text-gray-800 font-medium">{currentCashier?.name || 'Cashier'}</span>
+          <span className="text-gray-800 font-medium">{currentCashier?.name}</span>
         </div>
         <button
           onClick={handleLogout}

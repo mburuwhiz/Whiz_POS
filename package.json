@@ -109,7 +109,10 @@
       "include": "assets/installer.nsh",
       "runAfterFinish": true,
       "installerIcon": "assets/logo.ico",
-      "uninstallerIcon": "assets/logo.ico"
+      "uninstallerIcon": "assets/logo.ico",
+      "license": "resources/license.txt",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
     }
   }
 }

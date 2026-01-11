@@ -1225,7 +1225,8 @@ export const usePosStore = create<PosState>()(
           };
 
           const newProducts = mergeData(state.products, serverData.products || []);
-          const newUsers = mergeData(state.users, serverData.users || []);
+          // Users NOT merged from server to prevent overwriting local deletions/renames
+          // const newUsers = mergeData(state.users, serverData.users || []);
           const newExpenses = mergeData(state.expenses, serverData.expenses || []);
           const newSalaries = mergeData(state.salaries, serverData.salaries || []);
           const newCreditCustomers = mergeData(state.creditCustomers, serverData.creditCustomers || []);
@@ -1243,7 +1244,7 @@ export const usePosStore = create<PosState>()(
 
           set({
             products: newProducts as Product[],
-            users: newUsers as User[],
+            // users: newUsers as User[], // Keep local users
             expenses: newExpenses as Expense[],
             salaries: newSalaries as Salary[],
             creditCustomers: newCreditCustomers as CreditCustomer[],
@@ -1253,7 +1254,7 @@ export const usePosStore = create<PosState>()(
           });
 
           saveDataToFile('products.json', newProducts);
-          saveDataToFile('users.json', newUsers);
+          // saveDataToFile('users.json', newUsers); // Don't touch users.json
           saveDataToFile('expenses.json', newExpenses);
           saveDataToFile('salaries.json', newSalaries);
           saveDataToFile('credit-customers.json', newCreditCustomers);

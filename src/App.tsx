@@ -112,11 +112,15 @@ function App() {
     return <BusinessRegistrationPage />;
   }
 
+  // Double Check: Even if isLoggedIn is true, if we don't have a currentCashier, we should show Login.
+  // This handles the "Ghost" session where sessionToken exists but cashier object is null/lost.
+  const showLogin = !businessSetup.isLoggedIn || !currentCashier;
+
   return (
     <ErrorBoundary>
       <Router>
         <div className="min-h-screen bg-gray-100">
-          {!businessSetup.isLoggedIn ? <LoginScreen /> : <MainNavigator />}
+          {showLogin ? <LoginScreen /> : <MainNavigator />}
 
           {/* Global Modals */}
           <CheckoutModal />

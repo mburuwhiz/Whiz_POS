@@ -49,6 +49,64 @@ const userDataPath = path.join(app.getPath('userData'), 'data');
 const productImagesPath = path.join(app.getPath('userData'), 'assets', 'product_images');
 
 /**
+ * Optimizes data on startup.
+ * - Dedupes users
+ * - Cleans expired sessions
+ * - Ensures data integrity
+ */
+async function optimizeData() {
+    try {
+        console.log('[Data Optimization] Starting...');
+
+        // 1. Optimize Users (Dedupe by ID or Name)
+        const users = await readJsonFile('users.json');
+        if (users.length > 0) {
+            const uniqueUsers = [];
+            const seenIds = new Set();
+            const seenNames = new Set();
+
+            users.forEach(u => {
+                if (!u.id || !u.name) return; // Skip invalid
+                // Prefer keeping the one with most recent updatedAt?
+                // Simple dedupe: First wins, but we should probably sort by updatedAt desc first if we want latest.
+                // Assuming append-only history might exist, but we read the whole file which is the current state.
+
+                if (!seenIds.has(u.id) && !seenNames.has(u.name.toLowerCase())) {
+                    seenIds.add(u.id);
+                    seenNames.add(u.name.toLowerCase());
+                    uniqueUsers.push(u);
+                }
+            });
+
+            if (uniqueUsers.length !== users.length) {
+                console.log(`[Data Optimization] Removed ${users.length - uniqueUsers.length} duplicate/invalid users.`);
+                await writeJsonFile('users.json', uniqueUsers);
+            }
+        }
+
+        // 2. Clean Sessions
+        const sessions = await readJsonFile('sessions.json');
+        if (Array.isArray(sessions) && sessions.length > 0) {
+            const now = new Date();
+            const validSessions = sessions.filter(s => {
+                if (!s.createdAt) return false;
+                const diffDays = (now - new Date(s.createdAt)) / (1000 * 60 * 60 * 24);
+                return diffDays < 7;
+            });
+
+            if (validSessions.length !== sessions.length) {
+                console.log(`[Data Optimization] Pruned ${sessions.length - validSessions.length} expired sessions.`);
+                await writeJsonFile('sessions.json', validSessions);
+            }
+        }
+
+        console.log('[Data Optimization] Complete.');
+    } catch (e) {
+        console.error('[Data Optimization] Failed:', e);
+    }
+}
+
+/**
  * Ensures that the necessary application directories exist.
  * Creates 'data' and 'assets/product_images' directories in the user data path.
  */
@@ -136,6 +194,7 @@ function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    show: false, // Don't show until maximized
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       // contextIsolation is true by default and is a security best practice.
@@ -144,6 +203,8 @@ function createWindow() {
 
   // Remove the default menu bar
   mainWindow.setMenu(null);
+  mainWindow.maximize();
+  mainWindow.show();
 
   // In development, load from the Vite dev server
   if (!app.isPackaged) {
@@ -789,6 +850,7 @@ function startApiServer() {
 app.whenReady().then(async () => {
   await ensureAppDirs();
   await ensureDataFilesExist();
+  await optimizeData(); // Data Optimization on Startup
   await initApiKey(); // Init and persist API Key
   startApiServer();
 
@@ -1382,12 +1444,13 @@ app.whenReady().then(async () => {
              return { ...rest, id: rest.productId ? Number(rest.productId) : rest.id };
         });
 
-        // 2. Fetch Users
-        const usersRaw = await db.collection('users').find({}).toArray();
-        const users = usersRaw.map(u => {
-            const { _id, ...rest } = u;
-            return { ...rest, id: rest.userId || rest.id };
-        });
+        // 2. Fetch Users - BLOCKED per user request ("pos not receive users from the back office")
+        // const usersRaw = await db.collection('users').find({}).toArray();
+        // const users = usersRaw.map(u => {
+        //     const { _id, ...rest } = u;
+        //     return { ...rest, id: rest.userId || rest.id };
+        // });
+        const users = []; // Return empty so we don't overwrite local users
 
         // 3. Fetch Expenses
         const expensesRaw = await db.collection('expenses').find({}).sort({ date: -1 }).limit(100).toArray();

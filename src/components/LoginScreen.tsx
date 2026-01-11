@@ -161,7 +161,7 @@ const LoginScreen = () => {
           </div>
 
           <div className="p-6 border-t border-slate-200 bg-slate-50/50">
-             <p className="text-xs text-center text-slate-400">Whiz POS v6.0.1</p>
+             <p className="text-xs text-center text-slate-400">Whiz POS v6.0.2</p>
           </div>
         </div>
 

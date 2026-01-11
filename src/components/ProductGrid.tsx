@@ -52,8 +52,11 @@ export default function ProductGrid() {
     return matchesSearch && matchesCategory;
   }).sort((a, b) => {
      // Sort by popularity (descending), then name (ascending)
-     const countA = productSalesCount[a.id] || 0;
-     const countB = productSalesCount[b.id] || 0;
+     const idA = String(a.id);
+     const idB = String(b.id);
+     const countA = productSalesCount[idA] || productSalesCount[Number(idA)] || 0;
+     const countB = productSalesCount[idB] || productSalesCount[Number(idB)] || 0;
+
      if (countB !== countA) {
        return countB - countA;
      }

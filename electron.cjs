@@ -1266,13 +1266,14 @@ app.whenReady().then(async () => {
           const db = client.db(); // Uses db name from URI
 
           // Read local data
-          const [products, users, expenses, salaries, transactions, creditCustomers] = await Promise.all([
+          const [products, users, expenses, salaries, transactions, creditCustomers, suppliers] = await Promise.all([
               readJsonFile('products.json'),
               readJsonFile('users.json'),
               readJsonFile('expenses.json'),
               readJsonFile('salaries.json'),
               readJsonFile('transactions.json'),
-              readJsonFile('credit-customers.json')
+              readJsonFile('credit-customers.json'),
+              readJsonFile('suppliers.json')
           ]);
 
           // Sync Products (Collection: products)
@@ -1418,6 +1419,22 @@ app.whenReady().then(async () => {
               await db.collection('customers').bulkWrite(ops);
           }
 
+          // Sync Suppliers (Collection: suppliers)
+          if (suppliers.length > 0) {
+              const ops = suppliers.map(s => {
+                  const supplier = { ...s, supplierId: s.id };
+                  delete supplier._id; // Strip _id
+                  return {
+                      updateOne: {
+                          filter: { supplierId: s.id },
+                          update: { $set: supplier },
+                          upsert: true
+                      }
+                  };
+              });
+              await db.collection('suppliers').bulkWrite(ops);
+          }
+
           return { success: true };
       } catch (e) {
           console.error("Direct DB Sync Failed", e);
@@ -1478,7 +1495,14 @@ app.whenReady().then(async () => {
             return { ...rest, id: rest.customerId || rest.id };
         });
 
-        // 6. Fetch Business Setup
+        // 6. Fetch Suppliers
+        const suppliersRaw = await db.collection('suppliers').find({}).toArray();
+        const suppliers = suppliersRaw.map(s => {
+            const { _id, ...rest } = s;
+            return { ...rest, id: rest.supplierId || rest.id };
+        });
+
+        // 7. Fetch Business Setup
         let businessSetup = null;
         try {
             const settingsRaw = await db.collection('businesssettings').findOne({});
@@ -1497,6 +1521,7 @@ app.whenReady().then(async () => {
                 expenses,
                 salaries,
                 creditCustomers,
+                suppliers,
                 businessSetup
             }
         };

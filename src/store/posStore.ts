@@ -362,6 +362,7 @@ interface PosState {
   isOnline: boolean;
   syncQueue: any[];
   lastSyncTime: string | null;
+  isSidebarCollapsed: boolean;
   
   // Enhanced features state
   inventoryProducts: Product[];
@@ -484,6 +485,7 @@ export const usePosStore = create<PosState>()(
       lastSyncTime: null,
       mobileReceipts: [],
       sessionToken: null,
+      isSidebarCollapsed: false,
 
       /**
        * Logs in a user and updates the session state.
@@ -1144,13 +1146,14 @@ export const usePosStore = create<PosState>()(
       },
 
       syncFromServer: async () => {
-        const state = get();
-        const apiUrl = (state.businessSetup?.apiUrl || state.businessSetup?.backOfficeUrl)?.replace(/\/$/, '');
-        const apiKey = state.businessSetup?.apiKey || state.businessSetup?.backOfficeApiKey;
-        const mongoDbUri = state.businessSetup?.mongoDbUri;
+        // Fetch config from initial state, but DO NOT use data state here to avoid stale closures
+        const configState = get();
+        const apiUrl = (configState.businessSetup?.apiUrl || configState.businessSetup?.backOfficeUrl)?.replace(/\/$/, '');
+        const apiKey = configState.businessSetup?.apiKey || configState.businessSetup?.backOfficeApiKey;
+        const mongoDbUri = configState.businessSetup?.mongoDbUri;
 
         // Add debug logging for diagnosis
-        if (!state.isOnline) { console.debug("Sync skipped: Offline"); return; }
+        if (!configState.isOnline) { console.debug("Sync skipped: Offline"); return; }
 
         let serverData: any = null;
 
@@ -1158,6 +1161,7 @@ export const usePosStore = create<PosState>()(
         if (mongoDbUri && window.electron && window.electron.directDbPull) {
             console.log("Initiating Direct MongoDB Pull...");
             try {
+                // This await can take time. During this time, the local state might change (e.g. user adds expense).
                 const result = await window.electron.directDbPull(mongoDbUri);
                 if (result.success && result.data) {
                     console.log("Direct MongoDB Pull Successful");
@@ -1198,6 +1202,10 @@ export const usePosStore = create<PosState>()(
         if (!serverData) return;
 
         try {
+          // CRITICAL FIX: Get the LATEST state right before merging.
+          // This prevents overwriting new local items created while 'directDbPull' was running.
+          const currentState = get();
+
           const mergeData = (local: any[], server: any[]) => {
             const validServerItems = server.filter(item => item.id != null);
             const serverDataById = new Map(validServerItems.map(item => [item.id, item]));
@@ -1224,21 +1232,21 @@ export const usePosStore = create<PosState>()(
             return merged;
           };
 
-          const newProducts = mergeData(state.products, serverData.products || []);
+          const newProducts = mergeData(currentState.products, serverData.products || []);
           // Users NOT merged from server to prevent overwriting local deletions/renames
-          // const newUsers = mergeData(state.users, serverData.users || []);
-          const newExpenses = mergeData(state.expenses, serverData.expenses || []);
-          const newSalaries = mergeData(state.salaries, serverData.salaries || []);
-          const newCreditCustomers = mergeData(state.creditCustomers, serverData.creditCustomers || []);
-          const newLoyaltyCustomers = mergeData(state.loyaltyCustomers, serverData.loyaltyCustomers || []);
-          const newSuppliers = mergeData(state.suppliers, serverData.suppliers || []);
+          // const newUsers = mergeData(currentState.users, serverData.users || []);
+          const newExpenses = mergeData(currentState.expenses, serverData.expenses || []);
+          const newSalaries = mergeData(currentState.salaries, serverData.salaries || []);
+          const newCreditCustomers = mergeData(currentState.creditCustomers, serverData.creditCustomers || []);
+          const newLoyaltyCustomers = mergeData(currentState.loyaltyCustomers, serverData.loyaltyCustomers || []);
+          const newSuppliers = mergeData(currentState.suppliers, serverData.suppliers || []);
 
-          let newBusinessSetup = state.businessSetup;
+          let newBusinessSetup = currentState.businessSetup;
           if (serverData.businessSetup) {
             const serverTimestamp = new Date(serverData.businessSetup.updatedAt || serverData.businessSetup.createdAt || 0);
-            const localTimestamp = state.businessSetup ? new Date(state.businessSetup.updatedAt || state.businessSetup.createdAt || 0) : new Date(0);
+            const localTimestamp = currentState.businessSetup ? new Date(currentState.businessSetup.updatedAt || currentState.businessSetup.createdAt || 0) : new Date(0);
             if (serverTimestamp > localTimestamp) {
-              newBusinessSetup = { ...state.businessSetup, ...serverData.businessSetup };
+              newBusinessSetup = { ...currentState.businessSetup, ...serverData.businessSetup };
             }
           }
 
@@ -1841,11 +1849,14 @@ export const usePosStore = create<PosState>()(
             console.error('Full sync error:', error);
         }
       },
+
+      toggleSidebar: () => set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
     }),
     {
       name: 'pos-storage',
       partialize: (state) => ({
         businessSetup: state.businessSetup,
+        isSidebarCollapsed: state.isSidebarCollapsed,
         currentCashier: state.currentCashier,
         transactions: state.transactions ? state.transactions.slice(-100) : [],
         dailySummaries: state.dailySummaries,

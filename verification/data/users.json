@@ -1,8 +1,12 @@
 [
   {
-    "id": "u1",
-    "name": "Test",
+    "id": "USER1768137909374",
+    "userId": "USER1768137909374",
+    "name": "WHIZ",
+    "pin": "1234",
+    "role": "manager",
     "isActive": true,
-    "updatedAt": "2026-01-11T12:11:51.793Z"
+    "createdAt": "2026-01-11T13:25:09.374Z",
+    "updatedAt": "2026-01-11T13:25:09.377Z"
   }
 ]

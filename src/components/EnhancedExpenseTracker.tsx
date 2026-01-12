@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { usePosStore } from '../store/posStore';
 import { Expense, Supplier } from '../store/posStore';
-import { Plus, Edit2, Trash2, FileText, Phone, MapPin, Search } from 'lucide-react';
+import { Plus, Edit2, Trash2, FileText, Phone, MapPin, Search, X } from 'lucide-react';
 
 const EXPENSE_CATEGORIES = [
   'Supplies', 'Equipment', 'Rent', 'Utilities', 'Marketing', 
@@ -235,8 +235,16 @@ export default function EnhancedExpenseTracker() {
                                 placeholder="Search suppliers..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
                             />
+                            {searchQuery && (
+                                <button
+                                    onClick={() => setSearchQuery('')}
+                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            )}
                         </div>
                     </div>
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { usePosStore } from '../store/posStore';
-import { Plus } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import cartPlaceholder from '../assets/cart.png';
 import { useBarcodeScanner } from '../hooks/useBarcodeScanner';
 
@@ -68,14 +68,24 @@ export default function ProductGrid() {
       <div className="flex flex-col space-y-4 mb-4">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-semibold text-gray-800">Products</h2>
-          <input
-            type="text"
-            list="product-suggestions"
-            placeholder="Search for products..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="border border-gray-300 rounded-lg px-4 py-2"
-          />
+          <div className="relative">
+            <input
+              type="text"
+              list="product-suggestions"
+              placeholder="Search for products..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="border border-gray-300 rounded-lg px-4 py-2 pr-10"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
           <datalist id="product-suggestions">
             {productNames.map((name, index) => <option key={`${name}-${index}`} value={name} />)}
           </datalist>

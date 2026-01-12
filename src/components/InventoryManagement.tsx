@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { usePosStore } from '../store/posStore';
 import { Product } from '../types';
-import { Package, AlertTriangle, TrendingUp, TrendingDown, Plus, Edit2, Trash2, Search, Filter, ClipboardCheck } from 'lucide-react';
+import { Package, AlertTriangle, TrendingUp, TrendingDown, Plus, Edit2, Trash2, Search, Filter, ClipboardCheck, X } from 'lucide-react';
 import cartPlaceholder from '../assets/cart.png';
 
 export default function InventoryManagement() {
@@ -258,8 +258,16 @@ export default function InventoryManagement() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search products..."
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
               <datalist id="inventory-suggestions">
                   {productNames.map(name => <option key={name} value={name} />)}
               </datalist>

@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { usePosStore } from '../store/posStore';
 import { CreditCustomer, CreditPayment, Transaction } from '../store/posStore';
-import { Users, Phone, DollarSign, CheckCircle, Clock, Search, Plus, Edit, Trash2, History, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { Users, Phone, DollarSign, CheckCircle, Clock, Search, Plus, Edit, Trash2, History, ArrowDownLeft, ArrowUpRight, X } from 'lucide-react';
 
 export default function CreditCustomersPage() {
   const { 
@@ -253,8 +253,16 @@ export default function CreditCustomersPage() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search customers by name or phone..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
             <datalist id="customer-suggestions">
                 {customerNames.map(name => <option key={name} value={name} />)}
             </datalist>

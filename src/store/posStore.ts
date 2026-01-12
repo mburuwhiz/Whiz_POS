@@ -135,6 +135,17 @@ const generateRandomId = () => {
     return Math.floor(10000000 + Math.random() * 90000000);
 };
 
+// Generate a stable numeric ID from a string (e.g. product name)
+const generateStableId = (str: string) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32bit integer
+    }
+    return Math.abs(hash);
+};
+
 export interface Product {
   id: number;
   name: string;
@@ -1211,24 +1222,45 @@ export const usePosStore = create<PosState>()(
           const currentState = get();
 
           const sanitizeAndMerge = (local: any[], server: any[], isProducts = false) => {
+             // Index local items by Name for smart matching (specifically for products)
+             const localMapByName = isProducts
+                 ? new Map(local.map(i => [i.name?.trim().toLowerCase(), i]))
+                 : new Map();
+
              // 1. Sanitize Server Data
              const sanitizedServer = server.map(item => {
                  if (!item.id || String(item.id) === 'null' || String(item.id) === 'NaN') {
-                     item.id = isProducts ? generateRandomId() : `FIX${Date.now()}${Math.floor(Math.random() * 1000)}`;
+                     // Try to match with local item by name to prevent duplication
+                     if (isProducts && item.name) {
+                         const match = localMapByName.get(item.name.trim().toLowerCase());
+                         if (match) {
+                             // Found local match! Use local ID.
+                             item.id = match.id;
+                             return item;
+                         }
+                         // No match? Generate a STABLE ID based on name hash.
+                         // This ensures "Coffee" always gets ID X, avoiding duplicates on next sync.
+                         item.id = generateStableId(item.name);
+                     } else {
+                         item.id = isProducts ? generateRandomId() : `FIX${Date.now()}${Math.floor(Math.random() * 1000)}`;
+                     }
                  }
                  return item;
              });
 
-             // 2. Sanitize Local Data (in case invalid data exists)
+             // 2. Sanitize Local Data
              const sanitizedLocal = local.map(item => {
                  if (!item.id || String(item.id) === 'null' || String(item.id) === 'NaN') {
-                     item.id = isProducts ? generateRandomId() : `FIX${Date.now()}${Math.floor(Math.random() * 1000)}`;
+                      if (isProducts && item.name) {
+                          item.id = generateStableId(item.name);
+                      } else {
+                          item.id = isProducts ? generateRandomId() : `FIX${Date.now()}${Math.floor(Math.random() * 1000)}`;
+                      }
                  }
                  return item;
              });
 
              const serverDataById = new Map(sanitizedServer.map(item => [String(item.id), item]));
-             const localDataById = new Map(sanitizedLocal.map(item => [String(item.id), item]));
 
              // Merge strategy: Overwrite local if server is newer
              const mergedMap = new Map<string, any>();
@@ -1700,27 +1732,64 @@ export const usePosStore = create<PosState>()(
               // Sanitize Data on Initial Load
               const key = dataMap[fileName];
               if (Array.isArray(data)) {
-                  let hasInvalidIds = false;
-                  const sanitizedData = data.map((item: any) => {
+                  let hasChanges = false;
+
+                  // 1. Sanitize IDs
+                  let sanitizedData = data.map((item: any) => {
                       if (!item.id || String(item.id) === 'null' || String(item.id) === 'NaN') {
-                          hasInvalidIds = true;
-                          // Use numeric ID for products, string for others if typically string
-                          const newId = key === 'products' ? generateRandomId() : `FIX${Date.now()}${Math.floor(Math.random() * 1000)}`;
+                          hasChanges = true;
+                          // Use Stable ID for products to fix previous random ID generation issues
+                          let newId;
+                          if (key === 'products' && item.name) {
+                              newId = generateStableId(item.name);
+                          } else {
+                              newId = key === 'products' ? generateRandomId() : `FIX${Date.now()}${Math.floor(Math.random() * 1000)}`;
+                          }
                           return { ...item, id: newId };
                       }
                       return item;
                   });
 
-                  // If data was corrected, save it back immediately to persist the fix
-                  if (hasInvalidIds) {
-                      console.log(`Repaired invalid IDs in ${fileName}`);
-                      await saveDataToFile(fileName, sanitizedData);
+                  // 2. Deduplicate Products by Name (Emergency Cleanup for "1000 items")
+                  if (key === 'products') {
+                      const uniqueProductsByName = new Map();
+                      const initialLength = sanitizedData.length;
+
+                      sanitizedData.forEach((p: any) => {
+                          const nameKey = p.name ? p.name.trim().toLowerCase() : String(p.id);
+                          if (!uniqueProductsByName.has(nameKey)) {
+                              uniqueProductsByName.set(nameKey, p);
+                          } else {
+                              // If duplicate exists, keep the one with the 'better' ID (e.g. numeric) if possible?
+                              // Or simply keep the last updated one?
+                              // For now, keeping the first one seen is stable.
+                              // Actually, if we have "Coffee" (ID 123) and "Coffee" (ID 456 - generated),
+                              // we prefer the one that matches our stable hash or looks like a real ID?
+                              // Simple approach: First wins.
+                          }
+                      });
+
+                      sanitizedData = Array.from(uniqueProductsByName.values());
+                      if (sanitizedData.length !== initialLength) {
+                          hasChanges = true;
+                          console.log(`Deduplicated products: Reduced from ${initialLength} to ${sanitizedData.length}`);
+                      }
                   }
 
-                  // Deduplicate using Map to ensure unique IDs
+                  // 3. Deduplicate by ID
                   const uniqueMap = new Map();
                   sanitizedData.forEach((item: any) => uniqueMap.set(String(item.id), item));
-                  set({ [key]: Array.from(uniqueMap.values()) });
+                  const finalData = Array.from(uniqueMap.values());
+
+                  if (finalData.length !== data.length) hasChanges = true;
+
+                  // If data was corrected, save it back immediately to persist the fix
+                  if (hasChanges) {
+                      console.log(`Repaired/Deduplicated data in ${fileName}`);
+                      await saveDataToFile(fileName, finalData);
+                  }
+
+                  set({ [key]: finalData });
 
               } else {
                   set({ [key]: data });

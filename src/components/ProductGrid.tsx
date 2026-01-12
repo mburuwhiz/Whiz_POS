@@ -35,11 +35,23 @@ export default function ProductGrid() {
     return counts;
   }, [transactions]);
 
-  // Extract unique categories
-  const categories = ['All', ...new Set(products.map(p => p.category).filter(Boolean))];
-  const productNames = [...new Set(products.map(p => p.name))];
+  // Deduplicate products to prevent React key warnings and display issues
+  // We prioritize the most recent or complete data if possible, but here we just take the first valid occurrence
+  const uniqueProducts = React.useMemo(() => {
+    const seenIds = new Set();
+    return products.filter(p => {
+       if (!p || !p.id || String(p.id) === 'null' || String(p.id) === 'NaN') return false;
+       if (seenIds.has(p.id)) return false;
+       seenIds.add(p.id);
+       return true;
+    });
+  }, [products]);
 
-  const filteredProducts = products.filter((product) => {
+  // Extract unique categories
+  const categories = ['All', ...new Set(uniqueProducts.map(p => p.category).filter(Boolean))];
+  const productNames = [...new Set(uniqueProducts.map(p => p.name))];
+
+  const filteredProducts = uniqueProducts.filter((product) => {
     const matchesSearch = (product.name || '').toLowerCase().includes(searchTerm.toLowerCase());
     const productCategory = (product.category || 'Other').toLowerCase();
     const targetCategory = selectedCategory.toLowerCase();

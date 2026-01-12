@@ -131,6 +131,10 @@ const readDataFromFile = async (fileName: string) => {
   }
 };
 
+const generateRandomId = () => {
+    return Math.floor(10000000 + Math.random() * 90000000);
+};
+
 export interface Product {
   id: number;
   name: string;
@@ -1206,40 +1210,62 @@ export const usePosStore = create<PosState>()(
           // This prevents overwriting new local items created while 'directDbPull' was running.
           const currentState = get();
 
-          const mergeData = (local: any[], server: any[]) => {
-            const validServerItems = server.filter(item => item.id != null);
-            const serverDataById = new Map(validServerItems.map(item => [item.id, item]));
-            const localDataById = new Map(local.map(item => [item.id, item]));
+          const sanitizeAndMerge = (local: any[], server: any[], isProducts = false) => {
+             // 1. Sanitize Server Data
+             const sanitizedServer = server.map(item => {
+                 if (!item.id || String(item.id) === 'null' || String(item.id) === 'NaN') {
+                     item.id = isProducts ? generateRandomId() : `FIX${Date.now()}${Math.floor(Math.random() * 1000)}`;
+                 }
+                 return item;
+             });
 
-            const merged = local.map(localItem => {
-              const serverItem = serverDataById.get(localItem.id);
-              if (serverItem) {
-                const serverTimestamp = new Date(serverItem.updatedAt || serverItem.createdAt || 0);
-                const localTimestamp = new Date(localItem.updatedAt || localItem.createdAt || 0);
-                if (serverTimestamp.getTime() > localTimestamp.getTime()) {
-                     return serverItem;
-                }
-                return localItem;
-              }
-              return localItem;
-            });
+             // 2. Sanitize Local Data (in case invalid data exists)
+             const sanitizedLocal = local.map(item => {
+                 if (!item.id || String(item.id) === 'null' || String(item.id) === 'NaN') {
+                     item.id = isProducts ? generateRandomId() : `FIX${Date.now()}${Math.floor(Math.random() * 1000)}`;
+                 }
+                 return item;
+             });
 
-            validServerItems.forEach(serverItem => {
-              if (!localDataById.has(serverItem.id)) {
-                merged.push(serverItem);
-              }
-            });
-            return merged;
+             const serverDataById = new Map(sanitizedServer.map(item => [String(item.id), item]));
+             const localDataById = new Map(sanitizedLocal.map(item => [String(item.id), item]));
+
+             // Merge strategy: Overwrite local if server is newer
+             const mergedMap = new Map<string, any>();
+
+             sanitizedLocal.forEach(localItem => {
+                 const serverItem = serverDataById.get(String(localItem.id));
+                 if (serverItem) {
+                     const serverTimestamp = new Date(serverItem.updatedAt || serverItem.createdAt || 0);
+                     const localTimestamp = new Date(localItem.updatedAt || localItem.createdAt || 0);
+                     if (serverTimestamp.getTime() > localTimestamp.getTime()) {
+                         mergedMap.set(String(localItem.id), serverItem);
+                     } else {
+                         mergedMap.set(String(localItem.id), localItem);
+                     }
+                 } else {
+                     mergedMap.set(String(localItem.id), localItem);
+                 }
+             });
+
+             // Add new items from server
+             sanitizedServer.forEach(serverItem => {
+                 if (!mergedMap.has(String(serverItem.id))) {
+                     mergedMap.set(String(serverItem.id), serverItem);
+                 }
+             });
+
+             return Array.from(mergedMap.values());
           };
 
-          const newProducts = mergeData(currentState.products, serverData.products || []);
+          const newProducts = sanitizeAndMerge(currentState.products, serverData.products || [], true);
           // Users NOT merged from server to prevent overwriting local deletions/renames
-          // const newUsers = mergeData(currentState.users, serverData.users || []);
-          const newExpenses = mergeData(currentState.expenses, serverData.expenses || []);
-          const newSalaries = mergeData(currentState.salaries, serverData.salaries || []);
-          const newCreditCustomers = mergeData(currentState.creditCustomers, serverData.creditCustomers || []);
-          const newLoyaltyCustomers = mergeData(currentState.loyaltyCustomers, serverData.loyaltyCustomers || []);
-          const newSuppliers = mergeData(currentState.suppliers, serverData.suppliers || []);
+          // const newUsers = sanitizeAndMerge(currentState.users, serverData.users || []);
+          const newExpenses = sanitizeAndMerge(currentState.expenses, serverData.expenses || []);
+          const newSalaries = sanitizeAndMerge(currentState.salaries, serverData.salaries || []);
+          const newCreditCustomers = sanitizeAndMerge(currentState.creditCustomers, serverData.creditCustomers || []);
+          const newLoyaltyCustomers = sanitizeAndMerge(currentState.loyaltyCustomers, serverData.loyaltyCustomers || []);
+          const newSuppliers = sanitizeAndMerge(currentState.suppliers, serverData.suppliers || []);
 
           let newBusinessSetup = currentState.businessSetup;
           if (serverData.businessSetup) {
@@ -1671,7 +1697,34 @@ export const usePosStore = create<PosState>()(
           for (const fileName of fileNames) {
             const { data } = await readDataFromFile(fileName);
             if (data) {
-              set({ [dataMap[fileName]]: data });
+              // Sanitize Data on Initial Load
+              const key = dataMap[fileName];
+              if (Array.isArray(data)) {
+                  let hasInvalidIds = false;
+                  const sanitizedData = data.map((item: any) => {
+                      if (!item.id || String(item.id) === 'null' || String(item.id) === 'NaN') {
+                          hasInvalidIds = true;
+                          // Use numeric ID for products, string for others if typically string
+                          const newId = key === 'products' ? generateRandomId() : `FIX${Date.now()}${Math.floor(Math.random() * 1000)}`;
+                          return { ...item, id: newId };
+                      }
+                      return item;
+                  });
+
+                  // If data was corrected, save it back immediately to persist the fix
+                  if (hasInvalidIds) {
+                      console.log(`Repaired invalid IDs in ${fileName}`);
+                      await saveDataToFile(fileName, sanitizedData);
+                  }
+
+                  // Deduplicate using Map to ensure unique IDs
+                  const uniqueMap = new Map();
+                  sanitizedData.forEach((item: any) => uniqueMap.set(String(item.id), item));
+                  set({ [key]: Array.from(uniqueMap.values()) });
+
+              } else {
+                  set({ [key]: data });
+              }
             }
           }
 

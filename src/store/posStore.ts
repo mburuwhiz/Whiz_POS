@@ -131,6 +131,21 @@ const readDataFromFile = async (fileName: string) => {
   }
 };
 
+// Helper to deduplicate items by ID
+const deduplicateItems = <T extends { id: any }>(items: T[]): T[] => {
+  const seen = new Set();
+  return items.filter(item => {
+    if (item.id === null || item.id === undefined) return false;
+    // Normalize ID to string for comparison to handle number vs string mismatches
+    const id = String(item.id);
+    if (id === 'NaN' || id === 'null' || id === 'undefined') return false;
+
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+};
+
 export interface Product {
   id: number;
   name: string;
@@ -1207,12 +1222,21 @@ export const usePosStore = create<PosState>()(
           const currentState = get();
 
           const mergeData = (local: any[], server: any[]) => {
-            const validServerItems = server.filter(item => item.id != null);
-            const serverDataById = new Map(validServerItems.map(item => [item.id, item]));
-            const localDataById = new Map(local.map(item => [item.id, item]));
+            // 1. Deduplicate inputs first to be safe
+            const uniqueLocal = deduplicateItems(local);
+            const uniqueServer = deduplicateItems(server);
 
-            const merged = local.map(localItem => {
-              const serverItem = serverDataById.get(localItem.id);
+            const serverDataById = new Map(uniqueServer.map(item => [item.id, item]));
+            const localDataById = new Map(uniqueLocal.map(item => [item.id, item]));
+
+            // 2. Merge logic: Iterate over local items, update if server is newer
+            const merged = uniqueLocal.map(localItem => {
+              // Handle potential type mismatch for lookups
+              let serverItem = serverDataById.get(localItem.id);
+              if (!serverItem && typeof localItem.id === 'number') {
+                  serverItem = serverDataById.get(String(localItem.id));
+              }
+
               if (serverItem) {
                 const serverTimestamp = new Date(serverItem.updatedAt || serverItem.createdAt || 0);
                 const localTimestamp = new Date(localItem.updatedAt || localItem.createdAt || 0);
@@ -1224,12 +1248,19 @@ export const usePosStore = create<PosState>()(
               return localItem;
             });
 
-            validServerItems.forEach(serverItem => {
-              if (!localDataById.has(serverItem.id)) {
+            // 3. Add new items from server
+            uniqueServer.forEach(serverItem => {
+              // Check if local has it (handling type mismatch)
+              const hasIt = localDataById.has(serverItem.id) ||
+                            (typeof serverItem.id === 'string' && !isNaN(Number(serverItem.id)) && localDataById.has(Number(serverItem.id)));
+
+              if (!hasIt) {
                 merged.push(serverItem);
               }
             });
-            return merged;
+
+            // 4. Final deduplication to be absolutely sure
+            return deduplicateItems(merged);
           };
 
           const newProducts = mergeData(currentState.products, serverData.products || []);
@@ -1670,8 +1701,11 @@ export const usePosStore = create<PosState>()(
 
           for (const fileName of fileNames) {
             const { data } = await readDataFromFile(fileName);
-            if (data) {
-              set({ [dataMap[fileName]]: data });
+            if (data && Array.isArray(data)) {
+              // Deduplicate data on load to clean up any bad state from previous bugs
+              set({ [dataMap[fileName]]: deduplicateItems(data) });
+            } else if (data) {
+               set({ [dataMap[fileName]]: data });
             }
           }
 

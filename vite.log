@@ -7,3 +7,10 @@
 
   ➜  Local:   http://localhost:5174/
   ➜  Network: use --host to expose
+2:28:02 PM [vite] hmr update /src/App.tsx, /src/index.css, /src/pages/MainNavigator.tsx, /src/components/CheckoutModal.tsx, /src/components/LoginScreen.tsx, /src/components/OnScreenKeyboard.tsx, /src/components/ProductGrid.tsx, /src/components/OrderArea.tsx, /src/components/ReportsPage.tsx, /src/components/CreditCustomersPage.tsx, /src/components/DailyClosingScreen.tsx, /src/components/SettingsPage.tsx, /src/components/EnhancedExpenseTracker.tsx, /src/components/Dashboard.tsx, /src/components/InventoryManagement.tsx, /src/components/LoyaltyProgram.tsx, /src/components/BarcodeScanner.tsx, /src/components/OfflineSyncStatus.tsx, /src/components/AppLayout.tsx, /src/components/PreviousReceiptsPage.tsx, /src/pages/MobileReceiptsPage.tsx, /src/pages/SalariesPage.tsx, /src/pages/DeveloperPage.tsx, /src/pages/UsersPage.tsx, /src/components/CreditCustomerModal.tsx, /src/components/BusinessRegistration.tsx, /src/components/BackOfficeDashboard.tsx, /src/components/Navigation.tsx, /src/components/Header.tsx, /src/components/DeleteReceiptsModal.tsx
+2:28:21 PM [vite] hmr update /src/components/ProductGrid.tsx, /src/index.css
+2:28:58 PM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html
+2:29:31 PM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html
+2:29:32 PM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html
+2:29:32 PM [vite] page reload dist/__appImage-x64/LICENSES.chromium.html
+2:30:26 PM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html

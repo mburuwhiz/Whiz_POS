@@ -39,29 +39,44 @@ export default function ProductGrid() {
   const categories = ['All', ...new Set(products.map(p => p.category).filter(Boolean))];
   const productNames = [...new Set(products.map(p => p.name))];
 
-  const filteredProducts = products.filter((product) => {
-    const matchesSearch = (product.name || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const productCategory = (product.category || 'Other').toLowerCase();
-    const targetCategory = selectedCategory.toLowerCase();
+  const filteredProducts = React.useMemo(() => {
+    // 1. Filter
+    const filtered = products.filter((product) => {
+      const matchesSearch = (product.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+      const productCategory = (product.category || 'Other').toLowerCase();
+      const targetCategory = selectedCategory.toLowerCase();
 
-    // Exact match or fallback for case sensitivity issues
-    const matchesCategory = selectedCategory === 'All' ||
-                            productCategory === targetCategory ||
-                            product.category === selectedCategory;
+      const matchesCategory = selectedCategory === 'All' ||
+                              productCategory === targetCategory ||
+                              product.category === selectedCategory;
 
-    return matchesSearch && matchesCategory;
-  }).sort((a, b) => {
-     // Sort by popularity (descending), then name (ascending)
-     const idA = String(a.id);
-     const idB = String(b.id);
-     const countA = productSalesCount[idA] || productSalesCount[Number(idA)] || 0;
-     const countB = productSalesCount[idB] || productSalesCount[Number(idB)] || 0;
+      return matchesSearch && matchesCategory;
+    });
 
-     if (countB !== countA) {
-       return countB - countA;
-     }
-     return (a.name || '').localeCompare(b.name || '');
-  });
+    // 2. Deduplicate by ID to ensure unique keys
+    // Although the store handles this, we add a safety layer here for the view.
+    const seenIds = new Set();
+    const uniqueFiltered = filtered.filter(p => {
+        const id = String(p.id);
+        if (seenIds.has(id)) return false;
+        seenIds.add(id);
+        return true;
+    });
+
+    // 3. Sort
+    return uniqueFiltered.sort((a, b) => {
+       // Sort by popularity (descending), then name (ascending)
+       const idA = String(a.id);
+       const idB = String(b.id);
+       const countA = productSalesCount[idA] || productSalesCount[Number(idA)] || 0;
+       const countB = productSalesCount[idB] || productSalesCount[Number(idB)] || 0;
+
+       if (countB !== countA) {
+         return countB - countA;
+       }
+       return (a.name || '').localeCompare(b.name || '');
+    });
+  }, [products, searchTerm, selectedCategory, productSalesCount]);
 
   return (
     <div id="product-grid" className="bg-white rounded-lg shadow-lg p-6 flex flex-col h-full">

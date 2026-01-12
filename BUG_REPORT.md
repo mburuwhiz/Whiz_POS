@@ -1,53 +1,50 @@
-# Bug Report: Data Disappearance during Sync
+# Bug Report: Data Disappearance During Sync
 
-## Description
-The user reported that manually added data (Expenses, Suppliers, Credit Customers, Inventory) would disappear shortly after creation, except for Users which worked correctly. The application appeared to be erased by synced data.
+## Issue Description
+Users reported that manually added data (such as Suppliers, Expenses, Credit Customers, etc.) would disappear shortly after creation. This behavior was consistent across multiple modules but did not affect Users.
 
 ## Investigation
-Upon analyzing the `src/store/posStore.ts` and `electron.cjs` files, the following issues were identified:
+Upon investigating the synchronization logic in `src/store/posStore.ts` and the Electron main process `electron.cjs`, two critical issues were identified:
 
-1.  **Stale State Closure in `syncFromServer`**:
-    The `syncFromServer` function captured the application state (`const state = get()`) at the *beginning* of its execution. It then performed a long-running asynchronous operation (`await window.electron.directDbPull(mongoDbUri)`), which could take several seconds.
-    If the user added a new item (e.g., an Expense) during this wait time, the local state would update. However, `syncFromServer` would resume with the *stale* state snapshot it captured earlier. It would then merge the server data with this stale local data (missing the new item) and overwrite the global state, effectively erasing the new item.
+1.  **Race Condition in `syncFromServer`:**
+    The `syncFromServer` function in `posStore.ts` was capturing the application state (`get()`) *before* initiating the asynchronous data pull from the server (or local DB).
+    -   **Scenario:**
+        1.  Sync starts. `currentState` is captured.
+        2.  Application awaits the DB/Server response (which can take a few seconds).
+        3.  User adds a new item (e.g., a Supplier) during this wait. The state is updated locally.
+        4.  Sync completes. The merge logic uses the *stale* `currentState` (from step 1) which does not contain the new item.
+        5.  The merge result overwrites the store, effectively deleting the new item.
 
-2.  **Missing `suppliers` in Sync**:
-    The `direct-db-pull` and `direct-db-push` handlers in `electron.cjs` were missing the logic to include the `suppliers` collection. This meant suppliers were never synced to the database, and `syncFromServer` was merging local suppliers with an empty server list (which is generally fine, but exacerbated by the stale state bug).
+2.  **Missing Sync Handlers for Suppliers:**
+    The `electron.cjs` backend logic for `direct-db-pull` and `direct-db-push` included arrays for `products`, `users`, `expenses`, etc., but completely omitted `suppliers`. This meant supplier data was never persisted to or retrieved from the central database during a direct DB sync.
 
-## Fix Implemented
+## Fix Implementation
 
-### 1. Fix Stale State in `posStore.ts`
-Modified `syncFromServer` to fetch the **latest** state immediately before the merge operation.
+### 1. Fixed Race Condition in `posStore.ts`
+The `syncFromServer` function was updated to fetch the latest state (`const currentState = get();`) *immediately before* the merge operation, ensuring that any data added while the sync was in progress is preserved.
 
 ```typescript
-// Old Code
-syncFromServer: async () => {
-  const state = get(); // Captured early
-  // ... await DB Pull ...
-  const merged = mergeData(state.products, ...); // Used stale state
-  set({ products: merged });
-}
+// Old (Buggy)
+// const currentState = get(); // Captured too early
+// ... await fetch ...
+// mergeData(currentState...)
 
-// New Code
-syncFromServer: async () => {
-  const configState = get(); // Only use for config/URL
-  // ... await DB Pull ...
-
-  const currentState = get(); // CRITICAL: Get FRESH state before merging
-  const merged = mergeData(currentState.products, ...); // Use fresh state
-  set({ products: merged });
-}
+// New (Fixed)
+// ... await fetch ...
+const currentState = get(); // Capture latest state right before merge
+mergeData(currentState...)
 ```
 
-### 2. Include Suppliers in `electron.cjs`
-Updated `direct-db-pull` to fetch `suppliers` from MongoDB and `direct-db-push` to write `suppliers` to MongoDB.
+### 2. Added Missing Sync Handlers
+Updated `electron.cjs` to include `suppliers` in:
+-   `direct-db-push`: Ensuring local suppliers are pushed to the DB.
+-   `direct-db-pull`: Ensuring server suppliers are pulled to the app.
 
-### 3. Product Sorting
-Updated `ProductGrid.tsx` to ensure popularity sorting is robust against ID type mismatches (string vs number) by normalizing IDs before lookup.
-
-### 4. Navbar Toggle
-Added a "Menu" button to the Header and a `isSidebarCollapsed` state to `posStore` to allow hiding the sidebar for full-width usage.
+### 3. Data Deduplication
+To prevent "duplicate key" errors in React and general data messiness, a robust `deduplicateItems` helper was added to `posStore.ts`. This filters out items with duplicate IDs or invalid IDs (`null`, `NaN`) during data loading and synchronization.
 
 ## Verification
--   **Sync:** `syncFromServer` now uses fresh state, preventing data loss during the sync window.
--   **Suppliers:** Suppliers are now correctly pulled from and pushed to the database.
--   **Navbar:** Users can toggle the sidebar visibility.
+These fixes ensure that:
+-   Data added by the user persists correctly even if a sync operation is running in the background.
+-   Supplier data is now properly synchronized.
+-   The "React Key Warning" crashes are resolved.

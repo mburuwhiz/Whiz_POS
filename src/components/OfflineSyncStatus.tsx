@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { usePosStore } from '../store/posStore';
 import { Wifi, WifiOff, CheckCircle, AlertCircle, RefreshCw, Database, Activity, Clock, ArrowUpCircle, ArrowDownCircle, Server, Smartphone } from 'lucide-react';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface SyncQueueItem {
   id: string;
@@ -16,6 +17,9 @@ export default function OfflineSyncStatus() {
   const [isPushing, setIsPushing] = useState(false);
   const [isPulling, setIsPulling] = useState(false);
   const [isFullSyncing, setIsFullSyncing] = useState(false);
+
+  // Confirm State
+  const [showFullSyncConfirm, setShowFullSyncConfirm] = useState(false);
 
   // Derived stats from actual store queue
   const syncStats = {
@@ -59,13 +63,7 @@ export default function OfflineSyncStatus() {
     }
   };
 
-  const handleFullSync = async () => {
-     if (!isOnline) {
-        alert("You are offline. Connect to internet to sync.");
-        return;
-    }
-    if (!confirm("This will overwrite Back Office data with Desktop data. Continue?")) return;
-
+  const executeFullSync = async () => {
     setIsFullSyncing(true);
     try {
       await pushDataToServer();
@@ -76,6 +74,14 @@ export default function OfflineSyncStatus() {
     } finally {
       setIsFullSyncing(false);
     }
+  };
+
+  const handleFullSyncClick = () => {
+     if (!isOnline) {
+        alert("You are offline. Connect to internet to sync.");
+        return;
+    }
+    setShowFullSyncConfirm(true);
   };
 
   return (
@@ -172,7 +178,7 @@ export default function OfflineSyncStatus() {
 
                     <div className="pt-4 border-t border-gray-100">
                         <button
-                        onClick={handleFullSync}
+                        onClick={handleFullSyncClick}
                         disabled={isFullSyncing || !isOnline}
                         className="w-full bg-gray-800 hover:bg-gray-900 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
                         >
@@ -186,48 +192,21 @@ export default function OfflineSyncStatus() {
                 </div>
             </div>
 
-             {/* APK & Info */}
-             <div className="space-y-6">
-                 <div className="bg-white rounded-lg shadow-sm p-6">
-                    <h2 className="text-lg font-semibold text-gray-800 mb-4">Sync Frequency</h2>
-                     <div className="p-4 bg-blue-50 rounded-lg">
-                        <div className="flex items-start space-x-3">
-                            <Clock className="w-5 h-5 text-blue-600 mt-1" />
-                            <div>
-                                <p className="font-medium text-blue-900">Auto-Sync Interval: 10 Seconds</p>
-                                <p className="text-sm text-blue-700 mt-1">
-                                    When online, the system automatically pushes changes and checks for updates every 10 seconds to keep the Back Office and other devices in sync.
-                                </p>
-                            </div>
+             {/* Sync Info */}
+             <div className="bg-white rounded-lg shadow-sm p-6">
+                <h2 className="text-lg font-semibold text-gray-800 mb-4">Sync Frequency</h2>
+                 <div className="p-4 bg-blue-50 rounded-lg">
+                    <div className="flex items-start space-x-3">
+                        <Clock className="w-5 h-5 text-blue-600 mt-1" />
+                        <div>
+                            <p className="font-medium text-blue-900">Auto-Sync Interval: 10 Seconds</p>
+                            <p className="text-sm text-blue-700 mt-1">
+                                When online, the system automatically pushes changes and checks for updates every 10 seconds to keep the Back Office and other devices in sync.
+                            </p>
                         </div>
                     </div>
-                 </div>
-
-                 <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-semibold text-gray-800">Mobile App (APK) Sync</h2>
-                        <Smartphone className="w-6 h-6 text-gray-400" />
-                    </div>
-                    <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 dashed">
-                        <p className="text-sm text-gray-600 mb-2 font-medium">
-                            <span className="inline-block w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                            APK Sync Placeholder
-                        </p>
-                        <p className="text-xs text-gray-500">
-                            The Mobile Application (APK) uses the same API logic.
-                            It connects to the Back Office using the API Key found in Settings &gt; Connected Devices.
-                        </p>
-                        <div className="mt-3 pt-3 border-t border-gray-200">
-                            <code className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600 block">
-                                // Mobile Sync Logic (Placeholder) <br/>
-                                // Uses Capacitor Background Fetch <br/>
-                                // Endpoint: /api/transaction <br/>
-                                // Auth: X-API-KEY
-                            </code>
-                        </div>
-                    </div>
-                 </div>
-            </div>
+                </div>
+             </div>
         </div>
 
         {/* Queue Details */}
@@ -262,6 +241,16 @@ export default function OfflineSyncStatus() {
           </div>
         </div>
         )}
+
+        <ConfirmDialog
+          isOpen={showFullSyncConfirm}
+          onCancel={() => setShowFullSyncConfirm(false)}
+          onConfirm={executeFullSync}
+          title="Full Synchronization"
+          description="This will force push all your Desktop data to the Back Office, potentially overwriting data there. Are you sure you want to continue?"
+          confirmLabel="Start Full Sync"
+          variant="warning"
+        />
 
       </div>
     </div>

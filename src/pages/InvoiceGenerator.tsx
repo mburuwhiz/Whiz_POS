@@ -4,7 +4,8 @@ import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import {
   FileText, Download, Plus, Trash2, Upload, Image as ImageIcon,
-  Settings, User, Calendar, DollarSign, LayoutTemplate
+  Settings, User, Calendar, DollarSign, LayoutTemplate,
+  Printer
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -16,6 +17,8 @@ interface InvoiceItem {
   price: number;
 }
 
+type PaperSize = 'a4' | 'a5';
+
 export default function InvoiceGenerator() {
   const { businessSetup } = usePosStore();
 
@@ -23,7 +26,9 @@ export default function InvoiceGenerator() {
   const [type, setType] = useState<'INVOICE' | 'QUOTATION'>('INVOICE');
   const [docNumber, setDocNumber] = useState(`INV-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000)}`);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [dueDate, setDueDate] = useState('');
+
+  // Paper Size
+  const [paperSize, setPaperSize] = useState<PaperSize>('a4');
 
   // Branding State
   const [useCustomHeader, setUseCustomHeader] = useState(false);
@@ -96,8 +101,16 @@ export default function InvoiceGenerator() {
     }));
   };
 
-  const generatePDF = async () => {
+  const generatePDF = async (targetSize: PaperSize) => {
     if (!previewRef.current) return;
+
+    // Temporarily set the size to ensure consistency if not already set
+    const previousSize = paperSize;
+    if (previousSize !== targetSize) {
+        setPaperSize(targetSize);
+        // Wait for render cycle
+        await new Promise(r => setTimeout(r, 100));
+    }
 
     try {
       const canvas = await html2canvas(previewRef.current, {
@@ -111,16 +124,28 @@ export default function InvoiceGenerator() {
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
-        format: 'a4'
+        format: targetSize
       });
 
-      const imgWidth = 210;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      // A4: 210 x 297, A5: 148 x 210
+      const pdfWidth = targetSize === 'a4' ? 210 : 148;
+      const pdfHeight = targetSize === 'a4' ? 297 : 210;
 
-      pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
-      pdf.save(`${type.toLowerCase()}-${docNumber}.pdf`);
+      // Fit image to width
+      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, Math.min(imgHeight, pdfHeight)); // Use min to clip overflow if any
+      // Or just imgHeight if we want to allow multipage (logic not implemented for multipage yet)
+
+      pdf.save(`${type.toLowerCase()}-${docNumber}-${targetSize}.pdf`);
     } catch (error) {
       console.error("PDF Generation failed", error);
+      alert("Failed to generate PDF. See console.");
+    } finally {
+        // Restore size if we changed it automatically (optional)
+        if (previousSize !== targetSize) {
+            setPaperSize(previousSize);
+        }
     }
   };
 
@@ -316,24 +341,56 @@ export default function InvoiceGenerator() {
 
       {/* RIGHT PANEL: Preview */}
       <div className="flex-1 bg-slate-200/50 rounded-2xl border border-slate-200 overflow-hidden flex flex-col">
-         <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-white">
-            <h2 className="font-bold text-slate-700">Live Preview</h2>
-            <button
-              onClick={generatePDF}
-              className="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 shadow-sm transition-all hover:scale-105 active:scale-95"
-            >
-              <Download className="w-4 h-4" /> Download PDF
-            </button>
+         {/* Toolbar */}
+         <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-white gap-4">
+            <h2 className="font-bold text-slate-700 hidden sm:block">Live Preview</h2>
+
+            <div className="flex items-center gap-2 bg-slate-100 rounded-lg p-1">
+                 <button
+                    onClick={() => setPaperSize('a4')}
+                    className={cn(
+                        "px-3 py-1 text-xs font-medium rounded-md transition-colors",
+                        paperSize === 'a4' ? "bg-white shadow text-slate-800" : "text-slate-500 hover:text-slate-800"
+                    )}
+                 >
+                    A4
+                 </button>
+                 <button
+                    onClick={() => setPaperSize('a5')}
+                    className={cn(
+                        "px-3 py-1 text-xs font-medium rounded-md transition-colors",
+                        paperSize === 'a5' ? "bg-white shadow text-slate-800" : "text-slate-500 hover:text-slate-800"
+                    )}
+                 >
+                    A5
+                 </button>
+            </div>
+
+            <div className="flex gap-2">
+                 <button
+                    onClick={() => generatePDF('a4')}
+                    className="bg-sky-500 hover:bg-sky-600 text-white px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 shadow-sm transition-all"
+                 >
+                    <Download className="w-3 h-3" /> Save A4
+                 </button>
+                 <button
+                    onClick={() => generatePDF('a5')}
+                    className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 shadow-sm transition-all"
+                 >
+                    <Download className="w-3 h-3" /> Save A5
+                 </button>
+            </div>
          </div>
 
+         {/* Preview Area */}
          <div className="flex-1 overflow-auto p-8 flex justify-center bg-slate-100">
-            {/* A4 Paper */}
+            {/* Paper Container */}
             <div
                ref={previewRef}
-               className="bg-white shadow-xl relative text-slate-800 leading-normal"
+               className="bg-white shadow-xl relative text-slate-800 leading-normal origin-top"
                style={{
-                 width: '210mm',
-                 minHeight: '297mm',
+                 width: paperSize === 'a4' ? '210mm' : '148mm',
+                 minHeight: paperSize === 'a4' ? '297mm' : '210mm',
                  padding: '0',
                  boxSizing: 'border-box'
                }}
@@ -345,21 +402,21 @@ export default function InvoiceGenerator() {
                )}
 
                {/* DOCUMENT CONTENT */}
-               <div className="relative z-10 flex flex-col h-full min-h-[297mm]">
+               <div className={`relative z-10 flex flex-col h-full ${paperSize === 'a4' ? 'min-h-[297mm]' : 'min-h-[210mm]'}`}>
 
                   {/* Header */}
-                  <div className="bg-white text-slate-900 p-12 pb-8 border-b-2 border-slate-100">
+                  <div className="bg-white text-slate-900 p-8 border-b-2 border-slate-100">
                      <div className="flex justify-between items-start">
                         {/* Left: Logo/Brand */}
                         <div className="w-1/2">
                            {useCustomHeader && headerImage ? (
-                             <img src={headerImage} alt="Header" className="max-w-full max-h-32 object-contain" />
+                             <img src={headerImage} alt="Header" className="max-w-full max-h-24 object-contain" />
                            ) : (
-                             <div className="space-y-4">
-                                {logoImage && <img src={logoImage} alt="Logo" className="h-20 object-contain mb-4" />}
+                             <div className="space-y-2">
+                                {logoImage && <img src={logoImage} alt="Logo" className="h-16 object-contain mb-4" />}
                                 <div>
-                                   <h1 className="text-3xl font-bold text-sky-900">{businessSetup?.businessName || 'Your Business Name'}</h1>
-                                   <p className="text-slate-600 text-sm whitespace-pre-line mt-2">
+                                   <h1 className="text-2xl font-bold text-sky-900">{businessSetup?.businessName || 'Your Business Name'}</h1>
+                                   <p className="text-slate-600 text-xs whitespace-pre-line mt-1">
                                      {businessSetup?.address || 'Address Line 1'}{'\n'}
                                      {businessSetup?.phone || 'Phone Number'}{'\n'}
                                      {businessSetup?.email || 'Email Address'}
@@ -371,13 +428,13 @@ export default function InvoiceGenerator() {
 
                         {/* Right: Document Title */}
                         <div className="text-right">
-                           <h2 className="text-5xl font-black text-sky-900 tracking-widest">{type}</h2>
+                           <h2 className="text-4xl font-black text-sky-900 tracking-widest">{type}</h2>
                            <div className="mt-4 inline-block text-right">
-                              <div className="flex justify-end gap-4 text-sm mb-1">
+                              <div className="flex justify-end gap-4 text-xs mb-1">
                                 <span className="text-slate-500 uppercase tracking-wider">Date:</span>
                                 <span className="font-bold text-slate-900">{date}</span>
                               </div>
-                              <div className="flex justify-end gap-4 text-sm">
+                              <div className="flex justify-end gap-4 text-xs">
                                 <span className="text-slate-500 uppercase tracking-wider">No:</span>
                                 <span className="font-bold text-slate-900">{docNumber}</span>
                               </div>
@@ -387,10 +444,10 @@ export default function InvoiceGenerator() {
                   </div>
 
                   {/* Bill To */}
-                  <div className="px-12 py-8">
-                     <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Bill To:</h3>
-                     <div className="text-lg font-bold text-slate-800">{clientCompany || 'Company Name'}</div>
-                     <div className="text-slate-600">
+                  <div className="px-8 py-6">
+                     <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Bill To:</h3>
+                     <div className="text-base font-bold text-slate-800">{clientCompany || 'Company Name'}</div>
+                     <div className="text-slate-600 text-sm">
                         {clientName && <div>{clientName}</div>}
                         {clientAddress && <div>{clientAddress}</div>}
                         {clientEmail && <div>{clientEmail}</div>}
@@ -398,33 +455,33 @@ export default function InvoiceGenerator() {
                   </div>
 
                   {/* Table */}
-                  <div className="px-12 flex-1">
+                  <div className="px-8 flex-1">
                      <table className="w-full text-left border-collapse">
                         <thead>
-                           <tr className="border-b-2 border-sky-900">
-                              <th className="py-3 font-bold text-sky-900 w-16">#</th>
-                              <th className="py-3 font-bold text-sky-900">Description</th>
-                              <th className="py-3 font-bold text-sky-900 text-center w-24">Qty</th>
-                              <th className="py-3 font-bold text-sky-900 text-right w-32">Price</th>
-                              <th className="py-3 font-bold text-sky-900 text-right w-32">Amount</th>
+                           <tr className="border-b-2 border-sky-900 text-sm">
+                              <th className="py-2 font-bold text-sky-900 w-12">#</th>
+                              <th className="py-2 font-bold text-sky-900">Description</th>
+                              <th className="py-2 font-bold text-sky-900 text-center w-16">Qty</th>
+                              <th className="py-2 font-bold text-sky-900 text-right w-24">Price</th>
+                              <th className="py-2 font-bold text-sky-900 text-right w-24">Amount</th>
                            </tr>
                         </thead>
                         <tbody>
                            {items.map((item, index) => (
-                             <tr key={item.id} className="border-b border-slate-100">
-                                <td className="py-4 text-slate-500">{index + 1}</td>
-                                <td className="py-4 font-medium">{item.description}</td>
-                                <td className="py-4 text-center">{item.quantity}</td>
-                                <td className="py-4 text-right">{item.price.toLocaleString()}</td>
-                                <td className="py-4 text-right font-bold text-slate-700">{(item.quantity * item.price).toLocaleString()}</td>
+                             <tr key={item.id} className="border-b border-slate-100 text-sm">
+                                <td className="py-3 text-slate-500">{index + 1}</td>
+                                <td className="py-3 font-medium">{item.description}</td>
+                                <td className="py-3 text-center">{item.quantity}</td>
+                                <td className="py-3 text-right">{item.price.toLocaleString()}</td>
+                                <td className="py-3 text-right font-bold text-slate-700">{(item.quantity * item.price).toLocaleString()}</td>
                              </tr>
                            ))}
                         </tbody>
                      </table>
 
                      {/* Totals */}
-                     <div className="mt-8 flex justify-end">
-                        <div className="w-64 space-y-2">
+                     <div className="mt-6 flex justify-end">
+                        <div className="w-56 space-y-1 text-sm">
                            <div className="flex justify-between text-slate-600">
                               <span>Subtotal:</span>
                               <span>{subtotal.toLocaleString()}</span>
@@ -433,7 +490,7 @@ export default function InvoiceGenerator() {
                               <span>Tax ({taxRate}%):</span>
                               <span>{taxAmount.toLocaleString()}</span>
                            </div>
-                           <div className="flex justify-between text-xl font-bold text-sky-900 pt-2 border-t-2 border-sky-900">
+                           <div className="flex justify-between text-lg font-bold text-sky-900 pt-2 border-t-2 border-sky-900 mt-2">
                               <span>Total:</span>
                               <span>{total.toLocaleString()}</span>
                            </div>
@@ -442,21 +499,21 @@ export default function InvoiceGenerator() {
                   </div>
 
                   {/* Footer Info */}
-                  <div className="px-12 py-12">
-                     <div className="grid grid-cols-2 gap-12">
+                  <div className="px-8 py-8 mt-auto">
+                     <div className="grid grid-cols-2 gap-8">
                         <div>
-                           <h4 className="font-bold text-sky-900 mb-2">Payment Details</h4>
-                           <p className="text-sm text-slate-600 whitespace-pre-wrap">{paymentInfo}</p>
+                           <h4 className="font-bold text-sky-900 mb-1 text-sm">Payment Details</h4>
+                           <p className="text-xs text-slate-600 whitespace-pre-wrap">{paymentInfo}</p>
                         </div>
                         <div>
-                           <h4 className="font-bold text-sky-900 mb-2">Notes</h4>
-                           <p className="text-sm text-slate-600 whitespace-pre-wrap">{notes}</p>
+                           <h4 className="font-bold text-sky-900 mb-1 text-sm">Notes</h4>
+                           <p className="text-xs text-slate-600 whitespace-pre-wrap">{notes}</p>
                         </div>
                      </div>
                   </div>
 
                   {/* Branding Footer */}
-                  <div className="bg-slate-100 p-4 text-center text-xs text-slate-400 mt-auto">
+                  <div className="bg-slate-100 p-3 text-center text-[10px] text-slate-400">
                      Powered by Whizpoint Solutions • 0740 841 168
                   </div>
 

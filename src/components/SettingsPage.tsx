@@ -26,6 +26,7 @@ import {
   Clock,
   AlertTriangle
 } from 'lucide-react';
+import { ConfirmDialog } from './ConfirmDialog';
 
 export default function SettingsPage() {
   const { 
@@ -50,6 +51,21 @@ export default function SettingsPage() {
   const [deleteDateRange, setDeleteDateRange] = useState({
     start: new Date().toISOString().split('T')[0],
     end: new Date().toISOString().split('T')[0]
+  });
+
+  // Confirmation Dialog States
+  const [confirmDialogState, setConfirmDialogState] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    onConfirm: () => void;
+    variant?: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    onConfirm: () => {},
+    variant: 'danger'
   });
 
   const [businessData, setBusinessData] = useState({
@@ -135,6 +151,60 @@ export default function SettingsPage() {
 
   const handleBusinessDataChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setBusinessData({ ...businessData, [e.target.name]: e.target.value });
+  };
+
+  const showConfirm = (title: string, description: string, onConfirm: () => void, variant: 'danger' | 'warning' | 'info' = 'danger') => {
+      setConfirmDialogState({
+          isOpen: true,
+          title,
+          description,
+          onConfirm,
+          variant
+      });
+  };
+
+  const handleArchive = async () => {
+        try {
+            await archiveTransactions(pruneDays);
+            alert('Data archived successfully.');
+        } catch (e) {
+            console.error(e);
+            alert('Failed to archive data.');
+        }
+  };
+
+  const handleDeleteRange = () => {
+        if (!deleteDateRange.start || !deleteDateRange.end) {
+            alert("Invalid date range.");
+            return;
+        }
+        const start = new Date(deleteDateRange.start);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(deleteDateRange.end);
+        end.setHours(23, 59, 59, 999);
+        const todayStr = new Date().toLocaleDateString('en-CA');
+
+        const idsToDelete = transactions.filter(tx => {
+            const txDate = new Date(tx.timestamp);
+            const txDateStr = txDate.toLocaleDateString('en-CA');
+            if (txDate < start || txDate > end) return false;
+            if (txDateStr === todayStr) return false;
+            return true;
+        }).map(tx => tx.id);
+
+        if (idsToDelete.length === 0) {
+            alert("No eligible receipts found. Note: Today's receipts cannot be deleted.");
+            return;
+        }
+
+        showConfirm(
+            "Delete Receipts",
+            `Found ${idsToDelete.length} receipts to delete. This is PERMANENT and cannot be undone. Proceed?`,
+            () => {
+                deleteTransactions(idsToDelete);
+                alert(`${idsToDelete.length} receipts deleted.`);
+            }
+        );
   };
 
   return (
@@ -446,16 +516,12 @@ export default function SettingsPage() {
                             />
                         </div>
                         <button
-                            onClick={async () => {
-                                if (confirm(`Are you sure you want to archive receipts older than ${pruneDays} days? Details will be lost but stats kept.`)) {
-                                    try {
-                                        await archiveTransactions(pruneDays);
-                                        alert('Data archived successfully.');
-                                    } catch (e) {
-                                        console.error(e);
-                                        alert('Failed to archive data.');
-                                    }
-                                }
+                            onClick={() => {
+                                showConfirm(
+                                    "Archive Receipts",
+                                    `Are you sure you want to archive receipts older than ${pruneDays} days? Details will be lost but stats kept.`,
+                                    handleArchive
+                                );
                             }}
                             className="flex items-center bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg shadow-sm transition-colors mb-[1px]"
                         >
@@ -496,35 +562,7 @@ export default function SettingsPage() {
                     </div>
 
                     <button
-                        onClick={() => {
-                            if (!deleteDateRange.start || !deleteDateRange.end) {
-                                alert("Invalid date range.");
-                                return;
-                            }
-                            const start = new Date(deleteDateRange.start);
-                            start.setHours(0, 0, 0, 0);
-                            const end = new Date(deleteDateRange.end);
-                            end.setHours(23, 59, 59, 999);
-                            const todayStr = new Date().toLocaleDateString('en-CA');
-
-                            const idsToDelete = transactions.filter(tx => {
-                                const txDate = new Date(tx.timestamp);
-                                const txDateStr = txDate.toLocaleDateString('en-CA');
-                                if (txDate < start || txDate > end) return false;
-                                if (txDateStr === todayStr) return false;
-                                return true;
-                            }).map(tx => tx.id);
-
-                            if (idsToDelete.length === 0) {
-                                alert("No eligible receipts found. Note: Today's receipts cannot be deleted.");
-                                return;
-                            }
-
-                            if (confirm(`Found ${idsToDelete.length} receipts to delete. This is PERMANENT. Proceed?`)) {
-                                deleteTransactions(idsToDelete);
-                                alert(`${idsToDelete.length} receipts deleted.`);
-                            }
-                        }}
+                        onClick={handleDeleteRange}
                         className="w-full flex items-center justify-center bg-red-700 hover:bg-red-800 text-white px-6 py-3 rounded-lg shadow-sm transition-colors"
                     >
                         <Trash2 className="w-5 h-5 mr-2" />
@@ -580,29 +618,6 @@ export default function SettingsPage() {
                     </div>
                 )}
               </div>
-
-              <div className="bg-white rounded-lg shadow p-6">
-                  <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                          <h3 className="font-semibold text-gray-800">Mobile App (APK) Sync</h3>
-                      </div>
-                      <Smartphone className="w-5 h-5 text-gray-400" />
-                  </div>
-
-                  <p className="text-sm text-gray-600 mb-4">
-                      The Mobile Application (APK) uses the same API logic. It connects to the Back Office using the API Key found in Settings &gt; Connected Devices.
-                  </p>
-
-                  <div className="bg-gray-50 rounded-lg p-4 font-mono text-xs text-gray-600 border border-gray-200">
-                      <div className="space-y-1">
-                          <p>// Mobile Sync Logic (Placeholder)</p>
-                          <p>// Uses Capacitor Background Fetch</p>
-                          <p>// Endpoint: /api/transaction</p>
-                          <p>// Auth: X-API-KEY</p>
-                      </div>
-                  </div>
-              </div>
           </div>
         )}
 
@@ -655,7 +670,7 @@ export default function SettingsPage() {
                 </div>
 
               <div className="flex items-center gap-4 mt-6">
-                <button onClick={pushDataToServer} className="flex items-center bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg shadow-sm transition-colors">
+                <button onClick={() => showConfirm("Full Cloud Sync", "This will overwrite the server data with desktop data. Continue?", pushDataToServer, "warning")} className="flex items-center bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg shadow-sm transition-colors">
                   <RefreshCw className="w-5 h-5 mr-2" />
                   Full Cloud Synchronization (Overwrite Server)
                 </button>
@@ -772,6 +787,15 @@ export default function SettingsPage() {
             </div>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmDialogState.isOpen}
+        onCancel={() => setConfirmDialogState(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmDialogState.onConfirm}
+        title={confirmDialogState.title}
+        description={confirmDialogState.description}
+        variant={confirmDialogState.variant}
+      />
 
     </div>
   );

@@ -1,7 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { usePosStore } from '../store/posStore';
 import { Product } from '../types';
-import { Camera, Search, X, Zap, Package } from 'lucide-react';
+import { Camera, Search, X, Zap, Package, ShoppingCart, Info, ScanLine, Tag } from 'lucide-react';
+import { Modal } from './ui/modal';
+
+type ScanMode = 'ADD_TO_CART' | 'PRICE_CHECK';
 
 export default function BarcodeScanner() {
   const { products, addToCart } = usePosStore();
@@ -10,8 +13,16 @@ export default function BarcodeScanner() {
   const [searchTerm, setSearchTerm] = useState('');
   const [manualCode, setManualCode] = useState('');
   const [cameraError, setCameraError] = useState('');
-  const [foundProduct, setFoundProduct] = useState<Product | null>(null);
   const [scanHistory, setScanHistory] = useState<string[]>([]);
+  const [scanMode, setScanMode] = useState<ScanMode>('ADD_TO_CART');
+
+  // For Price Check Modal
+  const [checkedProduct, setCheckedProduct] = useState<Product | null>(null);
+  const [showCheckModal, setShowCheckModal] = useState(false);
+
+  // Visual Feedback
+  const [lastScannedProduct, setLastScannedProduct] = useState<Product | null>(null);
+  const [flashSuccess, setFlashSuccess] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -62,56 +73,66 @@ export default function BarcodeScanner() {
     setIsScanning(false);
   };
 
-  const simulateBarcodeScan = () => {
-    // Simulate barcode scanning with random product codes
-    const mockBarcodes = ['123456789', '987654321', '555666777', '111222333'];
-    const randomCode = mockBarcodes[Math.floor(Math.random() * mockBarcodes.length)];
-    
-    setScannedCode(randomCode);
-    addToScanHistory(randomCode);
-    
-    // Find product by barcode (simulated)
+  const processScan = (code: string) => {
+    setScannedCode(code);
+    addToScanHistory(code);
+
     const product = products.find(p => 
-      p.id === randomCode || (p.name || '').toLowerCase().includes(randomCode.slice(0, 3))
+      p.id === code ||
+      (p.productId && p.productId === code) ||
+      (p.name || '').toLowerCase().includes(code.toLowerCase()) // Fallback for simulation
     );
-    
+
     if (product) {
-      setFoundProduct(product);
-      setTimeout(() => {
-        addToCart(product);
-        setFoundProduct(null);
-        setScannedCode('');
-      }, 1500);
+        handleProductFound(product);
     } else {
-      setTimeout(() => {
-        setScannedCode('');
-        alert('Product not found for this barcode');
-      }, 2000);
+        // Not found feedback
+        alert(`Product with code ${code} not found.`);
+    }
+  };
+
+  const handleProductFound = (product: Product) => {
+      if (scanMode === 'ADD_TO_CART') {
+          addToCart(product);
+          setLastScannedProduct(product);
+          setFlashSuccess(true);
+          setTimeout(() => setFlashSuccess(false), 1000);
+          setTimeout(() => setLastScannedProduct(null), 3000);
+      } else {
+          setCheckedProduct(product);
+          setShowCheckModal(true);
+      }
+  };
+
+  const simulateBarcodeScan = () => {
+    // Simulate barcode scanning with random product codes or just pick a random product
+    const randomProduct = products[Math.floor(Math.random() * products.length)];
+    if (randomProduct) {
+        processScan(randomProduct.id);
+    } else {
+        // Fallback if no products
+        const mockCode = '123456789';
+        processScan(mockCode);
     }
   };
 
   const handleManualSearch = () => {
-    const product = products.find(p => 
-      (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.id === manualCode ||
-      (p.name || '').toLowerCase().includes(manualCode.toLowerCase())
-    );
-    
-    if (product) {
-      setFoundProduct(product);
-      setTimeout(() => {
-        addToCart(product);
-        setFoundProduct(null);
+    // Exact match first
+    const exactMatch = products.find(p => p.id === searchTerm || p.productId === searchTerm);
+    if (exactMatch) {
+        handleProductFound(exactMatch);
         setSearchTerm('');
-        setManualCode('');
-      }, 1000);
-    } else {
-      alert('Product not found');
+        return;
     }
+
+    // Fuzzy search handled by UI list filtering, but if they hit Enter:
+    // We could show the first result?
+    // For now, manual search usually implies looking at the list.
+    // Let's rely on the list below the search bar.
   };
 
   const addToScanHistory = (code: string) => {
-    setScanHistory(prev => [...prev.slice(-9), code]); // Keep last 10 scans
+    setScanHistory(prev => [...prev.slice(-19), code]); // Keep last 20 scans
   };
 
   const clearHistory = () => {
@@ -126,286 +147,254 @@ export default function BarcodeScanner() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <Camera className="w-8 h-8 text-blue-600" />
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center space-x-4">
+              <div className="bg-blue-100 p-3 rounded-full">
+                <ScanLine className="w-8 h-8 text-blue-600" />
+              </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-800">Barcode Scanner</h1>
-                <p className="text-gray-600">Quick product lookup and scanning</p>
+                <h1 className="text-2xl font-bold text-gray-800">Scanner</h1>
+                <p className="text-gray-600">Barcode scanner & price checker</p>
               </div>
             </div>
-            <button
-              onClick={() => window.history.back()}
-              className="text-gray-600 hover:text-gray-800"
-            >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
+
+            <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                <button
+                    onClick={() => setScanMode('ADD_TO_CART')}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-md transition-all font-medium text-sm ${
+                        scanMode === 'ADD_TO_CART'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                >
+                    <ShoppingCart className="w-4 h-4" />
+                    <span>Scan to Cart</span>
+                </button>
+                <button
+                    onClick={() => setScanMode('PRICE_CHECK')}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-md transition-all font-medium text-sm ${
+                        scanMode === 'PRICE_CHECK'
+                        ? 'bg-white text-purple-600 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                >
+                    <Tag className="w-4 h-4" />
+                    <span>Price Check</span>
+                </button>
+            </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Scanner Section */}
-          <div className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Scanner Column */}
+          <div className="lg:col-span-2 space-y-6">
+
             {/* Camera View */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">Camera Scanner</h2>
-              
-              {!isScanning ? (
-                <div className="space-y-4">
-                  <div className="bg-gray-100 rounded-lg p-8 text-center">
-                    <Camera className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600 mb-4">Camera is not active</p>
-                    <button
-                      onClick={startCamera}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 mx-auto transition-colors"
-                    >
-                      <Camera className="w-5 h-5" />
-                      <span>Start Camera</span>
-                    </button>
-                  </div>
-                  
-                  {cameraError && (
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                      <p className="text-red-800">{cameraError}</p>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="relative bg-black rounded-lg overflow-hidden" style={{ height: '300px' }}>
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      className="w-full h-full object-cover"
-                    />
-                    <canvas ref={canvasRef} className="hidden" />
-                    
-                    {/* Scanning Overlay */}
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-64 h-32 border-2 border-red-500 rounded-lg">
-                        <div className="absolute -top-1 left-0 right-0 h-0.5 bg-red-500 animate-pulse"></div>
-                        <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-red-500 animate-pulse"></div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex space-x-3">
-                    <button
-                      onClick={simulateBarcodeScan}
-                      className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg flex items-center justify-center space-x-2 transition-colors"
-                    >
-                      <Zap className="w-5 h-5" />
-                      <span>Simulate Scan</span>
-                    </button>
-                    <button
-                      onClick={stopCamera}
-                      className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg flex items-center justify-center space-x-2 transition-colors"
-                    >
-                      <X className="w-5 h-5" />
-                      <span>Stop Camera</span>
-                    </button>
-                  </div>
-                  
-                  {scannedCode && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <p className="text-blue-800 font-medium">Scanned: {scannedCode}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            <div className={`bg-white rounded-xl shadow-sm overflow-hidden transition-all duration-300 ${flashSuccess ? 'ring-4 ring-green-400' : ''}`}>
+              <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+                 <h2 className="font-semibold text-gray-800 flex items-center gap-2">
+                    <Camera className="w-5 h-5 text-gray-500" />
+                    Camera Feed
+                 </h2>
+                 <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${isScanning ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                    {isScanning ? 'Active' : 'Inactive'}
+                 </span>
+              </div>
 
-            {/* Manual Entry */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">Manual Entry</h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Search Products</label>
-                  <div className="flex space-x-2">
-                    <input
-                      type="text"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      placeholder="Search by name or code..."
-                      className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                    <button
-                      onClick={handleManualSearch}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 transition-colors"
-                    >
-                      <Search className="w-5 h-5" />
-                      <span>Search</span>
-                    </button>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Product Code</label>
-                  <input
-                    type="text"
-                    value={manualCode}
-                    onChange={(e) => setManualCode(e.target.value)}
-                    placeholder="Enter product code or barcode..."
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                
-                <button
-                  onClick={() => {
-                    if (manualCode) {
-                      const product = products.find(p => p.id === manualCode);
-                      if (product) {
-                        addToCart(product);
-                        setManualCode('');
-                        alert(`Added ${product.name} to cart`);
-                      } else {
-                        alert('Product not found');
-                      }
-                    }
-                  }}
-                  disabled={!manualCode}
-                  className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3 rounded-lg font-medium transition-colors"
-                >
-                  Add to Cart
-                </button>
+              <div className="relative bg-black min-h-[400px] flex items-center justify-center">
+                 {!isScanning ? (
+                    <div className="text-center p-8">
+                        <ScanLine className="w-20 h-20 text-gray-700 mx-auto mb-4" />
+                        <p className="text-gray-400 mb-6 max-w-sm mx-auto">
+                            Camera is currently inactive. Click start to begin scanning barcodes.
+                        </p>
+                        <button
+                            onClick={startCamera}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full font-medium transition-transform hover:scale-105 flex items-center gap-2 mx-auto"
+                        >
+                            <Camera className="w-5 h-5" />
+                            Start Scanning
+                        </button>
+                        {cameraError && (
+                             <p className="text-red-400 mt-4 text-sm bg-red-900/20 py-2 px-4 rounded">{cameraError}</p>
+                        )}
+                    </div>
+                 ) : (
+                    <>
+                        <video
+                            ref={videoRef}
+                            autoPlay
+                            playsInline
+                            className="w-full h-full object-cover absolute inset-0"
+                        />
+                        {/* Overlay Guide */}
+                        <div className="absolute inset-0 border-2 border-black/50 z-10 pointer-events-none flex flex-col items-center justify-center">
+                             <div className="w-3/4 h-48 border-2 border-white/50 rounded-lg relative overflow-hidden shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]">
+                                <div className="absolute top-0 left-0 w-full h-1 bg-red-500/80 animate-[scan_2s_ease-in-out_infinite]"></div>
+                             </div>
+                             <p className="text-white/80 mt-4 font-medium text-shadow">Position barcode in frame</p>
+                        </div>
+
+                        <div className="absolute bottom-4 left-0 right-0 z-20 flex justify-center gap-4">
+                             <button
+                                onClick={simulateBarcodeScan}
+                                className="bg-white/20 hover:bg-white/30 backdrop-blur text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                             >
+                                Simulate Scan
+                             </button>
+                             <button
+                                onClick={stopCamera}
+                                className="bg-red-600/80 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium backdrop-blur transition-colors"
+                             >
+                                Stop
+                             </button>
+                        </div>
+                    </>
+                 )}
               </div>
             </div>
 
-            {/* Scan History */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-800">Scan History</h2>
-                <button
-                  onClick={clearHistory}
-                  className="text-red-600 hover:text-red-800 text-sm"
-                >
-                  Clear History
-                </button>
-              </div>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {scanHistory.length > 0 ? (
-                  scanHistory.slice().reverse().map((code, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                      <span className="font-mono text-sm text-gray-700">{code}</span>
-                      <span className="text-xs text-gray-500">
-                        {new Date().toLocaleTimeString()}
-                      </span>
+            {/* Last Scanned Feedback (In ADD_TO_CART mode) */}
+            {lastScannedProduct && scanMode === 'ADD_TO_CART' && (
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-4 animate-in fade-in slide-in-from-top-2">
+                    <div className="bg-green-100 p-2 rounded-lg">
+                        <ShoppingCart className="w-6 h-6 text-green-600" />
                     </div>
-                  ))
-                ) : (
-                  <p className="text-gray-500 text-center py-4">No scan history yet</p>
-                )}
-              </div>
-            </div>
+                    <div className="flex-1">
+                        <p className="text-sm font-bold text-green-800">Added to Cart!</p>
+                        <p className="text-green-700">{lastScannedProduct.name}</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="font-bold text-green-800">KES {lastScannedProduct.price.toLocaleString()}</p>
+                    </div>
+                </div>
+            )}
+
           </div>
 
-          {/* Results Section */}
+          {/* Sidebar: Manual Entry & History */}
           <div className="space-y-6">
-            {/* Found Product */}
-            {foundProduct && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-                <div className="flex items-center space-x-4">
-                  <img
-                    src={foundProduct.image}
-                    alt={foundProduct.name}
-                    className="w-16 h-16 object-cover rounded-lg"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = `https://picsum.photos/seed/${foundProduct.name}/64/64.jpg`;
-                    }}
-                  />
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-green-800">{foundProduct.name}</h3>
-                    <p className="text-green-600">KES {foundProduct.price.toFixed(2)}</p>
-                    <p className="text-sm text-green-600">Adding to cart...</p>
-                  </div>
-                  <Package className="w-8 h-8 text-green-600" />
-                </div>
-              </div>
-            )}
 
-            {/* Search Results */}
-            {searchTerm && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4">Search Results</h2>
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {filteredProducts.length > 0 ? (
-                    filteredProducts.map((product) => (
-                      <button
-                        key={product.id}
-                        onClick={() => {
-                          addToCart(product);
-                          setSearchTerm('');
-                          alert(`Added ${product.name} to cart`);
-                        }}
-                        className="w-full p-4 bg-gray-50 hover:bg-gray-100 rounded-lg text-left transition-colors"
-                      >
-                        <div className="flex items-center space-x-3">
-                          <img
-                            src={product.image}
-                            alt={product.name}
-                            className="w-12 h-12 object-cover rounded-lg"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              target.src = `https://picsum.photos/seed/${product.name}/48/48.jpg`;
-                            }}
-                          />
-                          <div className="flex-1">
-                            <p className="font-medium text-gray-800">{product.name}</p>
-                            <p className="text-gray-600">KES {product.price.toFixed(2)}</p>
-                            {product.stock !== undefined && (
-                              <p className="text-sm text-gray-500">Stock: {product.stock}</p>
-                            )}
-                          </div>
-                          <div className="text-green-600">
-                            <Package className="w-5 h-5" />
-                          </div>
-                        </div>
-                      </button>
-                    ))
-                  ) : (
-                    <div className="text-center py-8">
-                      <Search className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-500">No products found</p>
-                      <p className="text-sm text-gray-400">Try different search terms</p>
+             {/* Manual Entry */}
+             <div className="bg-white rounded-xl shadow-sm p-6">
+                <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <Search className="w-5 h-5 text-gray-500" />
+                    Manual Entry
+                </h3>
+                <div className="space-y-3">
+                    <div>
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Enter Name or Code..."
+                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                        />
                     </div>
-                  )}
-                </div>
-              </div>
-            )}
 
-            {/* Instructions */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-              <h2 className="text-lg font-semibold text-blue-800 mb-4">How to Use</h2>
-              <div className="space-y-3 text-sm text-blue-700">
-                <div className="flex items-start space-x-2">
-                  <span className="font-bold">1.</span>
-                  <p>Click "Start Camera" to activate the barcode scanner</p>
+                    {searchTerm && (
+                        <div className="max-h-60 overflow-y-auto border border-gray-100 rounded-lg divide-y divide-gray-50">
+                            {filteredProducts.length > 0 ? (
+                                filteredProducts.slice(0, 5).map(p => (
+                                    <button
+                                        key={p.id}
+                                        onClick={() => handleProductFound(p)}
+                                        className="w-full text-left p-3 hover:bg-blue-50 transition-colors flex items-center gap-3"
+                                    >
+                                        <div className="w-10 h-10 bg-gray-100 rounded flex-shrink-0 overflow-hidden">
+                                            <img src={p.image} alt="" className="w-full h-full object-cover" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-800 truncate">{p.name}</p>
+                                            <p className="text-xs text-gray-500">KES {p.price}</p>
+                                        </div>
+                                    </button>
+                                ))
+                            ) : (
+                                <p className="text-center py-4 text-gray-400 text-sm">No match found</p>
+                            )}
+                        </div>
+                    )}
                 </div>
-                <div className="flex items-start space-x-2">
-                  <span className="font-bold">2.</span>
-                  <p>Position barcode within the red scanning frame</p>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <span className="font-bold">3.</span>
-                  <p>Use "Simulate Scan" to test without a real barcode</p>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <span className="font-bold">4.</span>
-                  <p>Search manually by product name or enter product code</p>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <span className="font-bold">5.</span>
-                  <p>Click on any product to add it directly to cart</p>
-                </div>
-              </div>
-            </div>
+             </div>
+
+             {/* History */}
+             <div className="bg-white rounded-xl shadow-sm p-6">
+                 <div className="flex justify-between items-center mb-4">
+                     <h3 className="font-semibold text-gray-800">Scan History</h3>
+                     <button onClick={clearHistory} className="text-xs text-red-500 hover:text-red-700">Clear</button>
+                 </div>
+                 <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                     {scanHistory.length > 0 ? (
+                         scanHistory.slice().reverse().map((code, idx) => (
+                             <div key={idx} className="flex justify-between items-center p-2 bg-gray-50 rounded text-sm group">
+                                 <span className="font-mono text-gray-600">{code}</span>
+                                 <span className="text-xs text-gray-400">{new Date().toLocaleTimeString()}</span>
+                             </div>
+                         ))
+                     ) : (
+                         <div className="text-center py-8 text-gray-400">
+                             <ScanLine className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                             <p className="text-xs">No recent scans</p>
+                         </div>
+                     )}
+                 </div>
+             </div>
           </div>
         </div>
+
+        {/* Price Check Modal */}
+        {showCheckModal && checkedProduct && (
+            <Modal isOpen={showCheckModal} onClose={() => setShowCheckModal(false)} title="Price Check Result">
+                <div className="text-center p-6">
+                    <div className="w-32 h-32 bg-gray-100 rounded-xl mx-auto mb-6 overflow-hidden shadow-sm">
+                        <img src={checkedProduct.image} alt={checkedProduct.name} className="w-full h-full object-cover" />
+                    </div>
+
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">{checkedProduct.name}</h2>
+                    <div className="text-4xl font-black text-blue-600 mb-6">
+                        KES {checkedProduct.price.toLocaleString()}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 mb-8 text-left bg-gray-50 p-4 rounded-lg">
+                        <div>
+                            <span className="text-xs text-gray-500 uppercase tracking-wider block">Stock Level</span>
+                            <span className="font-medium text-gray-900">{checkedProduct.stock ?? 'N/A'} units</span>
+                        </div>
+                        <div>
+                            <span className="text-xs text-gray-500 uppercase tracking-wider block">Category</span>
+                            <span className="font-medium text-gray-900">{checkedProduct.category || 'General'}</span>
+                        </div>
+                         <div>
+                            <span className="text-xs text-gray-500 uppercase tracking-wider block">Code</span>
+                            <span className="font-medium text-gray-900 font-mono">{checkedProduct.productId || checkedProduct.id}</span>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-4">
+                        <button
+                            onClick={() => setShowCheckModal(false)}
+                            className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg font-medium transition-colors"
+                        >
+                            Close
+                        </button>
+                        <button
+                            onClick={() => {
+                                addToCart(checkedProduct);
+                                setShowCheckModal(false);
+                                setFlashSuccess(true);
+                                setTimeout(() => setFlashSuccess(false), 1000);
+                            }}
+                            className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                        >
+                            <ShoppingCart className="w-4 h-4" />
+                            Add to Cart
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+        )}
       </div>
     </div>
   );

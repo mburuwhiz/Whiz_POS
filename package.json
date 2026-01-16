@@ -79,7 +79,7 @@
     "vite": "^4.5.14",
     "wait-on": "^9.0.3"
   },
-  "author": "Whiz Tech (Josphat Mburu)",
+  "author": "Whizpoint Solutions",
   "description": "A modern point-of-sale application.",
   "build": {
     "appId": "com.whizpos.app",

@@ -14,7 +14,7 @@
     "express",
     "ejs"
   ],
-  "author": "Whiz Tech (Josphat Mburu)",
+  "author": "Whizpoint Solutions",
   "license": "ISC",
   "dependencies": {
     "body-parser": "^1.20.2",

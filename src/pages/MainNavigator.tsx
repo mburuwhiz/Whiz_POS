@@ -23,6 +23,7 @@ import MobileReceiptsPage from './MobileReceiptsPage';
 import SalariesPage from './SalariesPage';
 import DeveloperPage from './DeveloperPage';
 import UsersPage from './UsersPage';
+import InvoiceGenerator from './InvoiceGenerator';
 
 const MainNavigator = () => {
   const { businessSetup, users } = usePosStore();
@@ -97,6 +98,7 @@ const MainNavigator = () => {
         <Route path="/status" element={<OfflineSyncStatus />} />
         <Route path="/previous-receipts" element={<PreviousReceiptsPage />} />
         <Route path="/mobile-receipts" element={<MobileReceiptsPage />} />
+        <Route path="/invoices" element={<InvoiceGenerator />} />
         <Route path="/manage" element={<SettingsPage />} />
         <Route path="/developer" element={<DeveloperPage />} />
         <Route path="/users" element={<UsersPage />} />

@@ -24,6 +24,8 @@
     "file-saver": "^2.0.5",
     "framer-motion": "^11.0.24",
     "html-to-image": "^1.11.13",
+    "jspdf": "^4.0.0",
+    "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.363.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

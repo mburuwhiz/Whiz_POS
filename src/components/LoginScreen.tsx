@@ -93,7 +93,7 @@ const LoginScreen = () => {
         <div className="animate-marquee whitespace-nowrap flex gap-10">
           {[1, 2, 3, 4].map((i) => (
              <span key={i} className="text-sm font-medium tracking-wide mx-8">
-               Developed and managed by Whiz Tech KE — Call 0740 841 168 to get yours.
+               Developed and managed by Whizpoint Solutions — Call 0740 841 168 to get yours.
              </span>
           ))}
         </div>

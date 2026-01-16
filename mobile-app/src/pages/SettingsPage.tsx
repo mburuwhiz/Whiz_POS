@@ -87,7 +87,7 @@ export default function SettingsPage() {
         </button>
 
         <div className="text-center text-xs text-slate-600 pb-8">
-           Designed & Serviced by Whiz Tech<br/>0740 841 168
+           Designed & Serviced by Whizpoint Solutions<br/>0740 841 168
         </div>
       </div>
     </div>

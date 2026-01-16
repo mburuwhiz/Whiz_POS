@@ -412,7 +412,7 @@ const DeveloperPage = () => {
                         <div>
                             <p className="font-medium text-gray-800">Show Developer Footer</p>
                             <p className="text-sm text-gray-500">
-                                Display "System Designed by Whiz Tech" at the bottom of receipts.
+                                Display "System Designed by Whizpoint Solutions" at the bottom of receipts.
                                 Disable to save paper.
                             </p>
                         </div>

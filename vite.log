@@ -7,3 +7,6 @@
 
   ➜  Local:   http://localhost:5174/
   ➜  Network: use --host to expose
+10:13:25 AM [vite] hmr update /src/pages/InvoiceGenerator.tsx, /src/index.css
+10:13:31 AM [vite] hmr update /src/App.tsx, /src/index.css, /src/components/CheckoutModal.tsx, /src/components/LoginScreen.tsx, /src/pages/MainNavigator.tsx, /src/components/OnScreenKeyboard.tsx, /src/components/BusinessRegistration.tsx, /src/components/CreditCustomerModal.tsx, /src/components/ProductGrid.tsx, /src/components/ReportsPage.tsx, /src/components/CreditCustomersPage.tsx, /src/components/DailyClosingScreen.tsx, /src/components/SettingsPage.tsx, /src/components/EnhancedExpenseTracker.tsx, /src/components/Dashboard.tsx, /src/components/OrderArea.tsx, /src/components/InventoryManagement.tsx, /src/components/LoyaltyProgram.tsx, /src/components/BarcodeScanner.tsx, /src/components/OfflineSyncStatus.tsx, /src/components/AppLayout.tsx, /src/components/PreviousReceiptsPage.tsx, /src/pages/MobileReceiptsPage.tsx, /src/pages/SalariesPage.tsx, /src/pages/DeveloperPage.tsx, /src/pages/UsersPage.tsx, /src/pages/InvoiceGenerator.tsx, /src/components/Header.tsx, /src/components/BackOfficeDashboard.tsx, /src/components/Navigation.tsx, /src/components/DeleteReceiptsModal.tsx
+10:13:34 AM [vite] hmr update /src/pages/DeveloperPage.tsx, /src/index.css

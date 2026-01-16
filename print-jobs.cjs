@@ -125,7 +125,7 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
     if (showDevFooter) {
         devFooterHtml = `
             <div class="footer-dev">
-                <p>System Designed and serviced by Whiz tech</p>
+                <p>System Designed and serviced by Whizpoint Solutions</p>
                 <p>Tell: 0740 841 168</p>
             </div>
         `;

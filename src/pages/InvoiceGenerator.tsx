@@ -348,7 +348,7 @@ export default function InvoiceGenerator() {
                <div className="relative z-10 flex flex-col h-full min-h-[297mm]">
 
                   {/* Header */}
-                  <div className="bg-sky-900 text-white p-12 pb-8">
+                  <div className="bg-white text-slate-900 p-12 pb-8 border-b-2 border-slate-100">
                      <div className="flex justify-between items-start">
                         {/* Left: Logo/Brand */}
                         <div className="w-1/2">
@@ -358,8 +358,8 @@ export default function InvoiceGenerator() {
                              <div className="space-y-4">
                                 {logoImage && <img src={logoImage} alt="Logo" className="h-20 object-contain mb-4" />}
                                 <div>
-                                   <h1 className="text-3xl font-bold">{businessSetup?.businessName || 'Your Business Name'}</h1>
-                                   <p className="opacity-80 text-sm whitespace-pre-line mt-2">
+                                   <h1 className="text-3xl font-bold text-sky-900">{businessSetup?.businessName || 'Your Business Name'}</h1>
+                                   <p className="text-slate-600 text-sm whitespace-pre-line mt-2">
                                      {businessSetup?.address || 'Address Line 1'}{'\n'}
                                      {businessSetup?.phone || 'Phone Number'}{'\n'}
                                      {businessSetup?.email || 'Email Address'}
@@ -371,15 +371,15 @@ export default function InvoiceGenerator() {
 
                         {/* Right: Document Title */}
                         <div className="text-right">
-                           <h2 className="text-5xl font-black opacity-20 tracking-widest">{type}</h2>
+                           <h2 className="text-5xl font-black text-sky-900 tracking-widest">{type}</h2>
                            <div className="mt-4 inline-block text-right">
                               <div className="flex justify-end gap-4 text-sm mb-1">
-                                <span className="opacity-70 uppercase tracking-wider">Date:</span>
-                                <span className="font-bold">{date}</span>
+                                <span className="text-slate-500 uppercase tracking-wider">Date:</span>
+                                <span className="font-bold text-slate-900">{date}</span>
                               </div>
                               <div className="flex justify-end gap-4 text-sm">
-                                <span className="opacity-70 uppercase tracking-wider">No:</span>
-                                <span className="font-bold">{docNumber}</span>
+                                <span className="text-slate-500 uppercase tracking-wider">No:</span>
+                                <span className="font-bold text-slate-900">{docNumber}</span>
                               </div>
                            </div>
                         </div>

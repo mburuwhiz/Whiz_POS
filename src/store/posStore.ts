@@ -1808,7 +1808,7 @@ export const usePosStore = create<PosState>()(
       finishSetup: async (businessData, adminUser) => {
         const fullBusinessData: BusinessSetup = {
           ...businessData,
-          receiptFooter: 'Developed and Managed by Whiz Tech\nContact: 0740-841-168',
+          receiptFooter: 'Developed and Managed by Whizpoint Solutions\nContact: 0740-841-168',
           printerType: businessData.printerType || 'thermal', // Default to thermal
           createdAt: new Date().toISOString(),
         };

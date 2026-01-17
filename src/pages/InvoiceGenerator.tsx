@@ -1,351 +1,398 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { usePosStore } from '../store/posStore';
-import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
 import {
-  FileText, Download, Plus, Trash2, Upload, Image as ImageIcon,
-  Settings, User, Calendar, DollarSign, LayoutTemplate,
-  Printer
+  FileText, Download, Printer, Plus, Trash2,
+  Settings, User, Calendar, Hash, Mail, MapPin, Phone,
+  CreditCard, AlertCircle, CheckCircle, Clock, Shield,
+  FileCheck, Truck, Gavel
 } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+import { usePosStore } from '../store/posStore';
 import { cn } from '../lib/utils';
+import { Input } from '../components/ui/input';
+import { Button } from '../components/ui/button';
+import { Textarea } from '../components/ui/textarea';
+import { Label } from '../components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 
-// Types
-interface InvoiceItem {
+type DocumentType =
+  | 'Quote'
+  | 'Confirm (LPO/LSO)'
+  | 'Deliver'
+  | 'Invoice'
+  | 'Remind'
+  | 'Demand'
+  | 'Settle'
+  | 'Legal';
+
+interface LineItem {
   id: string;
   description: string;
   quantity: number;
   price: number;
 }
 
-type PaperSize = 'a4' | 'a5';
+const DOCUMENT_TYPES: { type: DocumentType; icon: any; color: string; description: string }[] = [
+  { type: 'Quote', icon: FileText, color: 'text-blue-600', description: 'Initial price estimate' },
+  { type: 'Confirm (LPO/LSO)', icon: FileCheck, color: 'text-emerald-600', description: 'Order confirmation' },
+  { type: 'Deliver', icon: Truck, color: 'text-orange-600', description: 'Delivery note' },
+  { type: 'Invoice', icon: FileText, color: 'text-indigo-600', description: 'Request for payment' },
+  { type: 'Remind', icon: Clock, color: 'text-yellow-600', description: 'Payment reminder' },
+  { type: 'Demand', icon: AlertCircle, color: 'text-red-500', description: 'Formal demand' },
+  { type: 'Settle', icon: CheckCircle, color: 'text-green-600', description: 'Payment settlement' },
+  { type: 'Legal', icon: Gavel, color: 'text-red-700', description: 'Legal action notice' },
+];
 
 export default function InvoiceGenerator() {
   const { businessSetup } = usePosStore();
 
   // State
-  const [type, setType] = useState<'INVOICE' | 'QUOTATION'>('INVOICE');
-  const [docNumber, setDocNumber] = useState(`INV-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000)}`);
+  const [docType, setDocType] = useState<DocumentType>('Invoice');
+  const [paperSize, setPaperSize] = useState<'a4' | 'a5'>('a4');
+  const [docNumber, setDocNumber] = useState(`INV-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [dueDate, setDueDate] = useState('');
 
-  // Paper Size
-  const [paperSize, setPaperSize] = useState<PaperSize>('a4');
-
-  // Branding State
-  const [useCustomHeader, setUseCustomHeader] = useState(false);
-  const [headerImage, setHeaderImage] = useState<string | null>(null);
-  const [logoImage, setLogoImage] = useState<string | null>(null);
-  const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
-
-  // Client State
+  // Client Info
   const [clientName, setClientName] = useState('');
   const [clientCompany, setClientCompany] = useState('');
   const [clientAddress, setClientAddress] = useState('');
   const [clientEmail, setClientEmail] = useState('');
+  const [clientPhone, setClientPhone] = useState('');
 
-  // Items State
-  const [items, setItems] = useState<InvoiceItem[]>([
-    { id: '1', description: 'Service / Product Description', quantity: 1, price: 0 }
+  // Items
+  const [items, setItems] = useState<LineItem[]>([
+    { id: '1', description: 'Service / Product 1', quantity: 1, price: 0 }
   ]);
+  const [taxRate, setTaxRate] = useState(0);
 
-  // Footer State
-  const [notes, setNotes] = useState('Thank you for your business!');
+  // Footer
+  const [notes, setNotes] = useState('');
   const [paymentInfo, setPaymentInfo] = useState('');
 
-  // Refs
-  const previewRef = useRef<HTMLDivElement>(null);
-  const fileInputHeaderRef = useRef<HTMLInputElement>(null);
-  const fileInputLogoRef = useRef<HTMLInputElement>(null);
-  const fileInputBgRef = useRef<HTMLInputElement>(null);
+  // Customization
+  const [logoImage, setLogoImage] = useState<string | null>(null);
+  const [headerImage, setHeaderImage] = useState<string | null>(null);
+  const [useCustomHeader, setUseCustomHeader] = useState(false);
+  const [showWatermark, setShowWatermark] = useState(false);
 
-  // Initialize defaults from store
-  useEffect(() => {
-    if (businessSetup) {
-      if (!paymentInfo) {
-         setPaymentInfo(`Bank: Exmaple Bank\nAcc: 123456789\nM-Pesa Till: ${businessSetup.phone}`);
-      }
-    }
-  }, [businessSetup]);
+  const previewRef = useRef<HTMLDivElement>(null);
 
   // Calculations
   const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
-  const taxRate = businessSetup?.taxRate || 0;
-  const taxAmount = (subtotal * taxRate) / 100;
+  const taxAmount = subtotal * (taxRate / 100);
   const total = subtotal + taxAmount;
 
-  // Handlers
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string | null) => void) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setter(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+  // Effects
+  useEffect(() => {
+    // Auto-update document number prefix when type changes
+    const prefixMap: Record<string, string> = {
+      'Quote': 'QTE',
+      'Confirm (LPO/LSO)': 'ORD',
+      'Deliver': 'DEL',
+      'Invoice': 'INV',
+      'Remind': 'REM',
+      'Demand': 'DMD',
+      'Settle': 'STL',
+      'Legal': 'LGL'
+    };
+
+    const parts = docNumber.split('-');
+    if (parts.length >= 2) {
+      const newPrefix = prefixMap[docType] || 'DOC';
+      setDocNumber(`${newPrefix}-${parts.slice(1).join('-')}`);
     }
+
+    // Default notes based on type
+    const defaultNotes: Record<string, string> = {
+      'Quote': 'Valid for 30 days.',
+      'Deliver': 'Received the above goods in good condition.',
+      'Invoice': 'Payment due upon receipt.',
+      'Demand': 'Immediate payment required to avoid further action.'
+    };
+    if (!notes) setNotes(defaultNotes[docType] || '');
+
+  }, [docType]);
+
+  const handleAddItem = () => {
+    setItems([...items, {
+      id: Math.random().toString(36).substr(2, 9),
+      description: '',
+      quantity: 1,
+      price: 0
+    }]);
   };
 
-  const addItem = () => {
-    setItems([...items, { id: Math.random().toString(), description: '', quantity: 1, price: 0 }]);
-  };
-
-  const removeItem = (id: string) => {
+  const handleRemoveItem = (id: string) => {
     setItems(items.filter(i => i.id !== id));
   };
 
-  const updateItem = (id: string, field: keyof InvoiceItem, value: string | number) => {
-    setItems(items.map(i => {
-      if (i.id === id) {
-        return { ...i, [field]: value };
-      }
-      return i;
-    }));
+  const handleUpdateItem = (id: string, field: keyof LineItem, value: any) => {
+    setItems(items.map(i => i.id === id ? { ...i, [field]: value } : i));
   };
 
-  const generatePDF = async (targetSize: PaperSize) => {
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const reader = new FileReader();
+      reader.onload = (ev) => setLogoImage(ev.target?.result as string);
+      reader.readAsDataURL(e.target.files[0]);
+    }
+  };
+
+  const handleHeaderUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const reader = new FileReader();
+      reader.onload = (ev) => setHeaderImage(ev.target?.result as string);
+      reader.readAsDataURL(e.target.files[0]);
+    }
+  };
+
+  const generatePDF = async (format: 'a4' | 'a5') => {
     if (!previewRef.current) return;
 
-    // Temporarily set the size to ensure consistency if not already set
-    const previousSize = paperSize;
-    if (previousSize !== targetSize) {
-        setPaperSize(targetSize);
-        // Wait for render cycle
-        await new Promise(r => setTimeout(r, 100));
-    }
+    // Switch to target size for capture
+    const originalSize = paperSize;
+    setPaperSize(format);
+
+    // Wait for render
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     try {
-      const canvas = await html2canvas(previewRef.current, {
+      const element = previewRef.current;
+      const canvas = await html2canvas(element, {
         scale: 2, // Higher quality
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff'
       });
 
-      const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      const imgData = canvas.toDataURL('image/png');
+
+      // Dimensions in mm
+      const pdfWidth = format === 'a4' ? 210 : 148;
+      const pdfHeight = format === 'a4' ? 297 : 210;
+
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
-        format: targetSize
+        format: format
       });
 
-      // A4: 210 x 297, A5: 148 x 210
-      const pdfWidth = targetSize === 'a4' ? 210 : 148;
-      const pdfHeight = targetSize === 'a4' ? 297 : 210;
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`${docType}_${docNumber}.pdf`);
 
-      // Fit image to width
-      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
-
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, Math.min(imgHeight, pdfHeight)); // Use min to clip overflow if any
-      // Or just imgHeight if we want to allow multipage (logic not implemented for multipage yet)
-
-      pdf.save(`${type.toLowerCase()}-${docNumber}-${targetSize}.pdf`);
     } catch (error) {
-      console.error("PDF Generation failed", error);
-      alert("Failed to generate PDF. See console.");
+      console.error('PDF Generation failed:', error);
+      alert('Failed to generate PDF. Please try again.');
     } finally {
-        // Restore size if we changed it automatically (optional)
-        if (previousSize !== targetSize) {
-            setPaperSize(previousSize);
-        }
+      setPaperSize(originalSize);
     }
   };
 
   return (
-    <div className="h-[calc(100vh-theme(spacing.16))] flex flex-col lg:flex-row bg-slate-50 gap-6 p-6 overflow-hidden">
+    <div className="flex h-screen bg-slate-50 overflow-hidden">
 
-      {/* LEFT PANEL: Editor */}
-      <div className="w-full lg:w-5/12 flex flex-col gap-6 bg-white rounded-2xl shadow-sm border border-slate-200 h-full overflow-hidden">
-        <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-          <h2 className="font-bold text-slate-800 flex items-center gap-2">
-            <LayoutTemplate className="w-5 h-5 text-sky-500" />
-            Document Editor
-          </h2>
-          <div className="flex bg-slate-200 rounded-lg p-1">
-             <button
-               onClick={() => setType('INVOICE')}
-               className={cn("px-3 py-1 rounded-md text-sm font-medium transition-all", type === 'INVOICE' ? 'bg-white shadow-sm text-sky-600' : 'text-slate-600 hover:text-slate-900')}
-             >
-               Invoice
-             </button>
-             <button
-               onClick={() => setType('QUOTATION')}
-               className={cn("px-3 py-1 rounded-md text-sm font-medium transition-all", type === 'QUOTATION' ? 'bg-white shadow-sm text-sky-600' : 'text-slate-600 hover:text-slate-900')}
-             >
-               Quotation
-             </button>
+      {/* LEFT SIDEBAR: Editor */}
+      <div className="w-[450px] bg-white border-r border-slate-200 overflow-y-auto flex flex-col shadow-lg z-10">
+        <div className="p-6 space-y-8">
+
+          {/* Header */}
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Document Generator</h1>
+            <p className="text-slate-500 text-sm">Create professional business documents.</p>
           </div>
-        </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-8">
-
-            {/* Branding Section */}
-            <section className="space-y-4">
-               <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                 <ImageIcon className="w-4 h-4" /> Branding & Assets
-               </h3>
-
-               <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-600">Logo</label>
-                    <div
-                      onClick={() => fileInputLogoRef.current?.click()}
-                      className="border-2 border-dashed border-slate-300 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 hover:border-sky-400 transition-colors h-24"
-                    >
-                       {logoImage ? (
-                         <img src={logoImage} alt="Logo" className="h-full object-contain" />
-                       ) : (
-                         <div className="text-center text-slate-400">
-                           <Upload className="w-6 h-6 mx-auto mb-1" />
-                           <span className="text-xs">Upload Logo</span>
-                         </div>
-                       )}
-                       <input ref={fileInputLogoRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, setLogoImage)} />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-600">Full Header (Overwrites Info)</label>
-                    <div
-                      onClick={() => fileInputHeaderRef.current?.click()}
-                      className={cn("border-2 border-dashed border-slate-300 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 hover:border-sky-400 transition-colors h-24", useCustomHeader && "border-sky-500 bg-sky-50")}
-                    >
-                       {headerImage ? (
-                         <img src={headerImage} alt="Header" className="h-full object-contain" />
-                       ) : (
-                         <div className="text-center text-slate-400">
-                           <Upload className="w-6 h-6 mx-auto mb-1" />
-                           <span className="text-xs">Upload Header</span>
-                         </div>
-                       )}
-                       <input ref={fileInputHeaderRef} type="file" accept="image/*" className="hidden" onChange={(e) => { handleImageUpload(e, setHeaderImage); setUseCustomHeader(true); }} />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 col-span-2">
-                    <label className="text-xs font-semibold text-slate-600">Watermark / Background</label>
-                    <div
-                      onClick={() => fileInputBgRef.current?.click()}
-                      className="border-2 border-dashed border-slate-300 rounded-xl p-3 flex items-center justify-center cursor-pointer hover:bg-slate-50 hover:border-sky-400 transition-colors"
-                    >
-                       <span className="text-xs text-slate-500 flex items-center gap-2">
-                         <Upload className="w-4 h-4" />
-                         {backgroundImage ? 'Change Background Image' : 'Upload Background Image'}
-                       </span>
-                       <input ref={fileInputBgRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, setBackgroundImage)} />
-                    </div>
-                  </div>
-               </div>
-            </section>
-
-            <hr className="border-slate-100" />
-
-            {/* Document Details */}
-            <section className="space-y-4">
-               <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                 <Settings className="w-4 h-4" /> Details
-               </h3>
-               <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xs text-slate-500">Document #</label>
-                    <input type="text" value={docNumber} onChange={(e) => setDocNumber(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs text-slate-500">Date</label>
-                    <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500" />
-                  </div>
-               </div>
-            </section>
-
-             <hr className="border-slate-100" />
-
-            {/* Client Info */}
-            <section className="space-y-4">
-               <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                 <User className="w-4 h-4" /> Client Information
-               </h3>
-               <div className="space-y-3">
-                  <input type="text" placeholder="Client Name / Contact Person" value={clientName} onChange={(e) => setClientName(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500" />
-                  <input type="text" placeholder="Company Name" value={clientCompany} onChange={(e) => setClientCompany(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500" />
-                  <input type="text" placeholder="Address" value={clientAddress} onChange={(e) => setClientAddress(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500" />
-                  <input type="email" placeholder="Email Address" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500" />
-               </div>
-            </section>
-
-            <hr className="border-slate-100" />
-
-            {/* Items */}
-            <section className="space-y-4">
-               <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                 <DollarSign className="w-4 h-4" /> Line Items
-               </h3>
-               <div className="space-y-2">
-                  {items.map((item, index) => (
-                    <div key={item.id} className="flex gap-2 items-start group">
-                       <span className="text-xs text-slate-400 py-3 w-4">{index + 1}.</span>
-                       <div className="flex-1 space-y-1">
-                          <input
-                            type="text"
-                            placeholder="Description"
-                            value={item.description}
-                            onChange={(e) => updateItem(item.id, 'description', e.target.value)}
-                            className="w-full px-2 py-1 bg-slate-50 border border-slate-200 rounded text-sm focus:outline-none focus:border-sky-500"
-                          />
-                          <div className="flex gap-2">
-                            <input
-                                type="number"
-                                placeholder="Qty"
-                                value={item.quantity}
-                                onChange={(e) => updateItem(item.id, 'quantity', parseFloat(e.target.value))}
-                                className="w-20 px-2 py-1 bg-slate-50 border border-slate-200 rounded text-sm focus:outline-none focus:border-sky-500"
-                            />
-                            <input
-                                type="number"
-                                placeholder="Price"
-                                value={item.price}
-                                onChange={(e) => updateItem(item.id, 'price', parseFloat(e.target.value))}
-                                className="flex-1 px-2 py-1 bg-slate-50 border border-slate-200 rounded text-sm focus:outline-none focus:border-sky-500"
-                            />
-                          </div>
-                       </div>
-                       <button onClick={() => removeItem(item.id)} className="p-2 text-slate-400 hover:text-red-500 transition-colors">
-                         <Trash2 className="w-4 h-4" />
-                       </button>
-                    </div>
-                  ))}
-                  <button onClick={addItem} className="w-full py-2 flex items-center justify-center gap-2 border border-dashed border-slate-300 rounded-lg text-slate-500 hover:bg-slate-50 hover:text-sky-600 transition-colors text-sm font-medium">
-                    <Plus className="w-4 h-4" /> Add Item
+          {/* Document Type Selector */}
+          <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+            <Label>Document Stage</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {DOCUMENT_TYPES.map((dt) => {
+                const Icon = dt.icon;
+                return (
+                  <button
+                    key={dt.type}
+                    onClick={() => setDocType(dt.type)}
+                    className={cn(
+                      "flex items-center gap-2 p-2 rounded-lg border text-sm transition-all text-left",
+                      docType === dt.type
+                        ? "border-sky-500 bg-sky-50 text-sky-700 ring-1 ring-sky-500"
+                        : "border-slate-200 hover:border-slate-300 hover:bg-slate-100 text-slate-600"
+                    )}
+                  >
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span className="truncate">{dt.type}</span>
                   </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Basic Info */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+               <div className="space-y-2">
+                 <Label>Document No.</Label>
+                 <Input value={docNumber} onChange={e => setDocNumber(e.target.value)} />
                </div>
-            </section>
+               <div className="space-y-2">
+                 <Label>Date</Label>
+                 <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
+               </div>
+            </div>
+            {docType === 'Invoice' && (
+              <div className="space-y-2">
+                <Label>Due Date</Label>
+                <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+              </div>
+            )}
+          </div>
 
-            <hr className="border-slate-100" />
+          {/* Client Info */}
+          <div className="space-y-4 border-t pt-4">
+            <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+              <User className="w-4 h-4" /> Client Details
+            </h3>
+            <div className="space-y-3">
+              <Input placeholder="Company Name" value={clientCompany} onChange={e => setClientCompany(e.target.value)} />
+              <Input placeholder="Contact Person" value={clientName} onChange={e => setClientName(e.target.value)} />
+              <Input placeholder="Address" value={clientAddress} onChange={e => setClientAddress(e.target.value)} />
+              <div className="grid grid-cols-2 gap-3">
+                <Input placeholder="Email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} />
+                <Input placeholder="Phone" value={clientPhone} onChange={e => setClientPhone(e.target.value)} />
+              </div>
+            </div>
+          </div>
 
-            {/* Footer */}
-            <section className="space-y-4 pb-12">
-               <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Footer & Notes</h3>
-               <textarea
-                 value={notes}
-                 onChange={(e) => setNotes(e.target.value)}
-                 className="w-full h-20 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-sky-500 placeholder:text-slate-400"
-                 placeholder="Thank you note..."
-               />
-               <textarea
+          {/* Items */}
+          <div className="space-y-4 border-t pt-4">
+            <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+              <CreditCard className="w-4 h-4" /> Items
+            </h3>
+            <div className="space-y-3">
+              {items.map((item) => (
+                <div key={item.id} className="flex gap-2 items-start group">
+                  <div className="flex-1 space-y-2">
+                    <Input
+                      placeholder="Description"
+                      value={item.description}
+                      onChange={e => handleUpdateItem(item.id, 'description', e.target.value)}
+                    />
+                    <div className="flex gap-2">
+                       <Input
+                         type="number"
+                         className="w-20"
+                         placeholder="Qty"
+                         value={item.quantity}
+                         onChange={e => handleUpdateItem(item.id, 'quantity', parseFloat(e.target.value) || 0)}
+                       />
+                       <Input
+                         type="number"
+                         className="flex-1"
+                         placeholder="Price"
+                         value={item.price}
+                         onChange={e => handleUpdateItem(item.id, 'price', parseFloat(e.target.value) || 0)}
+                       />
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-red-400 hover:text-red-600 hover:bg-red-50"
+                    onClick={() => handleRemoveItem(item.id)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button onClick={handleAddItem} variant="outline" size="sm" className="w-full">
+                <Plus className="w-4 h-4 mr-2" /> Add Item
+              </Button>
+            </div>
+          </div>
+
+          {/* Financials */}
+          <div className="space-y-4 border-t pt-4">
+             <div className="flex items-center gap-4">
+                <Label>Tax Rate (%)</Label>
+                <Input
+                  type="number"
+                  value={taxRate}
+                  onChange={e => setTaxRate(parseFloat(e.target.value) || 0)}
+                  className="w-24"
+                />
+             </div>
+          </div>
+
+          {/* Images */}
+          <div className="space-y-4 border-t pt-4">
+            <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+              <Settings className="w-4 h-4" /> Branding
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+               <div>
+                  <Label className="text-xs mb-1 block">Logo</Label>
+                  <Input type="file" accept="image/*" onChange={handleLogoUpload} className="text-xs" />
+               </div>
+               <div>
+                  <Label className="text-xs mb-1 block">Full Header (Optional)</Label>
+                  <Input type="file" accept="image/*" onChange={handleHeaderUpload} className="text-xs" />
+               </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="useHeader"
+                checked={useCustomHeader}
+                onChange={e => setUseCustomHeader(e.target.checked)}
+                className="rounded border-slate-300"
+              />
+              <Label htmlFor="useHeader" className="text-sm font-normal">Use Full Header Image</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="showWatermark"
+                checked={showWatermark}
+                onChange={e => setShowWatermark(e.target.checked)}
+                className="rounded border-slate-300"
+              />
+              <Label htmlFor="showWatermark" className="text-sm font-normal">Show Watermark</Label>
+            </div>
+          </div>
+
+          {/* Footer Text */}
+          <div className="space-y-4 border-t pt-4 pb-20">
+             <div className="space-y-2">
+               <Label>Payment Details</Label>
+               <Textarea
                  value={paymentInfo}
-                 onChange={(e) => setPaymentInfo(e.target.value)}
-                 className="w-full h-24 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-sky-500 placeholder:text-slate-400 font-mono"
-                 placeholder="Payment Details..."
+                 onChange={e => setPaymentInfo(e.target.value)}
+                 placeholder="Bank Name, Account No, M-Pesa..."
+                 className="h-20"
                />
-            </section>
+             </div>
+             <div className="space-y-2">
+               <Label>Notes / Terms</Label>
+               <Textarea
+                 value={notes}
+                 onChange={e => setNotes(e.target.value)}
+                 className="h-20"
+               />
+             </div>
+          </div>
 
         </div>
       </div>
 
-      {/* RIGHT PANEL: Preview */}
-      <div className="flex-1 bg-slate-200/50 rounded-2xl border border-slate-200 overflow-hidden flex flex-col">
-         {/* Toolbar */}
-         <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-white gap-4">
-            <h2 className="font-bold text-slate-700 hidden sm:block">Live Preview</h2>
+      {/* RIGHT PANEL: Live Preview */}
+      <div className="flex-1 bg-slate-800 flex flex-col h-full overflow-hidden">
 
-            <div className="flex items-center gap-2 bg-slate-100 rounded-lg p-1">
+         {/* Toolbar */}
+         <div className="bg-white border-b border-slate-200 px-6 py-3 flex justify-between items-center shadow-md z-10">
+            <div className="flex items-center gap-4">
+               <span className="font-bold text-slate-700">Preview</span>
+               <div className="bg-slate-100 rounded-lg p-1 flex">
                  <button
                     onClick={() => setPaperSize('a4')}
                     className={cn(
@@ -364,157 +411,199 @@ export default function InvoiceGenerator() {
                  >
                     A5
                  </button>
+               </div>
             </div>
 
             <div className="flex gap-2">
-                 <button
-                    onClick={() => generatePDF('a4')}
-                    className="bg-sky-500 hover:bg-sky-600 text-white px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 shadow-sm transition-all"
-                 >
-                    <Download className="w-3 h-3" /> Save A4
-                 </button>
-                 <button
-                    onClick={() => generatePDF('a5')}
-                    className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 shadow-sm transition-all"
-                 >
-                    <Download className="w-3 h-3" /> Save A5
-                 </button>
+               <Button
+                 onClick={() => generatePDF('a4')}
+                 className="bg-sky-600 hover:bg-sky-700"
+                 size="sm"
+               >
+                 <Download className="w-4 h-4 mr-2" /> Save A4
+               </Button>
+               <Button
+                 onClick={() => generatePDF('a5')}
+                 className="bg-indigo-600 hover:bg-indigo-700"
+                 size="sm"
+               >
+                 <Download className="w-4 h-4 mr-2" /> Save A5
+               </Button>
             </div>
          </div>
 
-         {/* Preview Area */}
-         <div className="flex-1 overflow-auto p-8 flex justify-center bg-slate-100">
-            {/* Paper Container */}
+         {/* Canvas Area */}
+         <div className="flex-1 overflow-auto p-8 flex justify-center items-start bg-slate-800/50 backdrop-blur-sm">
+
+            {/* The Document Page */}
             <div
                ref={previewRef}
-               className="bg-white shadow-xl relative text-slate-800 leading-normal origin-top"
+               className="bg-white shadow-2xl relative text-slate-800 flex-shrink-0 transition-all duration-300"
                style={{
+                 // Strict Dimensions
                  width: paperSize === 'a4' ? '210mm' : '148mm',
                  minHeight: paperSize === 'a4' ? '297mm' : '210mm',
-                 padding: '0',
-                 boxSizing: 'border-box'
+                 padding: 0,
                }}
             >
-               {backgroundImage && (
-                 <div className="absolute inset-0 pointer-events-none opacity-10 flex items-center justify-center overflow-hidden">
-                    <img src={backgroundImage} className="w-full h-full object-cover" alt="bg" />
+               {/* Watermark */}
+               {showWatermark && (
+                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
+                   <div className="transform -rotate-45 text-slate-100 font-black text-9xl uppercase opacity-50 whitespace-nowrap select-none">
+                     {docType}
+                   </div>
                  </div>
                )}
 
-               {/* DOCUMENT CONTENT */}
-               <div className={`relative z-10 flex flex-col h-full ${paperSize === 'a4' ? 'min-h-[297mm]' : 'min-h-[210mm]'}`}>
+               {/* CONTENT CONTAINER */}
+               <div className="relative z-10 flex flex-col h-full min-h-full">
 
-                  {/* Header */}
-                  <div className="bg-white text-slate-900 p-8 border-b-2 border-slate-100">
+                  {/* HEADER SECTION */}
+                  <div className="p-10 border-b-4 border-sky-900 bg-slate-50">
                      <div className="flex justify-between items-start">
-                        {/* Left: Logo/Brand */}
-                        <div className="w-1/2">
+                        {/* Company Identity */}
+                        <div className="w-[60%]">
                            {useCustomHeader && headerImage ? (
-                             <img src={headerImage} alt="Header" className="max-w-full max-h-24 object-contain" />
+                             <img src={headerImage} alt="Header" className="w-full max-h-32 object-contain origin-left" />
                            ) : (
-                             <div className="space-y-2">
-                                {logoImage && <img src={logoImage} alt="Logo" className="h-16 object-contain mb-4" />}
+                             <div className="space-y-3">
+                                {logoImage && <img src={logoImage} alt="Logo" className="h-16 object-contain" />}
                                 <div>
-                                   <h1 className="text-2xl font-bold text-sky-900">{businessSetup?.businessName || 'Your Business Name'}</h1>
-                                   <p className="text-slate-600 text-xs whitespace-pre-line mt-1">
-                                     {businessSetup?.address || 'Address Line 1'}{'\n'}
-                                     {businessSetup?.phone || 'Phone Number'}{'\n'}
-                                     {businessSetup?.email || 'Email Address'}
-                                   </p>
+                                   <h1 className="text-2xl font-black text-sky-900 uppercase tracking-tight">
+                                     {businessSetup?.businessName || 'Your Business Name'}
+                                   </h1>
+                                   <div className="text-slate-600 text-sm mt-2 space-y-1 font-medium">
+                                      <p className="flex items-center gap-2">
+                                        <MapPin className="w-3 h-3 text-sky-500" />
+                                        {businessSetup?.address || '123 Business Street, City'}
+                                      </p>
+                                      <p className="flex items-center gap-2">
+                                        <Phone className="w-3 h-3 text-sky-500" />
+                                        {businessSetup?.phone || '+254 700 000 000'}
+                                      </p>
+                                      {businessSetup?.email && (
+                                        <p className="flex items-center gap-2">
+                                          <Mail className="w-3 h-3 text-sky-500" />
+                                          {businessSetup.email}
+                                        </p>
+                                      )}
+                                   </div>
                                 </div>
                              </div>
                            )}
                         </div>
 
-                        {/* Right: Document Title */}
-                        <div className="text-right">
-                           <h2 className="text-4xl font-black text-sky-900 tracking-widest">{type}</h2>
-                           <div className="mt-4 inline-block text-right">
-                              <div className="flex justify-end gap-4 text-xs mb-1">
-                                <span className="text-slate-500 uppercase tracking-wider">Date:</span>
+                        {/* Document Meta */}
+                        <div className="text-right flex-1">
+                           <h2 className="text-4xl font-black text-slate-200 tracking-widest uppercase mb-4">
+                             {docType}
+                           </h2>
+                           <div className="space-y-1">
+                              <div className="flex justify-end gap-3 text-sm">
+                                <span className="font-bold text-slate-500 uppercase tracking-wider">Date:</span>
                                 <span className="font-bold text-slate-900">{date}</span>
                               </div>
-                              <div className="flex justify-end gap-4 text-xs">
-                                <span className="text-slate-500 uppercase tracking-wider">No:</span>
+                              <div className="flex justify-end gap-3 text-sm">
+                                <span className="font-bold text-slate-500 uppercase tracking-wider">No:</span>
                                 <span className="font-bold text-slate-900">{docNumber}</span>
                               </div>
+                              {dueDate && (
+                                <div className="flex justify-end gap-3 text-sm">
+                                  <span className="font-bold text-red-400 uppercase tracking-wider">Due:</span>
+                                  <span className="font-bold text-red-600">{dueDate}</span>
+                                </div>
+                              )}
                            </div>
                         </div>
                      </div>
                   </div>
 
-                  {/* Bill To */}
-                  <div className="px-8 py-6">
-                     <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Bill To:</h3>
-                     <div className="text-base font-bold text-slate-800">{clientCompany || 'Company Name'}</div>
-                     <div className="text-slate-600 text-sm">
-                        {clientName && <div>{clientName}</div>}
-                        {clientAddress && <div>{clientAddress}</div>}
-                        {clientEmail && <div>{clientEmail}</div>}
+                  {/* BILL TO */}
+                  <div className="px-10 py-8 grid grid-cols-2 gap-8">
+                     <div>
+                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Bill To</h3>
+                        <div className="text-slate-900 font-bold text-lg leading-tight mb-1">
+                          {clientCompany || 'Client Company'}
+                        </div>
+                        <div className="text-slate-600 text-sm space-y-0.5">
+                           {clientName && <p>{clientName}</p>}
+                           {clientAddress && <p className="max-w-[200px]">{clientAddress}</p>}
+                           {clientPhone && <p>{clientPhone}</p>}
+                           {clientEmail && <p>{clientEmail}</p>}
+                        </div>
                      </div>
+                     {/* Could add Ship To here later if needed */}
                   </div>
 
-                  {/* Table */}
-                  <div className="px-8 flex-1">
-                     <table className="w-full text-left border-collapse">
+                  {/* ITEMS TABLE */}
+                  <div className="px-10 flex-1">
+                     <table className="w-full">
                         <thead>
-                           <tr className="border-b-2 border-sky-900 text-sm">
-                              <th className="py-2 font-bold text-sky-900 w-12">#</th>
-                              <th className="py-2 font-bold text-sky-900">Description</th>
-                              <th className="py-2 font-bold text-sky-900 text-center w-16">Qty</th>
-                              <th className="py-2 font-bold text-sky-900 text-right w-24">Price</th>
-                              <th className="py-2 font-bold text-sky-900 text-right w-24">Amount</th>
+                           <tr className="border-b-2 border-sky-900">
+                              <th className="py-2 text-left text-xs font-bold text-sky-900 uppercase tracking-wider w-12">#</th>
+                              <th className="py-2 text-left text-xs font-bold text-sky-900 uppercase tracking-wider">Description</th>
+                              <th className="py-2 text-center text-xs font-bold text-sky-900 uppercase tracking-wider w-16">Qty</th>
+                              <th className="py-2 text-right text-xs font-bold text-sky-900 uppercase tracking-wider w-24">Price</th>
+                              <th className="py-2 text-right text-xs font-bold text-sky-900 uppercase tracking-wider w-24">Total</th>
                            </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="divide-y divide-slate-100">
                            {items.map((item, index) => (
-                             <tr key={item.id} className="border-b border-slate-100 text-sm">
-                                <td className="py-3 text-slate-500">{index + 1}</td>
-                                <td className="py-3 font-medium">{item.description}</td>
-                                <td className="py-3 text-center">{item.quantity}</td>
-                                <td className="py-3 text-right">{item.price.toLocaleString()}</td>
-                                <td className="py-3 text-right font-bold text-slate-700">{(item.quantity * item.price).toLocaleString()}</td>
+                             <tr key={item.id} className="text-sm">
+                                <td className="py-3 text-slate-400 font-mono">{index + 1}</td>
+                                <td className="py-3 font-medium text-slate-800">{item.description}</td>
+                                <td className="py-3 text-center text-slate-600">{item.quantity}</td>
+                                <td className="py-3 text-right text-slate-600">{item.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                <td className="py-3 text-right font-bold text-slate-800">{(item.quantity * item.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                              </tr>
                            ))}
                         </tbody>
                      </table>
+                  </div>
 
-                     {/* Totals */}
-                     <div className="mt-6 flex justify-end">
-                        <div className="w-56 space-y-1 text-sm">
-                           <div className="flex justify-between text-slate-600">
-                              <span>Subtotal:</span>
-                              <span>{subtotal.toLocaleString()}</span>
+                  {/* TOTALS & SUMMARY */}
+                  <div className="px-10 py-4 bg-slate-50/50 break-inside-avoid">
+                     <div className="flex justify-end">
+                        <div className="w-64 space-y-2">
+                           <div className="flex justify-between text-sm text-slate-600">
+                              <span>Subtotal</span>
+                              <span>{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                            </div>
-                           <div className="flex justify-between text-slate-600">
-                              <span>Tax ({taxRate}%):</span>
-                              <span>{taxAmount.toLocaleString()}</span>
-                           </div>
-                           <div className="flex justify-between text-lg font-bold text-sky-900 pt-2 border-t-2 border-sky-900 mt-2">
-                              <span>Total:</span>
-                              <span>{total.toLocaleString()}</span>
+                           {taxRate > 0 && (
+                             <div className="flex justify-between text-sm text-slate-600">
+                                <span>Tax ({taxRate}%)</span>
+                                <span>{taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                             </div>
+                           )}
+                           <div className="flex justify-between text-xl font-black text-sky-900 pt-3 border-t-2 border-sky-900">
+                              <span>Total</span>
+                              <span>{total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                            </div>
                         </div>
                      </div>
                   </div>
 
-                  {/* Footer Info */}
-                  <div className="px-8 py-8 mt-auto">
-                     <div className="grid grid-cols-2 gap-8">
-                        <div>
-                           <h4 className="font-bold text-sky-900 mb-1 text-sm">Payment Details</h4>
-                           <p className="text-xs text-slate-600 whitespace-pre-wrap">{paymentInfo}</p>
-                        </div>
-                        <div>
-                           <h4 className="font-bold text-sky-900 mb-1 text-sm">Notes</h4>
-                           <p className="text-xs text-slate-600 whitespace-pre-wrap">{notes}</p>
-                        </div>
+                  {/* FOOTER INFO */}
+                  <div className="px-10 py-8 mt-auto grid grid-cols-2 gap-12 border-t border-slate-100">
+                     <div>
+                        <h4 className="font-bold text-sky-900 text-xs uppercase tracking-wider mb-2">Payment Details</h4>
+                        <p className="text-xs text-slate-600 whitespace-pre-line leading-relaxed">
+                          {paymentInfo || "Please verify payment details before sending."}
+                        </p>
+                     </div>
+                     <div>
+                        <h4 className="font-bold text-sky-900 text-xs uppercase tracking-wider mb-2">Terms & Notes</h4>
+                        <p className="text-xs text-slate-600 whitespace-pre-line leading-relaxed">
+                          {notes}
+                        </p>
                      </div>
                   </div>
 
-                  {/* Branding Footer */}
-                  <div className="bg-slate-100 p-3 text-center text-[10px] text-slate-400">
-                     Powered by Whizpoint Solutions • 0740 841 168
+                  {/* DEVELOPER BRANDING */}
+                  <div className="bg-slate-900 text-white p-3 text-center">
+                     <p className="text-[10px] uppercase tracking-widest font-medium opacity-60">
+                       Powered by Whizpoint Solutions
+                     </p>
                   </div>
 
                </div>

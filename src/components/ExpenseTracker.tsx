@@ -3,6 +3,7 @@ import { usePosStore } from '../store/posStore';
 import { Expense } from '../types';
 import { DollarSign, Plus, Receipt, TrendingUp, Calendar, Search, Filter, Copy, Edit2, Trash2, X } from 'lucide-react';
 import ExpenseHistoryModal from './ExpenseHistoryModal';
+import { ConfirmDialog } from './ConfirmDialog';
 
 export default function ExpenseTracker() {
   const { expenses, saveExpense, currentCashier, setCurrentPage, deleteExpense, updateExpense } = usePosStore();
@@ -10,6 +11,7 @@ export default function ExpenseTracker() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [quickAddAmount, setQuickAddAmount] = useState('');
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+  const [confirmState, setConfirmState] = useState<{isOpen: boolean, onConfirm: () => void}>({ isOpen: false, onConfirm: () => {} });
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -127,11 +129,15 @@ export default function ExpenseTracker() {
         setTimeout(() => setNotification(null), 3000);
         return;
       }
-      if(confirm('Are you sure you want to delete this expense?')) {
+      setConfirmState({
+        isOpen: true,
+        onConfirm: () => {
           deleteExpense(id);
           setNotification({ type: 'success', message: "Expense deleted." });
           setTimeout(() => setNotification(null), 3000);
-      }
+          setConfirmState(prev => ({ ...prev, isOpen: false }));
+        }
+      });
   };
 
   const handleRowClick = (expense: Expense) => {
@@ -486,6 +492,14 @@ export default function ExpenseTracker() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         defaultSupplier={selectedSupplier}
+      />
+      <ConfirmDialog
+        isOpen={confirmState.isOpen}
+        title="Delete Expense"
+        description="Are you sure you want to delete this expense?"
+        onConfirm={confirmState.onConfirm}
+        onCancel={() => setConfirmState(prev => ({ ...prev, isOpen: false }))}
+        variant="danger"
       />
     </div>
   );

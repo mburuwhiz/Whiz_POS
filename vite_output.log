@@ -7,3 +7,14 @@
 
   ➜  Local:   http://localhost:5174/
   ➜  Network: use --host to expose
+6:22:27 AM [vite] hmr update /src/pages/InvoiceGenerator.tsx, /src/index.css
+6:23:49 AM [vite] hmr update /src/components/OfflineSyncStatus.tsx, /src/index.css
+6:25:15 AM [vite] hmr update /src/components/SettingsPage.tsx, /src/index.css
+6:30:39 AM [vite] hmr update /src/components/PreviousReceiptsPage.tsx, /src/index.css
+6:30:49 AM [vite] page reload src/components/ExpenseTracker.tsx
+6:32:46 AM [vite] page reload mobile-app/public/receipt-template.html
+6:37:43 AM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html
+6:38:17 AM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html
+6:38:18 AM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html
+6:38:18 AM [vite] page reload dist/__appImage-x64/LICENSES.chromium.html
+6:39:16 AM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html

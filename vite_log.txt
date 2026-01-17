@@ -8,3 +8,9 @@ Port 5174 is in use, trying another one...
 
   ➜  Local:   http://localhost:5175/
   ➜  Network: use --host to expose
+6:32:46 AM [vite] page reload mobile-app/public/receipt-template.html
+6:37:43 AM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html
+6:38:17 AM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html
+6:38:18 AM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html
+6:38:18 AM [vite] page reload dist/__appImage-x64/LICENSES.chromium.html
+6:39:16 AM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html

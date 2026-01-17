@@ -1,257 +1,115 @@
 import React, { useState, useEffect } from 'react';
+import { Smartphone, RefreshCw, CheckCircle, Wifi, Monitor, Copy } from 'lucide-react';
 import { usePosStore } from '../store/posStore';
-import { Wifi, WifiOff, CheckCircle, AlertCircle, RefreshCw, Database, Activity, Clock, ArrowUpCircle, ArrowDownCircle, Server, Smartphone } from 'lucide-react';
-import { ConfirmDialog } from './ConfirmDialog';
-
-interface SyncQueueItem {
-  id: string;
-  type: 'transaction' | 'expense' | 'product' | 'customer';
-  data: any;
-  timestamp: string;
-  status: 'pending' | 'syncing' | 'completed' | 'failed';
-  retryCount: number;
-}
+import QRCode from 'react-qr-code';
 
 export default function OfflineSyncStatus() {
-  const { syncQueue, isOnline, processSyncQueue, syncFromServer, pushDataToServer, lastSyncTime } = usePosStore();
-  const [isPushing, setIsPushing] = useState(false);
-  const [isPulling, setIsPulling] = useState(false);
-  const [isFullSyncing, setIsFullSyncing] = useState(false);
+  const { isOnline, apiConfig, businessSetup } = usePosStore();
+  const [localIp, setLocalIp] = useState<string>('');
 
-  // Confirm State
-  const [showFullSyncConfirm, setShowFullSyncConfirm] = useState(false);
+  // Try to get local IP (this is a best-effort in browser, usually handled by electron or known by user)
+  useEffect(() => {
+    // In a real Electron app, we'd request this from the main process
+    // For now, we rely on the user knowing their IP or the displayed mock
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        setLocalIp(window.location.hostname);
+    } else {
+        // Fallback or placeholder for the "server" IP
+        setLocalIp('192.168.1.X');
+    }
+  }, []);
 
-  // Derived stats from actual store queue
-  const syncStats = {
-    total: syncQueue.length,
-    pending: syncQueue.length, // All items in queue are technically pending until processed
-    completed: 0, // We don't keep completed items in queue in the store logic (they are removed)
-    failed: 0 // Store retries internally but doesn't flag 'failed' in the queue array same way
-  };
-
-  const handlePushSync = async () => {
-    if (!isOnline) {
-        alert("You are offline. Connect to internet to sync.");
-        return;
-    }
-    setIsPushing(true);
-    try {
-      await processSyncQueue();
-      // alert('Push sync completed.');
-    } catch (error) {
-      console.error('Push sync failed:', error);
-      alert('Push sync failed. Check console for details.');
-    } finally {
-      setIsPushing(false);
-    }
-  };
-
-  const handlePullSync = async () => {
-     if (!isOnline) {
-        alert("You are offline. Connect to internet to sync.");
-        return;
-    }
-    setIsPulling(true);
-    try {
-      await syncFromServer();
-      // alert('Pull sync completed.');
-    } catch (error) {
-      console.error('Pull sync failed:', error);
-      alert('Pull sync failed. Check console for details.');
-    } finally {
-      setIsPulling(false);
-    }
-  };
-
-  const executeFullSync = async () => {
-    setIsFullSyncing(true);
-    try {
-      await pushDataToServer();
-      alert('Full sync completed successfully.');
-    } catch (error) {
-      console.error('Full sync failed:', error);
-      alert('Full sync failed. Check console for details.');
-    } finally {
-      setIsFullSyncing(false);
-    }
-  };
-
-  const handleFullSyncClick = () => {
-     if (!isOnline) {
-        alert("You are offline. Connect to internet to sync.");
-        return;
-    }
-    setShowFullSyncConfirm(true);
-  };
+  const serverUrl = `http://${localIp}:3000`; // Assuming default port
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <Database className="w-8 h-8 text-blue-600" />
-              <div>
-                <h1 className="text-2xl font-bold text-gray-800">Sync Status</h1>
-                <p className="text-gray-600">Manage data synchronization with Back Office</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className={`flex items-center space-x-2 px-3 py-1 rounded-full ${
-                isOnline ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-              }`}>
-                {isOnline ? (
-                  <>
-                    <Wifi className="w-4 h-4" />
-                    <span className="font-medium">Online</span>
-                  </>
-                ) : (
-                  <>
-                    <WifiOff className="w-4 h-4" />
-                    <span className="font-medium">Offline</span>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
+    <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+
+      <div className="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+        <div>
+           <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+             <Smartphone className="w-5 h-5 text-indigo-600" />
+             Connected Devices
+           </h2>
+           <p className="text-sm text-slate-500">Manage Mobile App connections.</p>
         </div>
-
-        {/* Status Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm">Queue Status</p>
-                <p className="text-xl font-bold text-gray-800">{syncQueue.length} Items Pending</p>
-              </div>
-              <Clock className="w-8 h-8 text-orange-500" />
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm">Last Sync</p>
-                <p className="text-xl font-bold text-gray-800">
-                  {lastSyncTime ? new Date(lastSyncTime).toLocaleString() : 'Never'}
-                </p>
-              </div>
-              <RefreshCw className="w-8 h-8 text-purple-600" />
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm">Server Status</p>
-                <p className="text-xl font-bold text-gray-800">{isOnline ? 'Reachable' : 'Unreachable'}</p>
-              </div>
-              <Server className="w-8 h-8 text-blue-600" />
-            </div>
-          </div>
+        <div className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${isOnline ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>
+           <Wifi className="w-3 h-3" />
+           {isOnline ? 'Cloud Connected' : 'Local Mode'}
         </div>
+      </div>
 
-        {/* Manual Controls */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-             {/* Sync Actions */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4">Manual Sync Actions</h2>
-                <div className="space-y-4">
-                    <button
-                    onClick={handlePushSync}
-                    disabled={isPushing || !isOnline || syncQueue.length === 0}
-                    className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
-                    >
-                    <ArrowUpCircle className={`w-5 h-5 ${isPushing ? 'animate-bounce' : ''}`} />
-                    <span>{isPushing ? 'Pushing Data...' : 'Push Pending Data (Desktop → Server)'}</span>
-                    </button>
+      <div className="p-8">
+         <div className="grid md:grid-cols-2 gap-12 items-center">
 
-                    <button
-                    onClick={handlePullSync}
-                    disabled={isPulling || !isOnline}
-                    className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
-                    >
-                    <ArrowDownCircle className={`w-5 h-5 ${isPulling ? 'animate-bounce' : ''}`} />
-                    <span>{isPulling ? 'Checking Updates...' : 'Pull Updates (Server → Desktop)'}</span>
-                    </button>
+            {/* QR Code Section */}
+            <div className="flex flex-col items-center justify-center space-y-4">
+               <div className="bg-white p-4 rounded-xl shadow-lg border border-slate-100">
+                  {apiConfig?.apiKey ? (
+                    <QRCode
+                        value={JSON.stringify({
+                            url: serverUrl,
+                            key: apiConfig.apiKey,
+                            business: businessSetup?.businessName
+                        })}
+                        size={180}
+                        level="H"
+                    />
+                  ) : (
+                    <div className="w-[180px] h-[180px] bg-slate-100 animate-pulse rounded-lg flex items-center justify-center text-xs text-slate-400">
+                        Generating Key...
+                    </div>
+                  )}
+               </div>
+               <p className="text-xs font-medium text-slate-500 uppercase tracking-widest">Scan with Mobile App</p>
+            </div>
 
-                    <div className="pt-4 border-t border-gray-100">
+            {/* Manual Connection Info */}
+            <div className="space-y-6">
+
+                <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Server URL</label>
+                    <div className="flex gap-2">
+                        <code className="flex-1 bg-slate-100 p-3 rounded-lg border border-slate-200 text-slate-700 font-mono text-sm">
+                           {serverUrl}
+                        </code>
                         <button
-                        onClick={handleFullSyncClick}
-                        disabled={isFullSyncing || !isOnline}
-                        className="w-full bg-gray-800 hover:bg-gray-900 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
+                            onClick={() => navigator.clipboard.writeText(serverUrl)}
+                            className="p-3 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
+                            title="Copy URL"
                         >
-                        <Database className={`w-5 h-5 ${isFullSyncing ? 'animate-pulse' : ''}`} />
-                        <span>{isFullSyncing ? 'Syncing...' : 'Full Cloud Synchronization (Overwrite Server)'}</span>
+                            <Copy className="w-4 h-4" />
                         </button>
-                        <p className="text-xs text-gray-500 mt-2 text-center">
-                            Use "Full Sync" to force push all local data (Products, Users, Customers, Transactions) to the Back Office.
-                        </p>
                     </div>
+                    <p className="text-xs text-slate-500">Enter this exactly into the Mobile App settings.</p>
                 </div>
+
+                <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Mobile Sync Key</label>
+                    <div className="flex gap-2">
+                        <code className="flex-1 bg-slate-100 p-3 rounded-lg border border-slate-200 text-slate-700 font-mono text-xs break-all">
+                           {apiConfig?.apiKey || 'Generating...'}
+                        </code>
+                        <button
+                             onClick={() => apiConfig?.apiKey && navigator.clipboard.writeText(apiConfig.apiKey)}
+                             className="p-3 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
+                             title="Copy Key"
+                        >
+                            <Copy className="w-4 h-4" />
+                        </button>
+                    </div>
+                    <p className="text-xs text-slate-500">This key secures the connection between Mobile and Desktop.</p>
+                </div>
+
+                <div className="bg-indigo-50 text-indigo-900 p-4 rounded-lg text-sm flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
+                    <p>
+                        Ensure your Mobile Device is connected to the same Wi-Fi network as this computer.
+                    </p>
+                </div>
+
             </div>
 
-             {/* Sync Info */}
-             <div className="bg-white rounded-lg shadow-sm p-6">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4">Sync Frequency</h2>
-                 <div className="p-4 bg-blue-50 rounded-lg">
-                    <div className="flex items-start space-x-3">
-                        <Clock className="w-5 h-5 text-blue-600 mt-1" />
-                        <div>
-                            <p className="font-medium text-blue-900">Auto-Sync Interval: 10 Seconds</p>
-                            <p className="text-sm text-blue-700 mt-1">
-                                When online, the system automatically pushes changes and checks for updates every 10 seconds to keep the Back Office and other devices in sync.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-             </div>
-        </div>
-
-        {/* Queue Details */}
-        {syncQueue.length > 0 && (
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-6">
-          <div className="p-6 border-b border-gray-200">
-             <h2 className="text-lg font-semibold text-gray-800">Pending Operations ({syncQueue.length})</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data Summary</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {syncQueue.map((item, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
-                        {item.type}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                       {item.data.id || item.data.name || 'Unknown Data'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-        )}
-
-        <ConfirmDialog
-          isOpen={showFullSyncConfirm}
-          onCancel={() => setShowFullSyncConfirm(false)}
-          onConfirm={executeFullSync}
-          title="Full Synchronization"
-          description="This will force push all your Desktop data to the Back Office, potentially overwriting data there. Are you sure you want to continue?"
-          confirmLabel="Start Full Sync"
-          variant="warning"
-        />
-
+         </div>
       </div>
     </div>
   );

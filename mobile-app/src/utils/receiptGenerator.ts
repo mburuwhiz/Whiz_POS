@@ -158,7 +158,7 @@ export const generateReceiptImage = async (
             <div style="${styles.separator}"></div>
 
             <div style="${styles.devFooter}">
-                <p style="${styles.p}">System Designed and serviced by Whiz tech</p>
+                <p style="${styles.p}">System Designed and serviced by Whizpoint Solutions</p>
                 <p style="${styles.p}">Tell: 0740 841 168</p>
             </div>
         </div>

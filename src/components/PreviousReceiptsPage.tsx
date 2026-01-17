@@ -3,6 +3,7 @@ import { usePosStore } from '../store/posStore';
 import { useNavigate } from 'react-router-dom';
 import { RefreshCcw, Search, Undo2, Trash2, X } from 'lucide-react';
 import DeleteReceiptsModal from './DeleteReceiptsModal';
+import { ConfirmDialog } from './ConfirmDialog';
 
 const PreviousReceiptsPage: React.FC = () => {
   const transactions = usePosStore((state) => state.transactions);
@@ -21,15 +22,20 @@ const PreviousReceiptsPage: React.FC = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [confirmState, setConfirmState] = useState<{isOpen: boolean, onConfirm: () => void}>({ isOpen: false, onConfirm: () => {} });
 
   const handleReprint = (transactionId: string) => {
     reprintTransaction(transactionId);
   };
 
   const handleReverse = (transactionId: string) => {
-    if (confirm('Are you sure you want to reverse this transaction? This will refund the amount and restore stock.')) {
+    setConfirmState({
+      isOpen: true,
+      onConfirm: () => {
         reverseTransaction(transactionId);
-    }
+        setConfirmState(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   // Sort transactions by date descending - Memoized
@@ -183,6 +189,14 @@ const PreviousReceiptsPage: React.FC = () => {
       <DeleteReceiptsModal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
+      />
+      <ConfirmDialog
+        isOpen={confirmState.isOpen}
+        title="Reverse Transaction"
+        description="Are you sure you want to reverse this transaction? This will refund the amount and restore stock."
+        onConfirm={confirmState.onConfirm}
+        onCancel={() => setConfirmState(prev => ({ ...prev, isOpen: false }))}
+        variant="warning"
       />
     </div>
   );

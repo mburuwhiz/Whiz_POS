@@ -42,6 +42,11 @@ interface DocumentData {
   // Specific fields for new docs
   subject?: string;
   bodyText?: string;
+  partialAmount?: number;
+  settlementDate?: string;
+  daysNotice?: number;
+  paymentMode?: string;
+  projectReference?: string;
 }
 
 interface Branding {
@@ -75,6 +80,13 @@ export const DocumentPreview = React.forwardRef<HTMLDivElement, DocumentPreviewP
       text = text.replace(/\[Due Date\]/g, data.dueDate || 'Upon Receipt');
       text = text.replace(/\[Amount\]/g, data.total.toLocaleString());
       text = text.replace(/\[Total Amount\]/g, data.total.toLocaleString());
+
+      // New placeholders
+      text = text.replace(/\[Project \/ Invoice Reference\]/g, data.projectReference || data.docNumber);
+      text = text.replace(/\[Partial Amount\]/g, data.partialAmount?.toLocaleString() || '0');
+      text = text.replace(/\[Final Date\]/g, data.settlementDate || 'TBD');
+      text = text.replace(/\[X days\]/g, String(data.daysNotice || 7) + ' days');
+      text = text.replace(/\[Payment Mode\]/g, data.paymentMode || 'Cash/Bank');
 
       // Fallback for custom body text if user edited it
       return text;

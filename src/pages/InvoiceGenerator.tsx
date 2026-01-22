@@ -48,7 +48,15 @@ export default function InvoiceGenerator() {
 
   // Letter State
   const [subject, setSubject] = useState('');
-  const [bodyText, setBodyText] = useState('');
+  // const [bodyText, setBodyText] = useState(''); // REPLACED BY TEMPLATE LOGIC
+  const [templateString, setTemplateString] = useState('');
+
+  // Specific Form Fields
+  const [partialAmount, setPartialAmount] = useState(0);
+  const [settlementDate, setSettlementDate] = useState('');
+  const [daysNotice, setDaysNotice] = useState(7);
+  const [paymentMode, setPaymentMode] = useState('');
+  const [projectReference, setProjectReference] = useState('');
 
   // Branding State
   const [useCustomHeader, setUseCustomHeader] = useState(false);
@@ -117,12 +125,12 @@ export default function InvoiceGenerator() {
     const template = (DOCUMENT_TEMPLATES as any)[templateKey];
     if (template) {
       setSubject(template.subject);
-      setBodyText(template.body);
+      setTemplateString(template.body);
     } else {
        // Reset if switching back to transaction or unknown
+       setTemplateString('');
        if (['INVOICE', 'QUOTATION', 'PURCHASE_ORDER'].includes(newType)) {
           setSubject('');
-          setBodyText('');
        }
     }
   };
@@ -382,9 +390,11 @@ export default function InvoiceGenerator() {
             ) : (
               <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2 mb-4">
-                   <FileText className="w-4 h-4" /> Letter Content
+                   <FileText className="w-4 h-4" /> Letter Details
                  </h3>
+
                  <div className="space-y-4">
+                    {/* Common Subject Line */}
                     <div>
                       <label className="text-xs text-slate-500 mb-1 block">Subject Line</label>
                       <input
@@ -392,18 +402,77 @@ export default function InvoiceGenerator() {
                         value={subject}
                         onChange={(e) => setSubject(e.target.value)}
                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-sky-500 font-medium"
-                        placeholder="e.g. Demand for Payment"
                       />
                     </div>
-                    <div>
-                      <label className="text-xs text-slate-500 mb-1 block">Body Text (Supports placeholders like [Client Name], [Amount])</label>
-                      <textarea
-                        value={bodyText}
-                        onChange={(e) => setBodyText(e.target.value)}
-                        className="w-full h-64 px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-sky-500 leading-relaxed"
-                        placeholder="Write your letter content here..."
-                      />
-                    </div>
+
+                    {/* Specific Fields based on Document Type */}
+
+                    {docType === 'DEMAND_LETTER_PARTIAL' && (
+                       <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-xs text-slate-500 mb-1 block">Total Outstanding</label>
+                            <div className="text-sm font-bold text-slate-700 px-3 py-2 bg-slate-100 rounded-lg border border-transparent">
+                                {total.toLocaleString()}
+                            </div>
+                            <p className="text-[10px] text-slate-400 mt-1">Calculated from Line Items (hidden)</p>
+                          </div>
+                          <div>
+                            <label className="text-xs text-slate-500 mb-1 block">Partial Amount Requested</label>
+                            <input
+                              type="number"
+                              value={partialAmount}
+                              onChange={(e) => setPartialAmount(parseFloat(e.target.value))}
+                              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-sky-500"
+                            />
+                          </div>
+                          <div>
+                             <label className="text-xs text-slate-500 mb-1 block">Final Settlement Date</label>
+                             <input type="date" value={settlementDate} onChange={(e) => setSettlementDate(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-sky-500" />
+                          </div>
+                       </div>
+                    )}
+
+                    {docType === 'FINAL_NOTICE' && (
+                       <div>
+                          <label className="text-xs text-slate-500 mb-1 block">Days Notice (Legal Action)</label>
+                          <input
+                              type="number"
+                              value={daysNotice}
+                              onChange={(e) => setDaysNotice(parseFloat(e.target.value))}
+                              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-sky-500"
+                            />
+                       </div>
+                    )}
+
+                    {docType === 'PAYMENT_RECEIPT' && (
+                        <div>
+                          <label className="text-xs text-slate-500 mb-1 block">Payment Mode</label>
+                           <select
+                             value={paymentMode}
+                             onChange={(e) => setPaymentMode(e.target.value)}
+                             className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-sky-500"
+                           >
+                              <option value="">Select Mode...</option>
+                              <option value="Cash">Cash</option>
+                              <option value="M-Pesa">M-Pesa</option>
+                              <option value="Bank Transfer">Bank Transfer</option>
+                              <option value="Cheque">Cheque</option>
+                           </select>
+                        </div>
+                    )}
+
+                    {docType === 'COMPLETION_CERTIFICATE' && (
+                        <div>
+                           <label className="text-xs text-slate-500 mb-1 block">Project Reference</label>
+                           <input
+                              type="text"
+                              value={projectReference}
+                              onChange={(e) => setProjectReference(e.target.value)}
+                              placeholder="e.g. Website Development Project"
+                              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-sky-500"
+                            />
+                        </div>
+                    )}
                  </div>
               </div>
             )}
@@ -464,7 +533,12 @@ export default function InvoiceGenerator() {
           notes,
           paymentInfo,
           subject,
-          bodyText
+          bodyText: templateString,
+          partialAmount,
+          settlementDate,
+          daysNotice,
+          paymentMode,
+          projectReference
         }}
       />
     </div>

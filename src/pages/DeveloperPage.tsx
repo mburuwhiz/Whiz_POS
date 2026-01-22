@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { usePosStore } from '../store/posStore';
-import { Shield, Key, Database, Globe, Save, RefreshCw, Lock, CheckCircle, AlertTriangle, Delete, HardDrive, Upload, Download, FileText, Copy, Printer } from 'lucide-react';
+import { Shield, Key, Database, Globe, Save, RefreshCw, Lock, CheckCircle, AlertTriangle, Delete, HardDrive, Upload, Download, FileText, Copy, Printer, Smartphone } from 'lucide-react';
 import { Switch } from '@headlessui/react';
 
 const DeveloperPage = () => {
@@ -19,6 +19,16 @@ const DeveloperPage = () => {
     const [showDevFooter, setShowDevFooter] = useState(true);
     const [isPushing, setIsPushing] = useState(false);
     const [isBackingUp, setIsBackingUp] = useState(false);
+
+    // M-Pesa State
+    const [mpesaConfig, setMpesaConfig] = useState({
+        consumerKey: '',
+        consumerSecret: '',
+        passkey: '',
+        shortcode: '',
+        type: 'Till' as 'Paybill' | 'Till',
+        environment: 'Sandbox' as 'Sandbox' | 'Production'
+    });
 
     // Logs State
     const [logs, setLogs] = useState('');
@@ -39,6 +49,10 @@ const DeveloperPage = () => {
                 setBackOfficeUrl(businessSetup?.backOfficeUrl || businessSetup?.apiUrl || '');
                 setBackOfficeApiKey(businessSetup?.backOfficeApiKey || businessSetup?.apiKey || '');
                 setShowDevFooter(businessSetup?.showDeveloperFooter !== false);
+
+                if (businessSetup?.mpesaConfig) {
+                    setMpesaConfig(businessSetup.mpesaConfig);
+                }
             }
         } catch (e) {
             console.error("Failed to load developer config", e);
@@ -121,6 +135,7 @@ const DeveloperPage = () => {
             apiUrl: backOfficeUrl,
             apiKey: backOfficeApiKey,
             showDeveloperFooter: showDevFooter,
+            mpesaConfig,
             isSetup: true
         };
         // @ts-ignore
@@ -429,6 +444,75 @@ const DeveloperPage = () => {
                                 } inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
                             />
                         </Switch>
+                    </div>
+                </div>
+
+                {/* M-Pesa Daraja Settings */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <div className="flex items-center gap-2 mb-4 border-b pb-2">
+                        <Smartphone className="w-5 h-5 text-green-600" />
+                        <h2 className="text-xl font-semibold text-gray-800">M-Pesa Daraja Configuration</h2>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Environment</label>
+                            <select
+                                value={mpesaConfig.environment}
+                                onChange={(e) => setMpesaConfig({...mpesaConfig, environment: e.target.value as any})}
+                                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                            >
+                                <option value="Sandbox">Sandbox</option>
+                                <option value="Production">Production</option>
+                            </select>
+                         </div>
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Account Type</label>
+                            <select
+                                value={mpesaConfig.type}
+                                onChange={(e) => setMpesaConfig({...mpesaConfig, type: e.target.value as any})}
+                                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                            >
+                                <option value="Till">Buy Goods (Till)</option>
+                                <option value="Paybill">Paybill</option>
+                            </select>
+                         </div>
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Shortcode / Till No</label>
+                            <input
+                                type="text"
+                                value={mpesaConfig.shortcode}
+                                onChange={(e) => setMpesaConfig({...mpesaConfig, shortcode: e.target.value})}
+                                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                            />
+                         </div>
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Passkey</label>
+                            <input
+                                type="password"
+                                value={mpesaConfig.passkey}
+                                onChange={(e) => setMpesaConfig({...mpesaConfig, passkey: e.target.value})}
+                                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                            />
+                         </div>
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Consumer Key</label>
+                            <input
+                                type="password"
+                                value={mpesaConfig.consumerKey}
+                                onChange={(e) => setMpesaConfig({...mpesaConfig, consumerKey: e.target.value})}
+                                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                            />
+                         </div>
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Consumer Secret</label>
+                            <input
+                                type="password"
+                                value={mpesaConfig.consumerSecret}
+                                onChange={(e) => setMpesaConfig({...mpesaConfig, consumerSecret: e.target.value})}
+                                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                            />
+                         </div>
                     </div>
                 </div>
 

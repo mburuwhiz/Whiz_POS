@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { usePosStore } from '../store/posStore';
+import { usePosStore, SavedDocument } from '../store/posStore';
 import {
   FileText, Download, Plus, Trash2, Upload, Image as ImageIcon,
   Settings, User, Calendar, DollarSign, LayoutTemplate,
-  Printer, Eye, FileOutput, FileInput, AlertTriangle, Scale, CheckCircle
+  Printer, Eye, FileOutput, FileInput, AlertTriangle, Scale, CheckCircle,
+  Save, FolderOpen, X
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { DocumentModal } from '../components/invoice/DocumentModal';
@@ -51,6 +52,10 @@ export default function InvoiceGenerator() {
   // Search State
   const [searchTerm, setSearchTerm] = useState('');
   const [showTransactionSearch, setShowTransactionSearch] = useState(false);
+
+  // Saved Docs State
+  const [showSavedDocs, setShowSavedDocs] = useState(false);
+  const [currentDocId, setCurrentDocId] = useState<string | null>(null);
 
   // Letter State
   const [subject, setSubject] = useState('');
@@ -103,9 +108,96 @@ export default function InvoiceGenerator() {
     }
   }, [businessSetup]);
 
+  const { documents, saveDocument, deleteDocument } = usePosStore();
+
+  const handleSaveDocument = () => {
+    const docData = {
+        docNumber,
+        date,
+        dueDate,
+        clientName,
+        clientCompany,
+        clientAddress,
+        clientEmail,
+        items,
+        subtotal,
+        taxAmount,
+        total,
+        taxRate,
+        notes,
+        paymentInfo,
+        subject,
+        bodyText: templateString,
+        partialAmount,
+        settlementDate,
+        daysNotice,
+        paymentMode,
+        projectReference,
+        branding: {
+          logoImage,
+          headerImage,
+          backgroundImage,
+          useCustomHeader
+        }
+    };
+
+    const newDoc: SavedDocument = {
+      id: currentDocId || `DOC${Date.now()}`,
+      type: docType,
+      name: clientCompany || clientName || `Untitled ${docType}`,
+      date: new Date().toISOString(),
+      data: docData
+    };
+
+    saveDocument(newDoc);
+    setCurrentDocId(newDoc.id);
+    alert('Document Saved Successfully!');
+  };
+
+  const handleLoadDocument = (doc: SavedDocument) => {
+    const d = doc.data;
+    setDocType(doc.type as DocumentType);
+    setDocNumber(d.docNumber);
+    setDate(d.date);
+    setDueDate(d.dueDate);
+    setClientName(d.clientName);
+    setClientCompany(d.clientCompany);
+    setClientAddress(d.clientAddress);
+    setClientEmail(d.clientEmail);
+    setItems(d.items || []);
+    setNotes(d.notes);
+    setPaymentInfo(d.paymentInfo);
+    setSubject(d.subject);
+    setTemplateString(d.bodyText);
+    setPartialAmount(d.partialAmount);
+    setSettlementDate(d.settlementDate);
+    setDaysNotice(d.daysNotice);
+    setPaymentMode(d.paymentMode);
+    setProjectReference(d.projectReference);
+
+    if (d.branding) {
+      setLogoImage(d.branding.logoImage);
+      setHeaderImage(d.branding.headerImage);
+      setBackgroundImage(d.branding.backgroundImage);
+      setUseCustomHeader(d.branding.useCustomHeader);
+    }
+
+    setCurrentDocId(doc.id);
+    setShowSavedDocs(false);
+  };
+
+  const handleDeleteDocument = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm('Are you sure you want to delete this saved document?')) {
+      deleteDocument(id);
+      if (currentDocId === id) setCurrentDocId(null);
+    }
+  };
+
   // Handle Document Type Change
   const handleTypeChange = (newType: DocumentType) => {
     setDocType(newType);
+    setCurrentDocId(null); // Reset ID when changing type manually (treated as new doc)
 
     // Auto-generate number prefix
     const prefixMap: Record<string, string> = {
@@ -222,6 +314,19 @@ export default function InvoiceGenerator() {
 
         <div className="flex gap-3">
            <button
+             onClick={() => setShowSavedDocs(true)}
+             className="flex items-center gap-2 bg-white border border-slate-200 hover:border-sky-500 hover:text-sky-600 px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm"
+           >
+             <FolderOpen className="w-4 h-4" /> Open Saved
+           </button>
+           <button
+             onClick={handleSaveDocument}
+             className="flex items-center gap-2 bg-sky-600 text-white hover:bg-sky-700 px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm"
+           >
+             <Save className="w-4 h-4" /> {currentDocId ? 'Update' : 'Save'}
+           </button>
+           <div className="h-8 w-px bg-slate-200 mx-2"></div>
+           <button
              onClick={() => openPreview('a4')}
              className="flex items-center gap-2 bg-white border border-slate-200 hover:border-sky-500 hover:text-sky-600 px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm"
            >
@@ -235,6 +340,47 @@ export default function InvoiceGenerator() {
            </button>
         </div>
       </div>
+
+      {/* Saved Documents Modal */}
+      {showSavedDocs && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+           <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+              <div className="p-4 border-b border-slate-100 flex justify-between items-center">
+                 <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                   <FolderOpen className="w-5 h-5 text-sky-600" /> Saved Documents
+                 </h2>
+                 <button onClick={() => setShowSavedDocs(false)} className="text-slate-400 hover:text-slate-600">
+                   <X className="w-5 h-5" />
+                 </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                 {documents && documents.length > 0 ? (
+                    documents.map(doc => (
+                       <div key={doc.id} onClick={() => handleLoadDocument(doc)} className="flex items-center justify-between p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors group">
+                          <div className="flex items-center gap-3">
+                             <div className="w-10 h-10 bg-sky-100 rounded-lg flex items-center justify-center text-sky-600 font-bold text-xs uppercase">
+                               {doc.type.substring(0, 3)}
+                             </div>
+                             <div>
+                                <div className="font-medium text-slate-800">{doc.name}</div>
+                                <div className="text-xs text-slate-500">{new Date(doc.date).toLocaleDateString()} • {doc.id}</div>
+                             </div>
+                          </div>
+                          <button onClick={(e) => handleDeleteDocument(doc.id, e)} className="p-2 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                             <Trash2 className="w-4 h-4" />
+                          </button>
+                       </div>
+                    ))
+                 ) : (
+                    <div className="text-center py-10 text-slate-400">
+                       <FolderOpen className="w-10 h-10 mx-auto mb-2 opacity-20" />
+                       <p>No saved documents found</p>
+                    </div>
+                 )}
+              </div>
+           </div>
+        </div>
+      )}
 
       <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
 

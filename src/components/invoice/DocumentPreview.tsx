@@ -133,7 +133,7 @@ export const DocumentPreview = React.forwardRef<HTMLDivElement, DocumentPreviewP
     return (
       <div
         ref={ref}
-        className="bg-white relative text-slate-800 leading-normal origin-top mx-auto shadow-2xl"
+        className="bg-white relative text-slate-800 leading-normal origin-top mx-auto shadow-2xl font-sans tracking-wide"
         style={{
           width: paperSize === 'a4' ? '210mm' : '148mm',
           minHeight: paperSize === 'a4' ? '297mm' : '210mm',
@@ -141,7 +141,8 @@ export const DocumentPreview = React.forwardRef<HTMLDivElement, DocumentPreviewP
           boxSizing: 'border-box',
           // Ensure print emulation
           printColorAdjust: 'exact',
-          WebkitPrintColorAdjust: 'exact'
+          WebkitPrintColorAdjust: 'exact',
+          letterSpacing: '0.01em'
         }}
       >
         {branding.backgroundImage && (

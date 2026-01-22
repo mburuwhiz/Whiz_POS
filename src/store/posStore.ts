@@ -290,6 +290,14 @@ export interface BusinessSetup {
   locationName?: string;
   autoLogoffEnabled?: boolean;
   autoLogoffMinutes?: number;
+  mpesaConfig?: {
+    consumerKey: string;
+    consumerSecret: string;
+    passkey: string;
+    shortcode: string;
+    type: 'Paybill' | 'Till';
+    environment: 'Sandbox' | 'Production';
+  };
 }
 
 export interface CreditTransaction {
@@ -346,6 +354,14 @@ export interface DailySummary {
   transactionCount: number;
 }
 
+export interface SavedDocument {
+  id: string;
+  type: string;
+  name: string;
+  date: string;
+  data: any; // The full state of the document editor
+}
+
 interface PosState {
   // Data
   products: Product[];
@@ -359,6 +375,7 @@ interface PosState {
   suppliers: Supplier[];
   expenses: Expense[];
   salaries: Salary[];
+  documents: SavedDocument[];
   businessSetup: BusinessSetup | null;
   mobileReceipts: any[];
   loyaltyCustomers: LoyaltyCustomer[];
@@ -429,6 +446,8 @@ interface PosState {
   updateSupplier: (id: string, updates: Partial<Supplier>) => void;
   deleteSupplier: (id: string) => void;
   migrateLegacyExpenses: () => Promise<void>;
+  saveDocument: (doc: SavedDocument) => void;
+  deleteDocument: (id: string) => void;
 
   // Sync operations
   addToSyncQueue: (operation: any) => void;
@@ -485,6 +504,7 @@ export const usePosStore = create<PosState>()(
       suppliers: [],
       expenses: [],
       salaries: [],
+      documents: [],
       businessSetup: null,
       currentCashier: null,
       isDataLoaded: false,
@@ -1073,6 +1093,22 @@ export const usePosStore = create<PosState>()(
         set({ suppliers: updatedSuppliers, expenses: updatedExpenses });
         await saveDataToFile('suppliers.json', updatedSuppliers);
         await saveDataToFile('expenses.json', updatedExpenses);
+      },
+
+      saveDocument: (doc) => {
+        set((state) => {
+          const updatedDocs = [doc, ...state.documents.filter(d => d.id !== doc.id)];
+          saveDataToFile('documents.json', updatedDocs);
+          return { documents: updatedDocs };
+        });
+      },
+
+      deleteDocument: (id) => {
+        set((state) => {
+          const updatedDocs = state.documents.filter(d => d.id !== id);
+          saveDataToFile('documents.json', updatedDocs);
+          return { documents: updatedDocs };
+        });
       },
 
       saveBusinessSetup: (setup) => {
@@ -1711,7 +1747,7 @@ export const usePosStore = create<PosState>()(
               set({ businessSetup: prefillSetup });
           }
 
-          const fileNames = ['products.json', 'users.json', 'transactions.json', 'credit-customers.json', 'expenses.json', 'salaries.json', 'credit-payments.json', 'inventory-logs.json', 'daily-summaries.json', 'loyalty-customers.json', 'suppliers.json'];
+          const fileNames = ['products.json', 'users.json', 'transactions.json', 'credit-customers.json', 'expenses.json', 'salaries.json', 'credit-payments.json', 'inventory-logs.json', 'daily-summaries.json', 'loyalty-customers.json', 'suppliers.json', 'documents.json'];
           const dataMap = {
             'products.json': 'products',
             'users.json': 'users',
@@ -1723,7 +1759,8 @@ export const usePosStore = create<PosState>()(
             'inventory-logs.json': 'inventoryLogs',
             'daily-summaries.json': 'dailySummaries',
             'loyalty-customers.json': 'loyaltyCustomers',
-            'suppliers.json': 'suppliers'
+            'suppliers.json': 'suppliers',
+            'documents.json': 'documents'
           };
 
           for (const fileName of fileNames) {
@@ -2002,6 +2039,7 @@ export const usePosStore = create<PosState>()(
         loyaltyCustomers: state.loyaltyCustomers,
         syncHistory: state.syncHistory ? state.syncHistory.slice(-50) : [],
         suppliers: state.suppliers,
+        documents: state.documents,
       })
     }
   )

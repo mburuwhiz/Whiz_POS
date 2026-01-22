@@ -60,15 +60,21 @@ interface Branding {
   email: string;
 }
 
+interface Signatory {
+  name: string;
+  role: string;
+}
+
 interface DocumentPreviewProps {
   type: DocumentType;
   data: DocumentData;
   branding: Branding;
+  signatory?: Signatory | null;
   paperSize: 'a4' | 'a5';
 }
 
 export const DocumentPreview = React.forwardRef<HTMLDivElement, DocumentPreviewProps>(
-  ({ type, data, branding, paperSize }, ref) => {
+  ({ type, data, branding, paperSize, signatory }, ref) => {
 
     // Helper to replace placeholders in text templates
     const processText = (template: string) => {
@@ -298,13 +304,16 @@ export const DocumentPreview = React.forwardRef<HTMLDivElement, DocumentPreviewP
 
                 {!hasSignatureBlock && (
                   <div className="mt-12">
-                     <p className="mb-4">Sincerely,</p>
-                     {/* Signature area */}
-                     <div className="h-16 w-32 mb-2">
-                        {/* Placeholder for digital signature if needed, or just space */}
+                     <div className="space-y-1">
+                        <p className="font-bold text-slate-900">{signatory?.name || '{{signed in user}}'}</p>
+                        <p className="text-slate-500 text-xs uppercase tracking-wider">{signatory?.role || '{{role}}'}</p>
+                        <p className="font-bold text-slate-900">{branding.businessName}</p>
                      </div>
-                     <p className="font-bold text-slate-900">{branding.businessName}</p>
-                     <p className="text-slate-500 text-xs">Authorized Signatory</p>
+
+                     <div className="mt-8 flex items-end gap-2">
+                        <span className="text-slate-500 font-medium">Sign</span>
+                        <div className="border-b border-slate-400 border-dashed w-64"></div>
+                     </div>
                   </div>
                 )}
              </div>

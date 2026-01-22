@@ -10,10 +10,11 @@ interface DocumentModalProps {
   type: DocumentType;
   data: any;
   branding: any;
+  signatory?: any;
   initialPaperSize?: 'a4' | 'a5';
 }
 
-export function DocumentModal({ isOpen, onClose, type, data, branding, initialPaperSize = 'a4' }: DocumentModalProps) {
+export function DocumentModal({ isOpen, onClose, type, data, branding, signatory, initialPaperSize = 'a4' }: DocumentModalProps) {
   const [paperSize, setPaperSize] = useState<'a4' | 'a5'>(initialPaperSize);
   const [scale, setScale] = useState(0.8);
   const previewRef = useRef<HTMLDivElement>(null);
@@ -140,6 +141,7 @@ export function DocumentModal({ isOpen, onClose, type, data, branding, initialPa
              type={type}
              data={data}
              branding={branding}
+             signatory={signatory}
              paperSize={paperSize}
            />
         </div>

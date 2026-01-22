@@ -37,14 +37,20 @@ const DOCUMENT_TYPES: { id: DocumentType; label: string; icon: any; category: 't
   { id: 'LEGAL_NOTICE', label: 'Legal Notice', icon: Scale, category: 'letter' },
 ];
 
+import { Search } from 'lucide-react';
+
 export default function InvoiceGenerator() {
-  const { businessSetup } = usePosStore();
+  const { businessSetup, transactions, currentCashier } = usePosStore();
 
   // Document State
   const [docType, setDocType] = useState<DocumentType>('INVOICE');
   const [docNumber, setDocNumber] = useState(`INV-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000)}`);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [dueDate, setDueDate] = useState('');
+
+  // Search State
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showTransactionSearch, setShowTransactionSearch] = useState(false);
 
   // Letter State
   const [subject, setSubject] = useState('');
@@ -142,6 +148,30 @@ export default function InvoiceGenerator() {
   const total = subtotal + taxAmount;
 
   // Handlers
+  const handleImportTransaction = (txn: any) => {
+    setDocNumber(txn.id);
+    setDate(txn.timestamp.split('T')[0]);
+
+    // Map items
+    if (txn.items && txn.items.length > 0) {
+      setItems(txn.items.map((item: any) => ({
+        id: Math.random().toString(),
+        description: item.product.name,
+        quantity: item.quantity,
+        price: item.product.price
+      })));
+    }
+
+    if (txn.creditCustomer) {
+      setClientName(txn.creditCustomer);
+    } else {
+      setClientName('Cash Customer');
+    }
+
+    setShowTransactionSearch(false);
+    setSearchTerm('');
+  };
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string | null) => void) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -288,11 +318,58 @@ export default function InvoiceGenerator() {
            </div>
 
            {/* Details */}
-           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
+           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4 relative">
               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                  <Settings className="w-4 h-4" /> Document Details
                </h3>
-               <div className="space-y-3">
+
+               {/* Transaction Lookup */}
+               <div className="relative">
+                  <label className="text-xs text-slate-500 mb-1 block">Import Transaction</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Search ID or Customer..."
+                      value={searchTerm}
+                      onChange={(e) => { setSearchTerm(e.target.value); setShowTransactionSearch(true); }}
+                      onFocus={() => setShowTransactionSearch(true)}
+                      className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-sky-500"
+                    />
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  </div>
+
+                  {showTransactionSearch && searchTerm && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-20 max-h-60 overflow-y-auto">
+                        {transactions
+                          .filter(t => t.id.toLowerCase().includes(searchTerm.toLowerCase()) || (t.creditCustomer || '').toLowerCase().includes(searchTerm.toLowerCase()))
+                          .slice(0, 10)
+                          .map(t => (
+                            <button
+                              key={t.id}
+                              onClick={() => handleImportTransaction(t)}
+                              className="w-full text-left px-4 py-2 hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                            >
+                               <div className="font-medium text-slate-800 text-xs">{t.creditCustomer || 'Cash Sale'}</div>
+                               <div className="flex justify-between text-[10px] text-slate-500">
+                                  <span>{t.id}</span>
+                                  <span>{new Date(t.timestamp).toLocaleDateString()}</span>
+                                  <span className="font-bold text-sky-600">{t.total.toLocaleString()}</span>
+                               </div>
+                            </button>
+                          ))
+                        }
+                        {transactions.filter(t => t.id.toLowerCase().includes(searchTerm.toLowerCase()) || (t.creditCustomer || '').toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
+                           <div className="p-3 text-xs text-slate-400 text-center">No transactions found</div>
+                        )}
+                    </div>
+                  )}
+
+                  {showTransactionSearch && (
+                    <div className="fixed inset-0 z-10" onClick={() => setShowTransactionSearch(false)}></div>
+                  )}
+               </div>
+
+               <div className="space-y-3 pt-2 border-t border-slate-100">
                   <div>
                     <label className="text-xs text-slate-500 mb-1 block">Ref Number</label>
                     <input type="text" value={docNumber} onChange={(e) => setDocNumber(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-sky-500" />
@@ -517,6 +594,7 @@ export default function InvoiceGenerator() {
           phone: businessSetup?.phone || '',
           email: businessSetup?.email || ''
         }}
+        signatory={currentCashier}
         data={{
           docNumber,
           date,

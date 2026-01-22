@@ -8,9 +8,7 @@ This is to confirm that the services/work assigned under [Project / Invoice Refe
 
 We acknowledge receipt of the deliverables as agreed.
 
-Kindly proceed with invoicing.
-
-Authorized Signatory Client Company Date & Stamp`
+Kindly proceed with invoicing.`
   },
 
   INVOICE_COVER_LETTER: {
@@ -23,9 +21,7 @@ The total payable amount is [Amount], due on or before [Due Date].
 
 Payment details are mentioned on the invoice for your convenience.
 
-We appreciate your prompt cooperation.
-
-Regards, WHIZ`
+We appreciate your prompt cooperation.`
   },
 
   PAYMENT_REMINDER_SOFT: {
@@ -38,9 +34,7 @@ This is a gentle reminder regarding payment of invoice [Invoice No.] dated [Date
 
 If payment has already been made, please ignore this message. Otherwise, we request you to arrange payment at the earliest.
 
-Thank you for your cooperation.
-
-Regards, WHIZ`
+Thank you for your cooperation.`
   },
 
   DEMAND_LETTER_FULL: {
@@ -53,9 +47,7 @@ We hereby formally demand full payment of the outstanding amount within 7 days f
 
 Failure to comply may compel us to initiate further recovery action without additional notice.
 
-We hope for an amicable resolution.
-
-Sincerely, WHIZ Authorized Signatory`
+We hope for an amicable resolution.`
   },
 
   DEMAND_LETTER_PARTIAL: {
@@ -66,9 +58,7 @@ With reference to the outstanding amount of [Total Amount], we request an immedi
 
 This arrangement is proposed to avoid escalation and ensure continuity of our professional relationship.
 
-Kindly confirm acceptance of this payment plan in writing.
-
-Regards, WHIZ`
+Kindly confirm acceptance of this payment plan in writing.`
   },
 
   FINAL_NOTICE: {
@@ -79,9 +69,7 @@ This is our final notice regarding the unpaid amount of [Amount] pending against
 
 If payment is not received within [X days], we shall proceed with legal recovery actions at your risk as to cost and consequences.
 
-We strongly advise immediate settlement.
-
-Regards, WHIZ`
+We strongly advise immediate settlement.`
   },
 
   PAYMENT_RECEIPT_LETTER: {
@@ -90,8 +78,6 @@ Regards, WHIZ`
 
 We acknowledge receipt of [Amount] on [Date] via [Payment Mode] against invoice [Invoice No.].
 
-Thank you for the payment. We appreciate your business.
-
-Regards, WHIZ`
+Thank you for the payment. We appreciate your business.`
   }
 };

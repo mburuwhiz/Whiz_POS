@@ -400,6 +400,7 @@ interface PosState {
   inventoryProducts: Product[];
   loyaltyCustomers: any[];
   syncHistory: any[];
+  categories: string[];
 
   // Actions
   login: (user: User) => void;
@@ -472,6 +473,9 @@ interface PosState {
   addProduct: (product: Product) => void;
   updateProduct: (id: number, updates: Partial<Product>) => void;
   deleteProduct: (id: number) => void;
+  setCategories: (categories: string[]) => void;
+  addCategory: (category: string) => void;
+  deleteCategory: (category: string) => void;
   addLoyaltyCustomer: (customer: any) => void;
   updateLoyaltyCustomer: (id: string, updates: any) => void;
   addSyncHistoryItem: (item: any) => void;
@@ -521,6 +525,7 @@ export const usePosStore = create<PosState>()(
       mobileReceipts: [],
       sessionToken: null,
       isSidebarCollapsed: false,
+      categories: ['Coffee', 'Tea', 'Pastries', 'Sandwiches', 'Cold Drinks', 'Others'],
 
       /**
        * Logs in a user and updates the session state.
@@ -1687,6 +1692,28 @@ export const usePosStore = create<PosState>()(
         });
       },
 
+      setCategories: (categories) => {
+        set({ categories });
+        saveDataToFile('categories.json', categories);
+      },
+
+      addCategory: (category) => {
+        set((state) => {
+          if (state.categories.includes(category)) return {};
+          const updatedCategories = [...state.categories, category];
+          saveDataToFile('categories.json', updatedCategories);
+          return { categories: updatedCategories };
+        });
+      },
+
+      deleteCategory: (category) => {
+        set((state) => {
+          const updatedCategories = state.categories.filter(c => c !== category);
+          saveDataToFile('categories.json', updatedCategories);
+          return { categories: updatedCategories };
+        });
+      },
+
       updateUser: async (id, updates) => {
         // Strict IPC Only
         if (window.electron && window.electron.userManagement) {
@@ -1762,6 +1789,12 @@ export const usePosStore = create<PosState>()(
             'suppliers.json': 'suppliers',
             'documents.json': 'documents'
           };
+
+          // Load Categories
+          const { data: catData } = await readDataFromFile('categories.json');
+          if (catData && Array.isArray(catData)) {
+            set({ categories: catData });
+          }
 
           for (const fileName of fileNames) {
             const { data } = await readDataFromFile(fileName);

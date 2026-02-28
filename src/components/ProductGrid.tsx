@@ -47,8 +47,14 @@ export default function ProductGrid() {
     });
   }, [products]);
 
-  // Extract unique categories
-  const categories = ['All', ...new Set(uniqueProducts.map(p => p.category).filter(Boolean))];
+  const { categories: storeCategories } = usePosStore();
+
+  // Extract unique categories from products that might not be in the predefined list
+  const categories = React.useMemo(() => {
+    const productCategories = new Set(uniqueProducts.map(p => p.category).filter(Boolean));
+    const allCats = new Set(['All', ...storeCategories, ...productCategories]);
+    return Array.from(allCats);
+  }, [storeCategories, uniqueProducts]);
   const productNames = [...new Set(uniqueProducts.map(p => p.name))];
 
   const filteredProducts = uniqueProducts.filter((product) => {

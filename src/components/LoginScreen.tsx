@@ -30,27 +30,49 @@ const LoginScreen = () => {
 
     if (key === 'clear') {
       setPin('');
+      setError('');
     } else if (key === 'delete') {
       setPin(prev => prev.slice(0, -1));
+      setError('');
     } else if (key === 'enter') {
       handleLogin();
     } else {
       if (pin.length < 4) {
-        setPin(prev => prev + key);
+        const newPin = pin + key;
+        setPin(newPin);
+        if (newPin.length === 4) {
+          // Auto-login attempt
+          handleLogin(newPin);
+        }
       }
     }
   };
 
-  const handleLogin = async () => {
-    if (!selectedUser) return;
+  const handleLogin = async (explicitPin?: string) => {
+    const loginPin = explicitPin || pin;
     if (isLoading) return;
 
-    if (!selectedUser.isActive) {
+    let userToLogin = selectedUser;
+
+    // If no user selected, try to find user by PIN (Auto-login)
+    if (!userToLogin && loginPin.length === 4) {
+      userToLogin = users.find(u => u.pin === loginPin && u.isActive) || null;
+    }
+
+    if (!userToLogin) {
+      if (loginPin.length === 4) {
+        setError('Invalid PIN or account disabled');
+        setPin('');
+      }
+      return;
+    }
+
+    if (!userToLogin.isActive) {
       setError('User account is disabled.');
       return;
     }
 
-    if (pin.length < 4) {
+    if (loginPin.length < 4) {
         setError('Enter 4-digit PIN');
         return;
     }
@@ -59,7 +81,7 @@ const LoginScreen = () => {
 
     try {
         if (window.electron && window.electron.auth) {
-            const result = await window.electron.auth.login(selectedUser.id, pin, 'desktop-main');
+            const result = await window.electron.auth.login(userToLogin.id, loginPin, 'desktop-main');
             if (result.success && result.token && result.user) {
                 toast("Login Successful", "success");
                 setSession(result.user, result.token);
@@ -69,9 +91,9 @@ const LoginScreen = () => {
             }
         } else {
             // Fallback for dev/web environment
-            if (pin === selectedUser.pin) {
+            if (loginPin === userToLogin.pin) {
                 toast("Login Successful (Dev Mode)", "success");
-                setSession(selectedUser, 'dev-token');
+                setSession(userToLogin, 'dev-token');
             } else {
                 setError('Incorrect PIN');
                 setPin('');
@@ -215,7 +237,7 @@ const LoginScreen = () => {
                       <button
                         key={num}
                         onClick={() => handleKeyPress(num.toString())}
-                        disabled={!selectedUser || isLoading}
+                        disabled={isLoading}
                         className="h-16 rounded-2xl text-2xl font-semibold bg-slate-50 hover:bg-white hover:shadow-md hover:scale-105 active:scale-95 border border-slate-200 text-slate-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {num}
@@ -230,7 +252,7 @@ const LoginScreen = () => {
                     </button>
                     <button
                         onClick={() => handleKeyPress('0')}
-                        disabled={!selectedUser || isLoading}
+                        disabled={isLoading}
                         className="h-16 rounded-2xl text-2xl font-semibold bg-slate-50 hover:bg-white hover:shadow-md hover:scale-105 active:scale-95 border border-slate-200 text-slate-700 transition-all disabled:opacity-50"
                     >
                         0
@@ -246,7 +268,7 @@ const LoginScreen = () => {
 
                  <button
                     onClick={() => handleKeyPress('enter')}
-                    disabled={!selectedUser || pin.length < 4 || isLoading}
+                    disabled={pin.length < 4 || isLoading}
                     className="w-full h-16 bg-slate-900 text-white rounded-2xl text-xl font-bold hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed"
                  >
                     {isLoading ? 'Verifying...' : 'Access POS'} <ArrowRight className="w-5 h-5" />

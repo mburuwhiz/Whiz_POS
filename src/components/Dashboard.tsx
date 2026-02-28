@@ -281,6 +281,37 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Quick Summary Widget */}
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl shadow-lg p-6 mb-6 text-white">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold flex items-center">
+              <Activity className="w-5 h-5 mr-2" />
+              Quick Summary (Today)
+            </h2>
+            <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm">
+              Live Updates
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm border border-white/10">
+              <p className="text-blue-100 text-xs uppercase tracking-wider mb-1">Gross Sales</p>
+              <p className="text-2xl font-bold">KES {metrics.find(m => m.title === 'Total Revenue')?.value.toString().split(' ')[1] || '0.00'}</p>
+            </div>
+            <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm border border-white/10">
+              <p className="text-blue-100 text-xs uppercase tracking-wider mb-1">Net Profit</p>
+              <p className="text-2xl font-bold">KES {metrics.find(m => m.title === 'Net Profit')?.value.toString().split(' ')[1] || '0.00'}</p>
+            </div>
+            <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm border border-white/10">
+              <p className="text-blue-100 text-xs uppercase tracking-wider mb-1">Total Orders</p>
+              <p className="text-2xl font-bold">{metrics.find(m => m.title === 'Total Orders')?.value || '0'}</p>
+            </div>
+            <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm border border-white/10">
+              <p className="text-blue-100 text-xs uppercase tracking-wider mb-1">Top Item</p>
+              <p className="text-lg font-bold truncate">{topProducts[0]?.name || 'None'}</p>
+            </div>
+          </div>
+        </div>
+
         {/* Metrics Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
           {metrics.map((metric, index) => (

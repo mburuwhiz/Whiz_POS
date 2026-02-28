@@ -5,7 +5,7 @@ import { Package, AlertTriangle, TrendingUp, TrendingDown, Plus, Edit2, Trash2, 
 import cartPlaceholder from '../assets/cart.png';
 
 export default function InventoryManagement() {
-  const { products, updateProduct, addProduct, deleteProduct, addToSyncQueue } = usePosStore();
+  const { products, updateProduct, addProduct, deleteProduct, categories: storeCategories } = usePosStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -14,7 +14,7 @@ export default function InventoryManagement() {
   const [formData, setFormData] = useState({
     name: '',
     price: '',
-    category: 'Coffee',
+    category: storeCategories[0] || 'Others',
     image: '',
     stock: '',
     minStock: '10',
@@ -24,7 +24,7 @@ export default function InventoryManagement() {
   // State for Reconciliation
   const [reconciliationData, setReconciliationData] = useState<{ [id: number]: number }>({});
 
-  const categories = ['all', ...new Set(products.map(p => p.category))];
+  const categories = ['all', ...new Set([...storeCategories, ...products.map(p => p.category)])];
   const productNames = [...new Set(products.map(p => p.name).filter(Boolean))];
 
   const filteredProducts = products.filter(product => {
@@ -493,11 +493,9 @@ export default function InventoryManagement() {
                       onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
-                      <option value="Coffee">Coffee</option>
-                      <option value="Pastry">Pastry</option>
-                      <option value="Food">Food</option>
-                      <option value="Beverage">Beverage</option>
-                      <option value="Other">Other</option>
+                      {storeCategories.map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
                     </select>
                   </div>
 

@@ -42,10 +42,13 @@ export default function SettingsPage() {
     pushDataToServer,
     archiveTransactions,
     deleteTransactions,
-    transactions
+    transactions,
+    categories,
+    addCategory,
+    deleteCategory
   } = usePosStore();
 
-  const [activeTab, setActiveTab] = useState<'business' | 'security' | 'sync' | 'devices' | 'printers' | 'updates' | 'data'>('business');
+  const [activeTab, setActiveTab] = useState<'business' | 'categories' | 'security' | 'sync' | 'devices' | 'printers' | 'updates' | 'data'>('business');
   const [editingBusiness, setEditingBusiness] = useState(false);
   const [pruneDays, setPruneDays] = useState(30);
   const [deleteDateRange, setDeleteDateRange] = useState({
@@ -94,6 +97,7 @@ export default function SettingsPage() {
     isActive: true
   });
 
+  const [newCategory, setNewCategory] = useState('');
   const [apiConfig, setApiConfig] = useState<{ apiUrl: string, apiKey: string, qrCodeDataUrl: string } | null>(null);
   const [printers, setPrinters] = useState<any[]>([]);
   const [selectedPrinter, setSelectedPrinter] = useState('');
@@ -237,6 +241,18 @@ export default function SettingsPage() {
             </button>
 
             <button
+              onClick={() => setActiveTab('categories')}
+              className={`flex items-center px-6 py-4 font-medium border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === 'categories'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <Users className="w-5 h-5 mr-2" />
+              Categories
+            </button>
+
+            <button
               onClick={() => setActiveTab('security')}
               className={`flex items-center px-6 py-4 font-medium border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === 'security'
@@ -309,6 +325,58 @@ export default function SettingsPage() {
             </button>
           </div>
         </div>
+
+        {/* Category Settings */}
+        {activeTab === 'categories' && (
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center gap-3 mb-6">
+                <Package className="w-6 h-6 text-blue-600" />
+                <h2 className="text-xl font-semibold text-gray-800">Product Categories</h2>
+            </div>
+
+            <div className="max-w-xl">
+              <div className="flex gap-2 mb-6">
+                <input
+                  type="text"
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  placeholder="New Category Name"
+                  className="flex-1 p-3 border rounded-lg"
+                />
+                <button
+                  onClick={() => {
+                    if (newCategory.trim()) {
+                      addCategory(newCategory.trim());
+                      setNewCategory('');
+                    }
+                  }}
+                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 flex items-center"
+                >
+                  <Plus className="w-5 h-5 mr-2" />
+                  Add
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {categories.map((category) => (
+                  <div key={category} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
+                    <span className="font-medium text-gray-700">{category}</span>
+                    <button
+                      onClick={() => {
+                        if (confirm(`Delete category "${category}"? Products in this category will remain but their category label will be unchanged.`)) {
+                          deleteCategory(category);
+                        }
+                      }}
+                      className="text-red-500 hover:text-red-700 p-2"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Business Settings */}
         {activeTab === 'business' && (

@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react';
-import React from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { usePosStore } from '../store/posStore';
-import { Expense } from '../types';
-import { Plus, Edit2, Trash2, Receipt, Calendar, DollarSign, TrendingUp, FileText } from 'lucide-react';
+import { Expense, Supplier } from '../store/posStore';
+import { Plus, Edit2, Trash2, FileText, Phone, MapPin, Search } from 'lucide-react';
 
 const EXPENSE_CATEGORIES = [
   'Supplies', 'Equipment', 'Rent', 'Utilities', 'Marketing', 
@@ -10,54 +9,136 @@ const EXPENSE_CATEGORIES = [
 ];
 
 export default function EnhancedExpenseTracker() {
-  const { expenses, currentCashier, addExpense, updateExpense, deleteExpense } = usePosStore();
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const {
+      expenses,
+      suppliers,
+      currentCashier,
+      addExpense,
+      updateExpense,
+      deleteExpense,
+      addSupplier,
+      updateSupplier,
+      deleteSupplier,
+      migrateLegacyExpenses
+  } = usePosStore();
+
+  // Trigger migration of legacy expenses on mount
+  useEffect(() => {
+      migrateLegacyExpenses();
+  }, []);
+
+  // State for Supplier Detail View
+  const [selectedSupplierId, setSelectedSupplierId] = useState<string | null>(null);
+
+  // State for Forms
+  const [isSupplierFormOpen, setIsSupplierFormOpen] = useState(false);
+  const [isExpenseFormOpen, setIsExpenseFormOpen] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
-  const [formData, setFormData] = useState({
+
+  const [supplierFormData, setSupplierFormData] = useState({
+    name: '',
+    contact: '',
+    location: '',
+    notes: '',
+    active: true
+  });
+
+  const [expenseFormData, setExpenseFormData] = useState({
     description: '',
     amount: '',
     category: 'Supplies',
     receiptUrl: ''
   });
-  const [filterCategory, setFilterCategory] = useState('all');
-  const [dateRange, setDateRange] = useState({ start: '', end: '' });
 
-  // Load expenses from localStorage on mount
-  useEffect(() => {
-    const savedExpenses = localStorage.getItem('whiz-pos-expenses');
-    if (savedExpenses) {
-      try {
-        const parsedExpenses = JSON.parse(savedExpenses);
-        // Update store with localStorage data
-        parsedExpenses.forEach((expense: Expense) => {
-          if (!expenses.find(e => e.id === expense.id)) {
-            addExpense(expense);
-          }
-        });
-      } catch (error) {
-        console.error('Failed to load expenses from localStorage:', error);
-      }
-    }
-  }, []);
+  // Filter States
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Save expenses to localStorage whenever they change
-  useEffect(() => {
-    if (expenses.length > 0) {
-      localStorage.setItem('whiz-pos-expenses', JSON.stringify(expenses));
-    }
-  }, [expenses]);
+  // Filtered Suppliers List
+  const filteredSuppliers = useMemo(() => {
+    return suppliers.filter(s =>
+        s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (s.contact && s.contact.includes(searchQuery))
+    ).sort((a, b) => a.name.localeCompare(b.name));
+  }, [suppliers, searchQuery]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // --- Actions: Supplier ---
+
+  const handleSupplierSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const expenseData = {
-      id: editingExpense?.id || Date.now().toString(),
-      description: formData.description,
-      amount: parseFloat(formData.amount),
-      category: formData.category,
-      receiptUrl: formData.receiptUrl,
+    const supplierData: Supplier = {
+      id: editingSupplier ? editingSupplier.id : `SUP${Date.now()}`,
+      name: supplierFormData.name,
+      contact: supplierFormData.contact,
+      location: supplierFormData.location,
+      notes: supplierFormData.notes,
+      active: supplierFormData.active,
+      createdAt: editingSupplier ? editingSupplier.createdAt : new Date().toISOString()
+    };
+
+    if (editingSupplier) {
+      updateSupplier(editingSupplier.id, supplierData);
+    } else {
+      addSupplier(supplierData);
+    }
+    closeSupplierForm();
+  };
+
+  const openSupplierForm = (supplier?: Supplier) => {
+    if (supplier) {
+      setEditingSupplier(supplier);
+      setSupplierFormData({
+        name: supplier.name,
+        contact: supplier.contact,
+        location: supplier.location,
+        notes: supplier.notes || '',
+        active: supplier.active
+      });
+    } else {
+      setEditingSupplier(null);
+      setSupplierFormData({ name: '', contact: '', location: '', notes: '', active: true });
+    }
+    setIsSupplierFormOpen(true);
+  };
+
+  const closeSupplierForm = () => {
+    setIsSupplierFormOpen(false);
+    setEditingSupplier(null);
+  };
+
+  const handleDeleteSupplier = (id: string) => {
+      // Prevent deleting "Others" if it contains data or is critical, but usually user can decide.
+      // Maybe warn if expenses exist?
+      const hasExpenses = expenses.some(e => e.supplierId === id);
+      const msg = hasExpenses
+        ? "This supplier has recorded expenses. Deleting it will keep the expenses but unlink them. Continue?"
+        : "Delete this supplier?";
+
+      if (confirm(msg)) {
+          deleteSupplier(id);
+          if (selectedSupplierId === id) setSelectedSupplierId(null);
+      }
+  };
+
+  // --- Actions: Expense ---
+
+  const handleExpenseSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSupplierId) return;
+
+    const supplier = suppliers.find(s => s.id === selectedSupplierId);
+    if (!supplier) return;
+
+    const expenseData: Expense = {
+      id: editingExpense?.id || `EXP${Date.now()}`,
+      description: expenseFormData.description,
+      amount: parseFloat(expenseFormData.amount),
+      category: expenseFormData.category,
+      receipt: expenseFormData.receiptUrl,
       timestamp: editingExpense?.timestamp || new Date().toISOString(),
-      cashier: currentCashier?.name || 'Unknown'
+      cashier: currentCashier?.name || 'Unknown',
+      supplierId: supplier.id,
+      supplierName: supplier.name
     };
 
     if (editingExpense) {
@@ -65,346 +146,324 @@ export default function EnhancedExpenseTracker() {
     } else {
       addExpense(expenseData);
     }
-
-    resetForm();
+    closeExpenseForm();
   };
 
-  const resetForm = () => {
-    setFormData({
-      description: '',
-      amount: '',
-      category: 'Supplies',
-      receiptUrl: ''
-    });
-    setEditingExpense(null);
-    setIsFormOpen(false);
-  };
-
-  const handleEdit = (expense: Expense) => {
-    setEditingExpense(expense);
-    setFormData({
-      description: expense.description,
-      amount: expense.amount.toString(),
-      category: expense.category,
-      receiptUrl: expense.receiptUrl || ''
-    });
-    setIsFormOpen(true);
-  };
-
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this expense?')) {
-      deleteExpense(id);
+  const openExpenseForm = (expense?: Expense) => {
+    if (expense) {
+      setEditingExpense(expense);
+      setExpenseFormData({
+        description: expense.description,
+        amount: expense.amount.toString(),
+        category: expense.category,
+        receiptUrl: expense.receipt || ''
+      });
+    } else {
+      setEditingExpense(null);
+      setExpenseFormData({ description: '', amount: '', category: 'Supplies', receiptUrl: '' });
     }
+    setIsExpenseFormOpen(true);
   };
 
-  const filteredExpenses = expenses.filter(expense => {
-    const categoryMatch = filterCategory === 'all' || expense.category === filterCategory;
-    const dateMatch = (!dateRange.start || new Date(expense.timestamp) >= new Date(dateRange.start)) &&
-                    (!dateRange.end || new Date(expense.timestamp) <= new Date(dateRange.end));
-    return categoryMatch && dateMatch;
-  });
-
-  const totalExpenses = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-  const expensesByCategory = EXPENSE_CATEGORIES.reduce((acc, category) => {
-    acc[category] = filteredExpenses
-      .filter(e => e.category === category)
-      .reduce((sum, e) => sum + e.amount, 0);
-    return acc;
-  }, {} as Record<string, number>);
+  const closeExpenseForm = () => {
+    setIsExpenseFormOpen(false);
+    setEditingExpense(null);
+  };
 
   const handleReceiptUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, receiptUrl: reader.result as string }));
+        setExpenseFormData(prev => ({ ...prev, receiptUrl: reader.result as string }));
       };
       reader.readAsDataURL(file);
     }
   };
 
+  // --- Render ---
+
+  // Get expenses for selected supplier
+  const selectedSupplier = suppliers.find(s => s.id === selectedSupplierId);
+
+  const supplierExpenses = useMemo(() => {
+      if (!selectedSupplier) return [];
+
+      return expenses
+        .filter(exp => exp.supplierId === selectedSupplier.id)
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }, [expenses, selectedSupplier]);
+
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-gray-50 p-6 flex flex-col h-screen overflow-hidden">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <DollarSign className="w-8 h-8 text-green-600" />
-              <div>
-                <h1 className="text-2xl font-bold text-gray-800">Expense Tracker</h1>
-                <p className="text-gray-600">Track and manage business expenses</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setIsFormOpen(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 transition-colors"
-            >
-              <Plus className="w-5 h-5" />
-              <span>Add Expense</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm">Total Expenses</p>
-                <p className="text-2xl font-bold text-gray-800">KES {totalExpenses.toFixed(2)}</p>
-              </div>
-              <TrendingUp className="w-8 h-8 text-red-600" />
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm">Expense Count</p>
-                <p className="text-2xl font-bold text-gray-800">{filteredExpenses.length}</p>
-              </div>
-              <FileText className="w-8 h-8 text-blue-600" />
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm">Average Expense</p>
-                <p className="text-2xl font-bold text-gray-800">
-                  KES {filteredExpenses.length > 0 ? (totalExpenses / filteredExpenses.length).toFixed(2) : '0.00'}
-                </p>
-              </div>
-              <Calendar className="w-8 h-8 text-green-600" />
-            </div>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="flex justify-between items-center mb-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-              <select
-                value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="all">All Categories</option>
-                {EXPENSE_CATEGORIES.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
+                <h1 className="text-2xl font-bold text-gray-800">Supplier Expenses</h1>
+                <p className="text-gray-600">Manage suppliers and track their expenses</p>
             </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
-              <input
-                type="date"
-                value={dateRange.start}
-                onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
-              <input
-                type="date"
-                value={dateRange.end}
-                onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Category Breakdown */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Expenses by Category</h2>
-          <div className="space-y-3">
-            {Object.entries(expensesByCategory).map(([category, amount]) => (
-              <div key={category} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <span className="font-medium text-gray-700">{category}</span>
-                <span className="font-bold text-gray-800">KES {amount.toFixed(2)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Expenses List */}
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-800">Recent Expenses</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cashier</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Receipt</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredExpenses.map((expense) => (
-                  <tr key={expense.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(expense.timestamp).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {expense.description}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-                        {expense.category}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      KES {expense.amount.toFixed(2)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {expense.cashier}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {expense.receiptUrl ? (
-                        <a
-                          href={expense.receiptUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800"
-                        >
-                          <Receipt className="w-4 h-4" />
-                        </a>
-                      ) : (
-                        <span className="text-gray-400">
-                          <Receipt className="w-4 h-4" />
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleEdit(expense)}
-                          className="text-blue-600 hover:text-blue-800"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(expense.id)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            
-            {filteredExpenses.length === 0 && (
-              <div className="text-center py-8">
-                <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">No expenses found</p>
-                <p className="text-sm text-gray-400">Add your first expense to get started</p>
-              </div>
+            {!selectedSupplierId && (
+                <button
+                    onClick={() => openSupplierForm()}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+                >
+                    <Plus className="w-5 h-5" />
+                    <span>Add Supplier</span>
+                </button>
             )}
-          </div>
+            {selectedSupplierId && (
+                <button
+                    onClick={() => setSelectedSupplierId(null)}
+                    className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg transition-colors"
+                >
+                    Back to Suppliers
+                </button>
+            )}
         </div>
 
-        {/* Add/Edit Expense Modal */}
-        {isFormOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg max-w-md w-full p-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-6">
-                {editingExpense ? 'Edit Expense' : 'Add New Expense'}
-              </h2>
-              
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter expense description"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Amount (KES)</label>
-                  <input
-                    type="number"
-                    required
-                    step="0.01"
-                    min="0"
-                    value={formData.amount}
-                    onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="0.00"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                  <select
-                    value={formData.category}
-                    onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    {EXPENSE_CATEGORIES.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Receipt (Optional)</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleReceiptUpload}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  {formData.receiptUrl && (
-                    <div className="mt-2">
-                      <img
-                        src={formData.receiptUrl}
-                        alt="Receipt preview"
-                        className="w-full h-32 object-cover rounded-lg"
-                      />
+        {/* Content */}
+        <div className="flex-1 overflow-hidden flex flex-col">
+            {!selectedSupplierId ? (
+                // --- SUPPLIER LIST VIEW ---
+                <div className="flex-1 flex flex-col overflow-hidden">
+                    {/* Search Bar */}
+                    <div className="mb-4">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                            <input
+                                type="text"
+                                placeholder="Search suppliers..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            />
+                        </div>
                     </div>
-                  )}
+
+                    <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-20">
+                        {filteredSuppliers.map(supplier => (
+                            <div
+                                key={supplier.id}
+                                onClick={() => setSelectedSupplierId(supplier.id)}
+                                className="bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer border border-transparent hover:border-blue-300 flex flex-col justify-between"
+                            >
+                                <div>
+                                    <div className="flex justify-between items-start mb-2">
+                                        <h3 className="text-lg font-bold text-gray-800">{supplier.name}</h3>
+                                        <div className="flex space-x-1">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); openSupplierForm(supplier); }}
+                                                className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                                            >
+                                                <Edit2 className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleDeleteSupplier(supplier.id); }}
+                                                className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1 text-sm text-gray-600">
+                                        {supplier.contact && (
+                                            <div className="flex items-center space-x-2">
+                                                <Phone className="w-4 h-4" />
+                                                <span>{supplier.contact}</span>
+                                            </div>
+                                        )}
+                                        {supplier.location && (
+                                            <div className="flex items-center space-x-2">
+                                                <MapPin className="w-4 h-4" />
+                                                <span>{supplier.location}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center text-sm">
+                                    <span className={`px-2 py-1 rounded-full ${supplier.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                                        {supplier.active ? 'Active' : 'Inactive'}
+                                    </span>
+                                    <span className="text-gray-500 flex items-center space-x-1">
+                                        <FileText className="w-4 h-4" />
+                                        <span>View Records</span>
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                        {filteredSuppliers.length === 0 && (
+                            <div className="col-span-full text-center py-10 text-gray-500">
+                                No suppliers found. Add one to get started.
+                            </div>
+                        )}
+                    </div>
                 </div>
-                
-                <div className="flex space-x-3 pt-4">
-                  <button
-                    type="submit"
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition-colors"
-                  >
-                    {editingExpense ? 'Update Expense' : 'Add Expense'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={resetForm}
-                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 rounded-lg font-medium transition-colors"
-                  >
-                    Cancel
-                  </button>
+            ) : (
+                // --- SUPPLIER DETAIL VIEW ---
+                <div className="flex-1 flex flex-col overflow-hidden bg-white rounded-lg shadow-sm">
+                    {/* Supplier Info Header */}
+                    <div className="p-6 border-b border-gray-200 bg-gray-50">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <h2 className="text-2xl font-bold text-gray-900">{selectedSupplier?.name}</h2>
+                                <div className="flex space-x-4 mt-2 text-sm text-gray-600">
+                                    {selectedSupplier?.contact && <span>📞 {selectedSupplier.contact}</span>}
+                                    {selectedSupplier?.location && <span>📍 {selectedSupplier.location}</span>}
+                                </div>
+                                {selectedSupplier?.notes && (
+                                    <p className="mt-2 text-sm text-gray-500 italic">"{selectedSupplier.notes}"</p>
+                                )}
+                            </div>
+                            <div className="flex flex-col items-end">
+                                <button
+                                    onClick={() => openExpenseForm()}
+                                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 mb-2"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    <span>Add Record</span>
+                                </button>
+                                <div className="text-xl font-bold text-gray-800">
+                                    Total: KES {supplierExpenses.reduce((sum, e) => sum + e.amount, 0).toFixed(2)}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Expenses Table */}
+                    <div className="flex-1 overflow-auto p-0">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-gray-100 text-gray-600 font-medium sticky top-0">
+                                <tr>
+                                    <th className="px-6 py-3">Date</th>
+                                    <th className="px-6 py-3">Item/Description</th>
+                                    <th className="px-6 py-3">Amount</th>
+                                    <th className="px-6 py-3">Added By</th>
+                                    <th className="px-6 py-3">Category</th>
+                                    <th className="px-6 py-3 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {supplierExpenses.map(expense => (
+                                    <tr key={expense.id} className="hover:bg-gray-50">
+                                        <td className="px-6 py-3">{new Date(expense.timestamp).toLocaleDateString()}</td>
+                                        <td className="px-6 py-3 font-medium text-gray-900">{expense.description}</td>
+                                        <td className="px-6 py-3">KES {expense.amount.toFixed(2)}</td>
+                                        <td className="px-6 py-3">{expense.cashier}</td>
+                                        <td className="px-6 py-3">
+                                            <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                                                {expense.category}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-3 text-right space-x-2">
+                                            <button
+                                                onClick={() => openExpenseForm(expense)}
+                                                className="text-blue-600 hover:text-blue-800"
+                                            >
+                                                Edit
+                                            </button>
+                                            <button
+                                                onClick={() => { if(confirm('Delete?')) deleteExpense(expense.id); }}
+                                                className="text-red-600 hover:text-red-800"
+                                            >
+                                                Del
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {supplierExpenses.length === 0 && (
+                                    <tr>
+                                        <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                                            No records found for this supplier.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-              </form>
+            )}
+        </div>
+
+        {/* --- MODALS --- */}
+
+        {/* Supplier Modal */}
+        {isSupplierFormOpen && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                <div className="bg-white rounded-lg max-w-md w-full p-6">
+                    <h2 className="text-xl font-bold mb-4">{editingSupplier ? 'Edit Supplier' : 'Add Supplier'}</h2>
+                    <form onSubmit={handleSupplierSubmit} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Name</label>
+                            <input type="text" required className="w-full border p-2 rounded"
+                                value={supplierFormData.name} onChange={e => setSupplierFormData({...supplierFormData, name: e.target.value})} />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Phone No</label>
+                            <input type="text" className="w-full border p-2 rounded"
+                                value={supplierFormData.contact} onChange={e => setSupplierFormData({...supplierFormData, contact: e.target.value})} />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Location</label>
+                            <input type="text" className="w-full border p-2 rounded"
+                                value={supplierFormData.location} onChange={e => setSupplierFormData({...supplierFormData, location: e.target.value})} />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Comment/Rating</label>
+                            <textarea className="w-full border p-2 rounded" rows={3}
+                                value={supplierFormData.notes} onChange={e => setSupplierFormData({...supplierFormData, notes: e.target.value})}
+                                placeholder="Accuracy and credibility..."
+                            />
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <input type="checkbox" checked={supplierFormData.active} onChange={e => setSupplierFormData({...supplierFormData, active: e.target.checked})} />
+                            <label className="text-sm text-gray-700">Is Active?</label>
+                        </div>
+                        <div className="flex space-x-3 pt-2">
+                            <button type="submit" className="flex-1 bg-blue-600 text-white py-2 rounded">Save</button>
+                            <button type="button" onClick={closeSupplierForm} className="flex-1 bg-gray-200 py-2 rounded">Cancel</button>
+                        </div>
+                    </form>
+                </div>
             </div>
-          </div>
         )}
-      </div>
+
+        {/* Expense Modal */}
+        {isExpenseFormOpen && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                <div className="bg-white rounded-lg max-w-md w-full p-6">
+                    <h2 className="text-xl font-bold mb-4">{editingExpense ? 'Edit Record' : 'Add Record'}</h2>
+                    <form onSubmit={handleExpenseSubmit} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Item/Description</label>
+                            <input type="text" required className="w-full border p-2 rounded"
+                                value={expenseFormData.description} onChange={e => setExpenseFormData({...expenseFormData, description: e.target.value})}
+                                placeholder="e.g. Flour, Omo"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Amount</label>
+                            <input type="number" required className="w-full border p-2 rounded"
+                                value={expenseFormData.amount} onChange={e => setExpenseFormData({...expenseFormData, amount: e.target.value})} />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Category</label>
+                            <select className="w-full border p-2 rounded"
+                                value={expenseFormData.category} onChange={e => setExpenseFormData({...expenseFormData, category: e.target.value})} >
+                                {EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Receipt (Optional)</label>
+                            <input type="file" accept="image/*" onChange={handleReceiptUpload} className="w-full text-sm" />
+                        </div>
+                        <div className="flex space-x-3 pt-2">
+                            <button type="submit" className="flex-1 bg-blue-600 text-white py-2 rounded">Save</button>
+                            <button type="button" onClick={closeExpenseForm} className="flex-1 bg-gray-200 py-2 rounded">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        )}
     </div>
   );
 }

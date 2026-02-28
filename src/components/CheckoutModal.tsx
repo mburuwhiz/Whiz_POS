@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { usePosStore } from '../store/posStore';
 import { X, CreditCard, Smartphone, Wallet, CheckCircle } from 'lucide-react';
 import CreditCustomerModal from './CreditCustomerModal';
+import { soundManager } from '../lib/soundUtils';
 
 /**
  * Modal component for handling the checkout process.
@@ -26,9 +27,11 @@ export default function CheckoutModal() {
    */
   const handleComplete = () => {
     if (paymentMethod === 'credit' && !creditCustomer.trim()) {
+      soundManager.playError();
       alert('Please select a customer for credit payment');
       return;
     }
+    soundManager.playCheckout();
     completeTransaction(paymentMethod, paymentMethod === 'credit' ? creditCustomer : undefined);
   };
 
@@ -46,6 +49,7 @@ export default function CheckoutModal() {
    * Opens the credit customer selection modal if 'credit' is chosen.
    */
   const handlePaymentMethodChange = (method: 'cash' | 'mpesa' | 'credit') => {
+    soundManager.playPop();
     setPaymentMethod(method);
     if (method === 'credit') {
       setIsCreditModalOpen(true);

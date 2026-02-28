@@ -205,7 +205,7 @@ Runs Electron + React locally.
 
 ## 📄 License
 
-**Proprietary Software — Whiz Tech**
+**Proprietary Software — Whizpoint Solutions**
 
 📞 Phone: **0740-841-168**
 📧 Email: **[whiz.techke@gmail.com](mailto:whiz.techke@gmail.com)**
@@ -213,5 +213,5 @@ Runs Electron + React locally.
 ---
 
 <p align="center">
-  Made with ❤️ by <strong>Whiz Tech</strong>
+  Made with ❤️ by <strong>Whizpoint Solutions</strong>
 </p>

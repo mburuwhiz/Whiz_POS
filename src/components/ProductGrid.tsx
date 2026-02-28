@@ -1,7 +1,8 @@
 import React from 'react';
 import { usePosStore } from '../store/posStore';
-import { Plus } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import cartPlaceholder from '../assets/cart.png';
+import { useBarcodeScanner } from '../hooks/useBarcodeScanner';
 
 const CART_PLACEHOLDER = cartPlaceholder;
 
@@ -10,17 +11,68 @@ const CART_PLACEHOLDER = cartPlaceholder;
  * Allows searching and adding products to the cart.
  */
 export default function ProductGrid() {
-  const { products, addToCart } = usePosStore();
+  const { products, transactions, addToCart } = usePosStore();
   const [searchTerm, setSearchTerm] = React.useState('');
   const [selectedCategory, setSelectedCategory] = React.useState('All');
 
-  // Extract unique categories
-  const categories = ['All', ...new Set(products.map(p => p.category).filter(Boolean))];
+  useBarcodeScanner((code) => {
+      const product = products.find(p => p.id.toString() === code);
+      if (product) {
+          addToCart(product);
+      }
+  });
 
-  const filteredProducts = products.filter((product) => {
+  // Calculate product popularity based on sales quantity
+  const productSalesCount = React.useMemo(() => {
+    const counts: Record<number, number> = {};
+    transactions.forEach(t => {
+      t.items.forEach(item => {
+        if (item.product && item.product.id) {
+          counts[item.product.id] = (counts[item.product.id] || 0) + item.quantity;
+        }
+      });
+    });
+    return counts;
+  }, [transactions]);
+
+  // Deduplicate products to prevent React key warnings and display issues
+  // We prioritize the most recent or complete data if possible, but here we just take the first valid occurrence
+  const uniqueProducts = React.useMemo(() => {
+    const seenIds = new Set();
+    return products.filter(p => {
+       if (!p || !p.id || String(p.id) === 'null' || String(p.id) === 'NaN') return false;
+       if (seenIds.has(p.id)) return false;
+       seenIds.add(p.id);
+       return true;
+    });
+  }, [products]);
+
+  // Extract unique categories
+  const categories = ['All', ...new Set(uniqueProducts.map(p => p.category).filter(Boolean))];
+  const productNames = [...new Set(uniqueProducts.map(p => p.name))];
+
+  const filteredProducts = uniqueProducts.filter((product) => {
     const matchesSearch = (product.name || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
+    const productCategory = (product.category || 'Other').toLowerCase();
+    const targetCategory = selectedCategory.toLowerCase();
+
+    // Exact match or fallback for case sensitivity issues
+    const matchesCategory = selectedCategory === 'All' ||
+                            productCategory === targetCategory ||
+                            product.category === selectedCategory;
+
     return matchesSearch && matchesCategory;
+  }).sort((a, b) => {
+     // Sort by popularity (descending), then name (ascending)
+     const idA = String(a.id);
+     const idB = String(b.id);
+     const countA = productSalesCount[idA] || productSalesCount[Number(idA)] || 0;
+     const countB = productSalesCount[idB] || productSalesCount[Number(idB)] || 0;
+
+     if (countB !== countA) {
+       return countB - countA;
+     }
+     return (a.name || '').localeCompare(b.name || '');
   });
 
   return (
@@ -28,13 +80,27 @@ export default function ProductGrid() {
       <div className="flex flex-col space-y-4 mb-4">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-semibold text-gray-800">Products</h2>
-          <input
-            type="text"
-            placeholder="Search for products..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="border border-gray-300 rounded-lg px-4 py-2"
-          />
+          <div className="relative">
+            <input
+              type="text"
+              list="product-suggestions"
+              placeholder="Search for products..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="border border-gray-300 rounded-lg px-4 py-2 pr-10"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          <datalist id="product-suggestions">
+            {productNames.map((name, index) => <option key={`${name}-${index}`} value={name} />)}
+          </datalist>
         </div>
 
         {/* Categories Tab */}

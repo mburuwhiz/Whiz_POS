@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { usePosStore } from '../store/posStore';
-import { Store, Coffee, BarChart3, Users, Calendar, Settings, DollarSign, Database, Package, Gift, Camera, Activity, Building2, UserCheck, Printer, Smartphone, Maximize, Wrench } from 'lucide-react';
+import { Store, Coffee, BarChart3, Users, Calendar, Settings, DollarSign, Database, Package, Gift, Camera, Activity, Building2, UserCheck, Printer, Smartphone, Maximize, Wrench, FileText } from 'lucide-react';
 
 /**
  * Helper component to group navigation links with a title.
@@ -83,6 +83,10 @@ const Navigation = () => {
             <Printer className="w-5 h-5" />
             <span>Old Receipts</span>
           </NavLink>
+          <NavLink to="/invoices" className={navLinkClasses}>
+            <FileText className="w-5 h-5" />
+            <span>Invoices & Quotes</span>
+          </NavLink>
         </NavGroup>
 
         {isAdminOrManager && (
@@ -137,6 +141,10 @@ const Navigation = () => {
             <NavLink to="/manage" className={navLinkClasses}>
               <Settings className="w-5 h-5" />
               <span>Settings</span>
+            </NavLink>
+            <NavLink to="/users" className={navLinkClasses}>
+              <UserCheck className="w-5 h-5" />
+              <span>Users</span>
             </NavLink>
           </NavGroup>
         )}

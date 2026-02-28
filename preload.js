@@ -148,9 +148,27 @@ contextBridge.exposeInMainWorld('electron', {
 
   directDbPush: (mongoUri) => ipcRenderer.invoke('direct-db-push', mongoUri),
 
+  directDbPull: (mongoUri) => ipcRenderer.invoke('direct-db-pull', mongoUri),
+
   backupData: () => ipcRenderer.invoke('backup-data'),
 
   restoreData: () => ipcRenderer.invoke('restore-data'),
 
   getConnectedDevices: () => ipcRenderer.invoke('get-connected-devices'),
+
+  getLogs: () => ipcRenderer.invoke('get-logs'),
+
+  // --- Auth & User Management ---
+
+  auth: {
+      login: (userId, pin, deviceId) => ipcRenderer.invoke('auth-login', userId, pin, deviceId),
+      logout: (token) => ipcRenderer.invoke('auth-logout', token),
+      verify: (token) => ipcRenderer.invoke('auth-verify', token)
+  },
+
+  userManagement: {
+      addUser: (userData) => ipcRenderer.invoke('user-add', userData),
+      updateUser: (userId, updates) => ipcRenderer.invoke('user-update', userId, updates),
+      deleteUser: (userId) => ipcRenderer.invoke('user-delete', userId)
+  }
 });

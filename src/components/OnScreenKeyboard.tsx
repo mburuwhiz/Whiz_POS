@@ -51,8 +51,16 @@ const OnScreenKeyboard = () => {
     return null;
   }
 
-  const handleKeyPress = (key: string) => {
+  const handleKeyPress = (key: string, e?: React.MouseEvent) => {
+    // Prevent focus loss when clicking keyboard buttons
+    if (e) {
+      e.preventDefault();
+    }
+
     if (!activeInput) return;
+
+    // Ensure focus is kept on input
+    activeInput.focus();
 
     let keyToPress = key;
 
@@ -118,8 +126,9 @@ const OnScreenKeyboard = () => {
               {row.split(' ').map((key) => (
                 <button
                   key={key}
-                  onClick={() => handleKeyPress(key)}
-                  className="h-12 flex-1 rounded bg-white dark:bg-gray-600 text-gray-800 dark:text-white font-semibold text-lg shadow hover:bg-gray-100 dark:hover:bg-gray-500 transition-colors"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={(e) => handleKeyPress(key, e)}
+                  className="h-12 flex-1 rounded bg-white dark:bg-gray-600 text-gray-800 dark:text-white font-semibold text-lg shadow hover:bg-gray-100 dark:hover:bg-gray-500 transition-colors active:scale-95"
                 >
                   {key}
                 </button>
@@ -128,32 +137,37 @@ const OnScreenKeyboard = () => {
           ))}
           <div className="flex justify-center space-x-1">
             <button
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => { setCapsLock(!capsLock); setShift(false); }}
-              className={`h-12 w-24 rounded font-semibold text-white shadow transition-colors ${capsLock ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-500 hover:bg-gray-600'}`}
+              className={`h-12 w-24 rounded font-semibold text-white shadow transition-colors active:scale-95 ${capsLock ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-500 hover:bg-gray-600'}`}
             >
               <ChevronsUp className="w-6 h-6 mx-auto" />
             </button>
             <button
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => setShift(!shift)}
-              className={`h-12 w-24 rounded font-semibold text-white shadow transition-colors ${shift ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-500 hover:bg-gray-600'}`}
+              className={`h-12 w-24 rounded font-semibold text-white shadow transition-colors active:scale-95 ${shift ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-500 hover:bg-gray-600'}`}
             >
               <ArrowUp className="w-6 h-6 mx-auto" />
             </button>
             <button
-              onClick={() => handleKeyPress(' ')}
-              className="h-12 flex-grow rounded bg-white dark:bg-gray-600 text-gray-800 dark:text-white font-semibold text-lg shadow hover:bg-gray-100 dark:hover:bg-gray-500"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={(e) => handleKeyPress(' ', e)}
+              className="h-12 flex-grow rounded bg-white dark:bg-gray-600 text-gray-800 dark:text-white font-semibold text-lg shadow hover:bg-gray-100 dark:hover:bg-gray-500 active:scale-95"
             >
               Space
             </button>
             <button
-              onClick={() => handleKeyPress('backspace')}
-              className="h-12 w-24 rounded bg-gray-500 hover:bg-gray-600 text-white font-semibold shadow transition-colors"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={(e) => handleKeyPress('backspace', e)}
+              className="h-12 w-24 rounded bg-gray-500 hover:bg-gray-600 text-white font-semibold shadow transition-colors active:scale-95"
             >
               <Trash2 className="w-6 h-6 mx-auto" />
             </button>
             <button
-              onClick={() => handleKeyPress('enter')}
-              className="h-12 w-24 rounded bg-green-600 hover:bg-green-700 text-white font-semibold shadow transition-colors"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={(e) => handleKeyPress('enter', e)}
+              className="h-12 w-24 rounded bg-green-600 hover:bg-green-700 text-white font-semibold shadow transition-colors active:scale-95"
             >
               <CornerDownLeft className="w-6 h-6 mx-auto" />
             </button>

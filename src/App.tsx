@@ -8,36 +8,41 @@ import LoginScreen from './components/LoginScreen';
 import OnScreenKeyboard from './components/OnScreenKeyboard';
 import ErrorBoundary from './components/ErrorBoundary';
 import AutoLogoutModal from './components/AutoLogoutModal';
-import { useEffect, useRef } from 'react';
-import { useIdle } from 'react-use';
+import { useEffect, useRef, useState } from 'react';
+import { useAutoLogout } from './hooks/useAutoLogout';
 
 function App() {
-  const { businessSetup, loadInitialData, autoPrintClosingReport, isDataLoaded, logout, currentCashier } = usePosStore(state => ({
+  const { businessSetup, loadInitialData, isDataLoaded, logout, currentCashier } = usePosStore(state => ({
     businessSetup: state.businessSetup,
     loadInitialData: state.loadInitialData,
-    autoPrintClosingReport: state.autoPrintClosingReport,
     isDataLoaded: state.isDataLoaded,
     logout: state.logout,
     currentCashier: state.currentCashier
   }));
 
   // Auto-logoff Logic
-  // Default to 5 minutes if not set or 0
-  const idleMinutes = businessSetup?.autoLogoffMinutes || 5;
+  // Default to 5 minutes if not set or 0. Ensure at least 1 minute to prevent immediate loops if config is bad.
+  const idleMinutes = Math.max(1, Number(businessSetup?.autoLogoffMinutes) || 5);
   const idleMs = idleMinutes * 60 * 1000;
 
-  // useIdle hook initializes with the duration.
-  // Note: changing idleMs dynamically might not reset the internal timer of react-use's useIdle instantly in all versions,
-  // but it usually reacts to prop changes or re-renders.
-  const isIdle = useIdle(idleMs);
+  // Use custom hook to track idle state.
+  // Only enable tracking if explicitly enabled in settings AND logged in.
+  const isAutoLogoffEnabled = businessSetup?.isLoggedIn && (businessSetup?.autoLogoffEnabled === true);
+  const isIdle = useAutoLogout(idleMs, isAutoLogoffEnabled);
+
+  // Debug log for auto-logoff
+  useEffect(() => {
+    if (isAutoLogoffEnabled) {
+      console.log(`Auto-logoff configured: ${idleMinutes} minutes (${idleMs}ms)`);
+    }
+  }, [isAutoLogoffEnabled, idleMinutes, idleMs]);
 
   useEffect(() => {
     const init = async () => {
       await loadInitialData();
-      // autoPrintClosingReport(); // Disabled on startup per request
     };
     init();
-  }, [loadInitialData, autoPrintClosingReport]);
+  }, [loadInitialData]);
 
   // Setup Electron IPC Listeners
   useEffect(() => {
@@ -107,19 +112,23 @@ function App() {
     return <BusinessRegistrationPage />;
   }
 
+  // Double Check: Even if isLoggedIn is true, if we don't have a currentCashier, we should show Login.
+  // This handles the "Ghost" session where sessionToken exists but cashier object is null/lost.
+  const showLogin = !businessSetup.isLoggedIn || !currentCashier;
+
   return (
     <ErrorBoundary>
       <Router>
         <div className="min-h-screen bg-gray-100">
-          {!businessSetup.isLoggedIn ? <LoginScreen /> : <MainNavigator />}
+          {showLogin ? <LoginScreen /> : <MainNavigator />}
 
           {/* Global Modals */}
           <CheckoutModal />
           <OnScreenKeyboard />
 
           {/* Auto Logoff Warning Modal */}
-          {/* Only show if logged in, feature enabled, and idle */}
-          {businessSetup.isLoggedIn && businessSetup.autoLogoffEnabled && isIdle && (
+          {/* Only show if logged in, feature enabled, and idle. */}
+          {isAutoLogoffEnabled && isIdle && (
             <AutoLogoutModal onLogout={logout} userName={currentCashier?.name} />
           )}
         </div>

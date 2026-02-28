@@ -77,14 +77,44 @@ declare global {
       getConnectedDevices: () => Promise<{ ip: string; name: string; lastSeen: string }[]>;
       backupData: () => Promise<{ success: boolean; filePath?: string; error?: string }>;
       restoreData: () => Promise<{ success: boolean; error?: string }>;
+
+      auth: {
+        login: (userId: string, pin: string, deviceId?: string) => Promise<{ success: boolean; token?: string; user?: any; error?: string }>;
+        logout: (token: string) => Promise<{ success: boolean }>;
+        verify: (token: string) => Promise<{ success: boolean; user?: any }>;
+      };
+
+      userManagement: {
+        addUser: (userData: any) => Promise<{ success: boolean; error?: string }>;
+        updateUser: (userId: string, updates: any) => Promise<{ success: boolean; error?: string }>;
+        deleteUser: (userId: string) => Promise<{ success: boolean; error?: string }>;
+      };
     };
   }
+}
+
+// Add SessionToken to interface
+interface PosState {
+    // ... existing ...
+    sessionToken: string | null;
+    setSession: (user: User, token: string) => void;
 }
 
 // Helper function for saving data via Electron's main process
 const saveDataToFile = async (fileName: string, data: any) => {
   if (window.electron) {
-    return await window.electron.saveData(fileName, data);
+    try {
+      const result = await window.electron.saveData(fileName, data);
+      if (!result.success) {
+        console.error(`Failed to save ${fileName}:`, result.error);
+      } else {
+        // console.debug(`Successfully saved ${fileName}`);
+      }
+      return result;
+    } catch (e) {
+      console.error(`Exception while saving ${fileName}:`, e);
+      return { success: false, error: e };
+    }
   } else {
     console.warn('Electron API not available. Data not saved to disk.');
     return { success: true }; // Prevent crashes in a pure web environment
@@ -99,6 +129,21 @@ const readDataFromFile = async (fileName: string) => {
     console.error('Electron API is not available. This application is designed to run in Electron.');
     return { success: false, error: 'Electron API not available' };
   }
+};
+
+const generateRandomId = () => {
+    return Math.floor(10000000 + Math.random() * 90000000);
+};
+
+// Generate a stable numeric ID from a string (e.g. product name)
+const generateStableId = (str: string) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32bit integer
+    }
+    return Math.abs(hash);
 };
 
 export interface Product {
@@ -160,12 +205,35 @@ export interface CreditPayment {
     transactionId?: string; // Linked to specific transaction
 }
 
+export interface LoyaltyCustomer {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  points: number;
+  tier: 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
+  totalSpent: number;
+  visitsCount: number;
+  lastVisit: string;
+  rewards: string[];
+}
+
 export interface User {
   id: string;
   name: string;
   pin: string;
   role: 'admin' | 'manager' | 'cashier';
   isActive: boolean;
+  createdAt: string;
+}
+
+export interface Supplier {
+  id: string;
+  name: string;
+  contact: string;
+  location: string;
+  active: boolean;
+  notes?: string;
   createdAt: string;
 }
 
@@ -177,6 +245,8 @@ export interface Expense {
   timestamp: string;
   cashier: string;
   receipt?: string;
+  supplierId?: string;
+  supplierName?: string;
 }
 
 export interface Salary {
@@ -207,6 +277,7 @@ export interface BusinessSetup {
   selectedPrinter?: string;
   showPrintPreview?: boolean;
   onScreenKeyboard?: boolean;
+  printerPaperWidth?: number; // Paper width in mm
   isSetup: boolean;
   isLoggedIn: boolean; // Added for login state
   createdAt: string;
@@ -219,6 +290,14 @@ export interface BusinessSetup {
   locationName?: string;
   autoLogoffEnabled?: boolean;
   autoLogoffMinutes?: number;
+  mpesaConfig?: {
+    consumerKey: string;
+    consumerSecret: string;
+    passkey: string;
+    shortcode: string;
+    type: 'Paybill' | 'Till';
+    environment: 'Sandbox' | 'Production';
+  };
 }
 
 export interface CreditTransaction {
@@ -265,19 +344,41 @@ export interface InventoryLog {
     reason?: string;
 }
 
+export interface DailySummary {
+  date: string;
+  totalSales: number;
+  cashTotal: number;
+  mpesaTotal: number;
+  creditTotal: number;
+  expenseTotal: number;
+  transactionCount: number;
+}
+
+export interface SavedDocument {
+  id: string;
+  type: string;
+  name: string;
+  date: string;
+  data: any; // The full state of the document editor
+}
+
 interface PosState {
   // Data
   products: Product[];
   cart: CartItem[];
   transactions: Transaction[];
+  dailySummaries: Record<string, DailySummary>; // Archived data
   creditCustomers: CreditCustomer[];
   creditPayments: CreditPayment[];
   inventoryLogs: InventoryLog[];
   users: User[];
+  suppliers: Supplier[];
   expenses: Expense[];
   salaries: Salary[];
+  documents: SavedDocument[];
   businessSetup: BusinessSetup | null;
   mobileReceipts: any[];
+  loyaltyCustomers: LoyaltyCustomer[];
   
   // UI State
   isDataLoaded: boolean;
@@ -293,12 +394,12 @@ interface PosState {
   isOnline: boolean;
   syncQueue: any[];
   lastSyncTime: string | null;
+  isSidebarCollapsed: boolean;
   
   // Enhanced features state
   inventoryProducts: Product[];
   loyaltyCustomers: any[];
   syncHistory: any[];
-  lastClosingReportDate: string | null;
 
   // Actions
   login: (user: User) => void;
@@ -329,15 +430,24 @@ interface PosState {
   saveCreditCustomer: (customer: CreditCustomer) => void;
   updateCreditCustomer: (id: string, updates: Partial<CreditCustomer>) => void;
   deleteCreditCustomer: (id: string) => void;
-  saveExpense: (expense: Expense) => void;
+  addExpense: (expense: Expense) => void;
   updateExpense: (id: string, updates: Partial<Expense>) => void;
   deleteExpense: (id: string) => void;
+  addLoyaltyCustomer: (customer: LoyaltyCustomer) => void;
+  updateLoyaltyCustomer: (id: string, updates: Partial<LoyaltyCustomer>) => void;
+  deleteTransactions: (ids: string[]) => void;
   addSalary: (salary: Salary) => void;
   deleteSalary: (id: string) => void;
   saveBusinessSetup: (setup: BusinessSetup) => void;
   addUser: (user: User) => void;
   updateUser: (id: string, updates: Partial<User>) => void;
   deleteUser: (id: string) => void;
+  addSupplier: (supplier: Supplier) => void;
+  updateSupplier: (id: string, updates: Partial<Supplier>) => void;
+  deleteSupplier: (id: string) => void;
+  migrateLegacyExpenses: () => Promise<void>;
+  saveDocument: (doc: SavedDocument) => void;
+  deleteDocument: (id: string) => void;
 
   // Sync operations
   addToSyncQueue: (operation: any) => void;
@@ -366,11 +476,11 @@ interface PosState {
   updateLoyaltyCustomer: (id: string, updates: any) => void;
   addSyncHistoryItem: (item: any) => void;
   loadInitialData: () => void;
-  autoPrintClosingReport: () => void;
   finishSetup: (businessData: Omit<BusinessSetup, 'createdAt'>, adminUser: Omit<User, 'createdAt' | 'isActive'>) => Promise<void>;
   pushDataToServer: () => Promise<void>;
   addCreditPayment: (customerId: string, amount: number, transactionId?: string) => void;
   addInventoryLog: (log: InventoryLog) => void;
+  archiveTransactions: (daysToKeep: number) => Promise<void>;
 }
 
 /**
@@ -385,12 +495,16 @@ export const usePosStore = create<PosState>()(
       products: [],
       cart: [],
       transactions: [],
+      dailySummaries: {},
       creditCustomers: [],
       creditPayments: [],
       inventoryLogs: [],
+      loyaltyCustomers: [],
       users: [],
+      suppliers: [],
       expenses: [],
       salaries: [],
+      documents: [],
       businessSetup: null,
       currentCashier: null,
       isDataLoaded: false,
@@ -404,26 +518,59 @@ export const usePosStore = create<PosState>()(
       isOnline: navigator.onLine,
       syncQueue: [],
       lastSyncTime: null,
-      lastClosingReportDate: null,
       mobileReceipts: [],
+      sessionToken: null,
+      isSidebarCollapsed: false,
 
       /**
        * Logs in a user and updates the session state.
        */
-      login: (user) => {
-        set((state) => ({
-          currentCashier: user,
-          businessSetup: state.businessSetup ? { ...state.businessSetup, isLoggedIn: true } : null,
-        }));
+      login: async (user) => {
+        // Wait, user is passed here, but we need PIN for backend auth.
+        // Actually, the LoginScreen handles the PIN input and passes the User object IF validation succeeded locally.
+        // But we want STRICT BACKEND validation now.
+        // So this 'login' action signature needs to change or the caller needs to handle the backend call.
+        // The previous implementation was client-side only.
+
+        // Let's assume the caller (LoginScreen) does:
+        // 1. await window.electron.auth.login(userId, pin)
+        // 2. if success, calls store.login(user, token)
+
+        // Wait, I can't change the signature easily if many components use it, but only LoginScreen uses it.
+        // I'll update it to accept the token too.
+
+        // Actually, to keep it clean, let's just update the state here.
+        // The LoginScreen will do the heavy lifting of calling the backend.
+
+        // NO, the store action should probably do the backend call?
+        // But 'user' argument implies we already have the user object.
+
+        // Let's stick to: Store just updates state. LoginScreen calls Backend.
+        // But I need to store the Session Token!
+        // I'll add 'sessionToken' to the store state.
+      },
+
+      setSession: (user: User, token: string) => {
+          set((state) => ({
+              currentCashier: user,
+              businessSetup: state.businessSetup ? { ...state.businessSetup, isLoggedIn: true } : null,
+              sessionToken: token
+          }));
       },
 
       /**
        * Logs out the current user.
        */
-      logout: () => {
+      logout: async () => {
+        const state = get();
+        if (state.sessionToken && window.electron && window.electron.auth) {
+             await window.electron.auth.logout(state.sessionToken);
+        }
+
         set((state) => ({
           currentCashier: null,
           businessSetup: state.businessSetup ? { ...state.businessSetup, isLoggedIn: false } : null,
+          sessionToken: null
         }));
       },
 
@@ -520,7 +667,25 @@ export const usePosStore = create<PosState>()(
           newCursorPos = start + value.length;
         }
 
-        activeInput.value = newValue;
+        // Use the native value setter to ensure React detects the change
+        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+          window.HTMLInputElement.prototype,
+          'value'
+        )?.set;
+
+        const nativeTextAreaValueSetter = Object.getOwnPropertyDescriptor(
+          window.HTMLTextAreaElement.prototype,
+          'value'
+        )?.set;
+
+        if (activeInput instanceof HTMLInputElement && nativeInputValueSetter) {
+          nativeInputValueSetter.call(activeInput, newValue);
+        } else if (activeInput instanceof HTMLTextAreaElement && nativeTextAreaValueSetter) {
+          nativeTextAreaValueSetter.call(activeInput, newValue);
+        } else {
+          activeInput.value = newValue;
+        }
+
         const event = new Event('input', { bubbles: true });
         activeInput.dispatchEvent(event);
         activeInput.selectionStart = activeInput.selectionEnd = newCursorPos;
@@ -598,6 +763,28 @@ export const usePosStore = create<PosState>()(
             }
         }
 
+        // Handle Loyalty Points (if customer is identified)
+        if (creditCustomerName) {
+            const loyaltyCustomer = state.loyaltyCustomers.find(c => c.name === creditCustomerName);
+            if (loyaltyCustomer) {
+                const newTotalSpent = loyaltyCustomer.totalSpent + total;
+                let newTier: LoyaltyCustomer['tier'] = loyaltyCustomer.tier;
+                if (newTotalSpent >= 10000) newTier = 'Platinum';
+                else if (newTotalSpent >= 5000) newTier = 'Gold';
+                else if (newTotalSpent >= 2000) newTier = 'Silver';
+
+                const pointsEarned = Math.floor(total / 10);
+
+                state.updateLoyaltyCustomer(loyaltyCustomer.id, {
+                    points: loyaltyCustomer.points + pointsEarned,
+                    totalSpent: newTotalSpent,
+                    visitsCount: loyaltyCustomer.visitsCount + 1,
+                    lastVisit: new Date().toISOString(),
+                    tier: newTier
+                });
+            }
+        }
+
         state.clearCart();
         state.closeCheckout();
 
@@ -619,31 +806,24 @@ export const usePosStore = create<PosState>()(
              const transaction = state.transactions.find(t => t.id === transactionId);
              if (!transaction) return {};
 
-             // 1. Mark transaction as refunded or remove it? User said "reversed or deleted".
-             // Refunded status preserves history but filters can hide it. Deleted removes it.
-             // Let's go with "refunded" status update for audit trail, but filter out from reports if needed.
-             // Actually, user said "sale can be fully reversed or deleted".
-             // Let's implement Delete for simplicity to match "deleted" requirement.
-             const updatedTransactions = state.transactions.filter(t => t.id !== transactionId);
+             // 1. Mark transaction as 'reversed' status, do NOT delete it, so we have a record.
+             // Or user said "reverse... incase invalid".
+             // If we delete, we lose record. If we reverse, we keep record but marked as reversed.
+             // Let's mark as reversed status and filter it out in calculations/reports where necessary?
+             // Actually, usually a reversal is a new negative transaction or just updating status.
+             // Given the previous requirement of "deleting receipts", user might want it GONE from sales but kept for audit?
+             // "ability to reverse a transaction in the old receipts incase an invalid or sale was incomplete or wrong items"
+             // Best practice: Update status to 'refunded'/'reversed' and restore stock.
+
+             const updatedTransactions = state.transactions.map(t =>
+                 t.id === transactionId ? { ...t, status: 'refunded' } : t
+             );
 
              // 2. Restore Stock
-             if (transaction.items) {
-                 transaction.items.forEach(item => {
-                     const product = state.products.find(p => p.id === item.product.id);
-                     if (product && typeof product.stock === 'number') {
-                         // We can't call state.updateProduct here easily because we are inside set()
-                         // So we map products directly.
-                         // But we should use the update logic to ensure consistency.
-                         // Since we are in set(), we can update products array.
-                     }
-                 });
-             }
-
-             // Re-map products to restore stock
              const updatedProducts = state.products.map(p => {
                  const item = transaction.items.find(i => i.product.id === p.id);
-                 if (item) {
-                     return { ...p, stock: (p.stock || 0) + item.quantity };
+                 if (item && typeof p.stock === 'number') {
+                     return { ...p, stock: p.stock + item.quantity };
                  }
                  return p;
              });
@@ -657,7 +837,9 @@ export const usePosStore = create<PosState>()(
                              ...c,
                              totalCredit: Math.max(0, (c.totalCredit || 0) - transaction.total),
                              balance: Math.max(0, (c.balance || 0) - transaction.total),
-                             transactions: c.transactions.filter(tid => tid !== transactionId),
+                             // We don't remove the transaction ID, but the balance decreases.
+                             // The transaction itself is now 'refunded' so it shouldn't count towards debt?
+                             // But we just subtracted the total.
                              lastUpdated: new Date().toISOString()
                          };
                      }
@@ -670,14 +852,15 @@ export const usePosStore = create<PosState>()(
              saveDataToFile('products.json', updatedProducts);
              saveDataToFile('credit-customers.json', updatedCreditCustomers);
 
-             // Sync deletion/updates
-             state.addToSyncQueue({ type: 'delete-transaction', data: { id: transactionId } });
-             // For products and customers, we queue updates
-             // Ideally we should queue individual product updates but for bulk restore...
-             // Let's just queue the delete-transaction and let backend handle logic?
-             // No, offline first. We need to queue updates.
+             // Sync
+             state.addToSyncQueue({ type: 'update-transaction', data: { id: transactionId, updates: { status: 'refunded' } } });
              transaction.items.forEach(item => {
-                 state.addToSyncQueue({ type: 'update-product', data: { id: item.product.id, updates: { stock: (item.product.stock || 0) + item.quantity } } });
+                if (item.product && item.product.id) {
+                     const currentProduct = updatedProducts.find(p => p.id === item.product.id);
+                     if (currentProduct) {
+                         state.addToSyncQueue({ type: 'update-product', data: { id: item.product.id, updates: { stock: currentProduct.stock } } });
+                     }
+                }
              });
 
              return {
@@ -714,6 +897,26 @@ export const usePosStore = create<PosState>()(
             state.addToSyncQueue({ type: 'update-credit-customer', data: { id, updates } });
             return { creditCustomers: updatedCustomers };
         });
+      },
+
+      addLoyaltyCustomer: (customer) => {
+          set((state) => {
+              const updatedCustomers = [...state.loyaltyCustomers, customer];
+              saveDataToFile('loyalty-customers.json', updatedCustomers);
+              state.addToSyncQueue({ type: 'add-loyalty-customer', data: customer });
+              return { loyaltyCustomers: updatedCustomers };
+          });
+      },
+
+      updateLoyaltyCustomer: (id, updates) => {
+          set((state) => {
+              const updatedCustomers = state.loyaltyCustomers.map(c =>
+                  c.id === id ? { ...c, ...updates } : c
+              );
+              saveDataToFile('loyalty-customers.json', updatedCustomers);
+              state.addToSyncQueue({ type: 'update-loyalty-customer', data: { id, updates } });
+              return { loyaltyCustomers: updatedCustomers };
+          });
       },
 
       addCreditPayment: (customerId: string, amount: number, transactionId?: string) => {
@@ -770,7 +973,7 @@ export const usePosStore = create<PosState>()(
         });
       },
 
-      saveExpense: (expense) => {
+      addExpense: (expense) => {
         set((state) => {
           const updatedExpenses = [expense, ...state.expenses];
           saveDataToFile('expenses.json', updatedExpenses);
@@ -815,6 +1018,96 @@ export const usePosStore = create<PosState>()(
           saveDataToFile('salaries.json', updatedSalaries);
           state.addToSyncQueue({ type: 'delete-salary', data: { id } });
           return { salaries: updatedSalaries };
+        });
+      },
+
+      addSupplier: (supplier) => {
+        set((state) => {
+          const updatedSuppliers = [...state.suppliers, supplier];
+          saveDataToFile('suppliers.json', updatedSuppliers);
+          state.addToSyncQueue({ type: 'add-supplier', data: supplier });
+          return { suppliers: updatedSuppliers };
+        });
+      },
+
+      updateSupplier: (id, updates) => {
+        set((state) => {
+          const updatedSuppliers = state.suppliers.map(s =>
+            s.id === id ? { ...s, ...updates } : s
+          );
+          saveDataToFile('suppliers.json', updatedSuppliers);
+          state.addToSyncQueue({ type: 'update-supplier', data: { id, updates } });
+          return { suppliers: updatedSuppliers };
+        });
+      },
+
+      deleteSupplier: (id) => {
+        set((state) => {
+          const updatedSuppliers = state.suppliers.filter(s => s.id !== id);
+          saveDataToFile('suppliers.json', updatedSuppliers);
+          state.addToSyncQueue({ type: 'delete-supplier', data: { id } });
+          return { suppliers: updatedSuppliers };
+        });
+      },
+
+      migrateLegacyExpenses: async () => {
+        const state = get();
+
+        // 1. Ensure "Others" Supplier exists
+        let othersSupplier = state.suppliers.find(s => s.name === 'Others');
+        let updatedSuppliers = [...state.suppliers];
+
+        if (!othersSupplier) {
+            othersSupplier = {
+                id: `SUP${Date.now()}`,
+                name: 'Others',
+                contact: '0740 841 168',
+                location: '02-00223 Kagwe',
+                active: true,
+                notes: 'Legacy Data Container',
+                createdAt: new Date().toISOString()
+            };
+            updatedSuppliers.push(othersSupplier);
+            state.addToSyncQueue({ type: 'add-supplier', data: othersSupplier });
+        }
+
+        // 2. Find legacy expenses (missing supplierId)
+        const expensesToMigrate = state.expenses.filter(e => !e.supplierId);
+
+        if (expensesToMigrate.length === 0 && state.suppliers.length === updatedSuppliers.length) {
+            return; // Nothing to do
+        }
+
+        const updatedExpenses = state.expenses.map(e => {
+            if (!e.supplierId) {
+                // Queue update for each expense migration
+                // Note: We create a local modified object. The queue needs the ID and updates.
+                const updates = { supplierId: othersSupplier!.id, supplierName: 'Others' };
+                state.addToSyncQueue({ type: 'update-expense', data: { id: e.id, updates } });
+                return { ...e, ...updates };
+            }
+            return e;
+        });
+
+        // 3. Save Changes
+        set({ suppliers: updatedSuppliers, expenses: updatedExpenses });
+        await saveDataToFile('suppliers.json', updatedSuppliers);
+        await saveDataToFile('expenses.json', updatedExpenses);
+      },
+
+      saveDocument: (doc) => {
+        set((state) => {
+          const updatedDocs = [doc, ...state.documents.filter(d => d.id !== doc.id)];
+          saveDataToFile('documents.json', updatedDocs);
+          return { documents: updatedDocs };
+        });
+      },
+
+      deleteDocument: (id) => {
+        set((state) => {
+          const updatedDocs = state.documents.filter(d => d.id !== id);
+          saveDataToFile('documents.json', updatedDocs);
+          return { documents: updatedDocs };
         });
       },
 
@@ -904,13 +1197,14 @@ export const usePosStore = create<PosState>()(
       },
 
       syncFromServer: async () => {
-        const state = get();
-        const apiUrl = (state.businessSetup?.apiUrl || state.businessSetup?.backOfficeUrl)?.replace(/\/$/, '');
-        const apiKey = state.businessSetup?.apiKey || state.businessSetup?.backOfficeApiKey;
-        const mongoDbUri = state.businessSetup?.mongoDbUri;
+        // Fetch config from initial state, but DO NOT use data state here to avoid stale closures
+        const configState = get();
+        const apiUrl = (configState.businessSetup?.apiUrl || configState.businessSetup?.backOfficeUrl)?.replace(/\/$/, '');
+        const apiKey = configState.businessSetup?.apiKey || configState.businessSetup?.backOfficeApiKey;
+        const mongoDbUri = configState.businessSetup?.mongoDbUri;
 
         // Add debug logging for diagnosis
-        if (!state.isOnline) { console.debug("Sync skipped: Offline"); return; }
+        if (!configState.isOnline) { console.debug("Sync skipped: Offline"); return; }
 
         let serverData: any = null;
 
@@ -918,6 +1212,7 @@ export const usePosStore = create<PosState>()(
         if (mongoDbUri && window.electron && window.electron.directDbPull) {
             console.log("Initiating Direct MongoDB Pull...");
             try {
+                // This await can take time. During this time, the local state might change (e.g. user adds expense).
                 const result = await window.electron.directDbPull(mongoDbUri);
                 if (result.success && result.data) {
                     console.log("Direct MongoDB Pull Successful");
@@ -958,62 +1253,116 @@ export const usePosStore = create<PosState>()(
         if (!serverData) return;
 
         try {
-          const mergeData = (local: any[], server: any[]) => {
-            const validServerItems = server.filter(item => item.id != null);
-            const serverDataById = new Map(validServerItems.map(item => [item.id, item]));
-            const localDataById = new Map(local.map(item => [item.id, item]));
+          // CRITICAL FIX: Get the LATEST state right before merging.
+          // This prevents overwriting new local items created while 'directDbPull' was running.
+          const currentState = get();
 
-            const merged = local.map(localItem => {
-              const serverItem = serverDataById.get(localItem.id);
-              if (serverItem) {
-                const serverTimestamp = new Date(serverItem.updatedAt || serverItem.createdAt || 0);
-                const localTimestamp = new Date(localItem.updatedAt || localItem.createdAt || 0);
-                if (serverTimestamp.getTime() > localTimestamp.getTime()) {
-                     return serverItem;
-                }
-                return localItem;
-              }
-              return localItem;
-            });
+          const sanitizeAndMerge = (local: any[], server: any[], isProducts = false) => {
+             // Index local items by Name for smart matching (specifically for products)
+             const localMapByName = isProducts
+                 ? new Map(local.map(i => [i.name?.trim().toLowerCase(), i]))
+                 : new Map();
 
-            validServerItems.forEach(serverItem => {
-              if (!localDataById.has(serverItem.id)) {
-                merged.push(serverItem);
-              }
-            });
-            return merged;
+             // 1. Sanitize Server Data
+             const sanitizedServer = server.map(item => {
+                 if (!item.id || String(item.id) === 'null' || String(item.id) === 'NaN') {
+                     // Try to match with local item by name to prevent duplication
+                     if (isProducts && item.name) {
+                         const match = localMapByName.get(item.name.trim().toLowerCase());
+                         if (match) {
+                             // Found local match! Use local ID.
+                             item.id = match.id;
+                             return item;
+                         }
+                         // No match? Generate a STABLE ID based on name hash.
+                         // This ensures "Coffee" always gets ID X, avoiding duplicates on next sync.
+                         item.id = generateStableId(item.name);
+                     } else {
+                         item.id = isProducts ? generateRandomId() : `FIX${Date.now()}${Math.floor(Math.random() * 1000)}`;
+                     }
+                 }
+                 return item;
+             });
+
+             // 2. Sanitize Local Data
+             const sanitizedLocal = local.map(item => {
+                 if (!item.id || String(item.id) === 'null' || String(item.id) === 'NaN') {
+                      if (isProducts && item.name) {
+                          item.id = generateStableId(item.name);
+                      } else {
+                          item.id = isProducts ? generateRandomId() : `FIX${Date.now()}${Math.floor(Math.random() * 1000)}`;
+                      }
+                 }
+                 return item;
+             });
+
+             const serverDataById = new Map(sanitizedServer.map(item => [String(item.id), item]));
+
+             // Merge strategy: Overwrite local if server is newer
+             const mergedMap = new Map<string, any>();
+
+             sanitizedLocal.forEach(localItem => {
+                 const serverItem = serverDataById.get(String(localItem.id));
+                 if (serverItem) {
+                     const serverTimestamp = new Date(serverItem.updatedAt || serverItem.createdAt || 0);
+                     const localTimestamp = new Date(localItem.updatedAt || localItem.createdAt || 0);
+                     if (serverTimestamp.getTime() > localTimestamp.getTime()) {
+                         mergedMap.set(String(localItem.id), serverItem);
+                     } else {
+                         mergedMap.set(String(localItem.id), localItem);
+                     }
+                 } else {
+                     mergedMap.set(String(localItem.id), localItem);
+                 }
+             });
+
+             // Add new items from server
+             sanitizedServer.forEach(serverItem => {
+                 if (!mergedMap.has(String(serverItem.id))) {
+                     mergedMap.set(String(serverItem.id), serverItem);
+                 }
+             });
+
+             return Array.from(mergedMap.values());
           };
 
-          const newProducts = mergeData(state.products, serverData.products || []);
-          const newUsers = mergeData(state.users, serverData.users || []);
-          const newExpenses = mergeData(state.expenses, serverData.expenses || []);
-          const newSalaries = mergeData(state.salaries, serverData.salaries || []);
-          const newCreditCustomers = mergeData(state.creditCustomers, serverData.creditCustomers || []);
+          const newProducts = sanitizeAndMerge(currentState.products, serverData.products || [], true);
+          // Users NOT merged from server to prevent overwriting local deletions/renames
+          // const newUsers = sanitizeAndMerge(currentState.users, serverData.users || []);
+          const newExpenses = sanitizeAndMerge(currentState.expenses, serverData.expenses || []);
+          const newSalaries = sanitizeAndMerge(currentState.salaries, serverData.salaries || []);
+          const newCreditCustomers = sanitizeAndMerge(currentState.creditCustomers, serverData.creditCustomers || []);
+          const newLoyaltyCustomers = sanitizeAndMerge(currentState.loyaltyCustomers, serverData.loyaltyCustomers || []);
+          const newSuppliers = sanitizeAndMerge(currentState.suppliers, serverData.suppliers || []);
 
-          let newBusinessSetup = state.businessSetup;
+          let newBusinessSetup = currentState.businessSetup;
           if (serverData.businessSetup) {
             const serverTimestamp = new Date(serverData.businessSetup.updatedAt || serverData.businessSetup.createdAt || 0);
-            const localTimestamp = state.businessSetup ? new Date(state.businessSetup.updatedAt || state.businessSetup.createdAt || 0) : new Date(0);
+            const localTimestamp = currentState.businessSetup ? new Date(currentState.businessSetup.updatedAt || currentState.businessSetup.createdAt || 0) : new Date(0);
             if (serverTimestamp > localTimestamp) {
-              newBusinessSetup = { ...state.businessSetup, ...serverData.businessSetup };
+              newBusinessSetup = { ...currentState.businessSetup, ...serverData.businessSetup };
             }
           }
 
           set({
             products: newProducts as Product[],
-            users: newUsers as User[],
+            // users: newUsers as User[], // Keep local users
             expenses: newExpenses as Expense[],
             salaries: newSalaries as Salary[],
             creditCustomers: newCreditCustomers as CreditCustomer[],
+            loyaltyCustomers: newLoyaltyCustomers as LoyaltyCustomer[],
             businessSetup: newBusinessSetup as BusinessSetup,
+            suppliers: newSuppliers as Supplier[],
           });
 
           saveDataToFile('products.json', newProducts);
-          saveDataToFile('users.json', newUsers);
+          // saveDataToFile('users.json', newUsers); // Don't touch users.json
           saveDataToFile('expenses.json', newExpenses);
           saveDataToFile('salaries.json', newSalaries);
           saveDataToFile('credit-customers.json', newCreditCustomers);
+          saveDataToFile('loyalty-customers.json', newLoyaltyCustomers);
           saveDataToFile('business-setup.json', newBusinessSetup);
+          saveDataToFile('suppliers.json', newSuppliers);
 
         } catch (error) {
           console.error('Failed to process sync data:', error);
@@ -1067,6 +1416,19 @@ export const usePosStore = create<PosState>()(
                        )
                    };
                });
+            } else if (type === 'add-supplier') {
+               set(state => {
+                   if (state.suppliers.some(s => s.id === data.id)) return {};
+                   return { suppliers: [...state.suppliers, data] };
+               });
+            } else if (type === 'update-supplier') {
+               set(state => {
+                   return {
+                       suppliers: state.suppliers.map(s =>
+                           s.id === data.id ? { ...s, ...data.updates } : s
+                       )
+                   };
+               });
             }
         });
       },
@@ -1084,7 +1446,14 @@ export const usePosStore = create<PosState>()(
       printMobileReceipt: (receipt) => {
         const state = get();
         if (window.electron) {
-            window.electron.printReceipt(receipt, state.businessSetup, true);
+            // Print as Original (false)
+            window.electron.printReceipt(receipt, state.businessSetup, false);
+
+            // Save to Local Transactions (Old Receipts)
+            if (!state.transactions.some(t => t.id === receipt.id)) {
+                 state.saveTransaction(receipt);
+            }
+
             state.deleteMobileReceipt(receipt);
         }
       },
@@ -1100,6 +1469,13 @@ export const usePosStore = create<PosState>()(
       // Reports
       getDailySales: (date: string) => {
         const state = get();
+
+        // Check archived summaries first
+        if (state.dailySummaries && state.dailySummaries[date]) {
+            const s = state.dailySummaries[date];
+            return { cash: s.cashTotal, mpesa: s.mpesaTotal, credit: s.creditTotal, total: s.totalSales };
+        }
+
         const dayTransactions = state.transactions.filter(t =>
           t.timestamp.startsWith(date) && t.status === 'completed'
         );
@@ -1125,50 +1501,65 @@ export const usePosStore = create<PosState>()(
           t.timestamp.startsWith(date) && t.status === 'completed'
         );
 
-        // Calculate Item Sales
-        const itemSalesMap = new Map<string, ItemSales>();
+        // Calculate Global Items Sold
+        const globalItemSalesMap = new Map<string, { name: string; quantity: number; total: number }>();
         dayTransactions.forEach(t => {
+            if (!t || !Array.isArray(t.items)) return;
+
             t.items.forEach(item => {
-                const name = item.product.name;
-                if (!itemSalesMap.has(name)) {
-                    itemSalesMap.set(name, { name, quantity: 0, total: 0 });
+                if (!item || !item.product) return;
+
+                const name = item.product.name || 'Unknown Product';
+                const price = item.product.price || 0;
+
+                if (!globalItemSalesMap.has(name)) {
+                    globalItemSalesMap.set(name, { name, quantity: 0, total: 0 });
                 }
-                const record = itemSalesMap.get(name)!;
-                record.quantity += item.quantity;
-                record.total += (item.quantity * item.product.price);
+                const record = globalItemSalesMap.get(name)!;
+                record.quantity += (item.quantity || 0);
+                record.total += ((item.quantity || 0) * price);
             });
         });
-        const itemSales = Array.from(itemSalesMap.values()).sort((a, b) => b.total - a.total);
+        const itemSales = Array.from(globalItemSalesMap.values()).sort((a, b) => b.total - a.total);
 
+        // Group by Cashier
         const cashierNames = [...new Set(dayTransactions.map(t => t.cashier || 'Unknown'))];
 
-        const cashiers: CashierReport[] = cashierNames.map(name => {
+        const cashiers: any[] = cashierNames.map(name => {
           const transactions = dayTransactions.filter(t => (t.cashier || 'Unknown') === name);
           const cashTotal = transactions.filter(t => t.paymentMethod === 'cash').reduce((sum, t) => sum + t.total, 0);
           const mpesaTotal = transactions.filter(t => t.paymentMethod === 'mpesa').reduce((sum, t) => sum + t.total, 0);
           const creditTotal = transactions.filter(t => t.paymentMethod === 'credit').reduce((sum, t) => sum + t.total, 0);
 
-          // Credit transactions per cashier (kept in data structure but not printed in simplified report)
-          const creditTransactions: CreditTransaction[] = transactions
-            .filter(t => t.paymentMethod === 'credit' && t.creditCustomer)
-            .map(t => {
-              const customer = state.creditCustomers.find(c => c.name === t.creditCustomer);
-              const isPaid = (customer?.balance || 0) <= 0;
-              return {
-                customerName: t.creditCustomer || 'N/A',
-                amount: t.total,
-                status: isPaid ? 'paid' : 'unpaid',
-              };
-            });
+          // Items sold by this cashier
+          const itemSalesMap = new Map<string, { name: string; quantity: number; total: number }>();
+          transactions.forEach(t => {
+              if (!t || !Array.isArray(t.items)) return;
+
+              t.items.forEach(item => {
+                  if (!item || !item.product) return;
+
+                  const name = item.product.name || 'Unknown Product';
+                  const price = item.product.price || 0;
+
+                  if (!itemSalesMap.has(name)) {
+                      itemSalesMap.set(name, { name, quantity: 0, total: 0 });
+                  }
+                  const record = itemSalesMap.get(name)!;
+                  record.quantity += (item.quantity || 0);
+                  record.total += ((item.quantity || 0) * price);
+              });
+          });
+          const items = Array.from(itemSalesMap.values()).sort((a, b) => b.total - a.total);
 
           return {
             cashierName: name,
+            items,
             transactions,
             totalSales: cashTotal + mpesaTotal + creditTotal,
             cashTotal,
             mpesaTotal,
             creditTotal,
-            creditTransactions,
           };
         });
 
@@ -1200,14 +1591,34 @@ export const usePosStore = create<PosState>()(
         return state.creditCustomers.filter(customer => (customer.balance || 0) > 0);
       },
 
-      addUser: (user) => {
-        set((state) => {
-          const updatedUsers = [...state.users, user];
-          saveDataToFile('users.json', updatedUsers);
-          state.addToSyncQueue({ type: 'add-user', data: user });
-          return { users: updatedUsers };
-        });
+      // New: Load Users explicitly
+      loadUsers: async () => {
+          if (window.electron) {
+              const { data } = await window.electron.readData('users.json');
+              if (data) set({ users: data });
+          }
       },
+
+      addUser: async (user) => {
+        // Strict IPC Only
+        if (window.electron && window.electron.userManagement) {
+             const result = await window.electron.userManagement.addUser(user);
+             if (result.success) {
+                 await get().loadUsers(); // Re-fetch to ensure sync with backend
+             }
+        }
+        // Do not update local state optimistically to avoid reverts
+        // Do not add to sync queue here, let backend handle it or separate sync logic
+      },
+
+  deleteTransactions: (ids) => {
+    set((state) => {
+      const updatedTransactions = state.transactions.filter(t => !ids.includes(t.id));
+      saveDataToFile('transactions.json', updatedTransactions);
+      ids.forEach(id => state.addToSyncQueue({ type: 'delete-transaction', data: { id } }));
+      return { transactions: updatedTransactions };
+    });
+  },
 
       addProduct: async (product) => {
         const state = get();
@@ -1276,24 +1687,39 @@ export const usePosStore = create<PosState>()(
         });
       },
 
-      updateUser: (id, updates) => {
-        set((state) => {
-          const updatedUsers = state.users.map(user =>
-            user.id === id ? { ...user, ...updates } : user
-          );
-          saveDataToFile('users.json', updatedUsers);
-          state.addToSyncQueue({ type: 'update-user', data: { id, updates } });
-          return { users: updatedUsers };
-        });
+      updateUser: async (id, updates) => {
+        // Strict IPC Only
+        if (window.electron && window.electron.userManagement) {
+             const result = await window.electron.userManagement.updateUser(id, updates);
+             if (result.success) {
+                 await get().loadUsers(); // Re-fetch
+
+                 // Handle Session Updates
+                 const state = get();
+                 if (state.currentCashier && state.currentCashier.id === id) {
+                      if (updates.isActive === false) {
+                          set({ currentCashier: null, sessionToken: null, businessSetup: { ...state.businessSetup, isLoggedIn: false } });
+                      } else {
+                          set({ currentCashier: { ...state.currentCashier, ...updates } });
+                      }
+                 }
+             }
+        }
       },
 
-      deleteUser: (id) => {
-        set((state) => {
-          const updatedUsers = state.users.filter(user => user.id !== id);
-          saveDataToFile('users.json', updatedUsers);
-          state.addToSyncQueue({ type: 'delete-user', data: { id } });
-          return { users: updatedUsers };
-        });
+      deleteUser: async (id) => {
+        // Strict IPC Only
+        if (window.electron && window.electron.userManagement) {
+             const result = await window.electron.userManagement.deleteUser(id);
+             if (result.success) {
+                 await get().loadUsers(); // Re-fetch
+
+                 const state = get();
+                 if (state.currentCashier && state.currentCashier.id === id) {
+                      set({ currentCashier: null, sessionToken: null, businessSetup: { ...state.businessSetup, isLoggedIn: false } });
+                 }
+             }
+        }
       },
 
       loadInitialData: async () => {
@@ -1321,7 +1747,7 @@ export const usePosStore = create<PosState>()(
               set({ businessSetup: prefillSetup });
           }
 
-          const fileNames = ['products.json', 'users.json', 'transactions.json', 'credit-customers.json', 'expenses.json', 'salaries.json', 'credit-payments.json', 'inventory-logs.json'];
+          const fileNames = ['products.json', 'users.json', 'transactions.json', 'credit-customers.json', 'expenses.json', 'salaries.json', 'credit-payments.json', 'inventory-logs.json', 'daily-summaries.json', 'loyalty-customers.json', 'suppliers.json', 'documents.json'];
           const dataMap = {
             'products.json': 'products',
             'users.json': 'users',
@@ -1330,13 +1756,81 @@ export const usePosStore = create<PosState>()(
             'expenses.json': 'expenses',
             'salaries.json': 'salaries',
             'credit-payments.json': 'creditPayments',
-            'inventory-logs.json': 'inventoryLogs'
+            'inventory-logs.json': 'inventoryLogs',
+            'daily-summaries.json': 'dailySummaries',
+            'loyalty-customers.json': 'loyaltyCustomers',
+            'suppliers.json': 'suppliers',
+            'documents.json': 'documents'
           };
 
           for (const fileName of fileNames) {
             const { data } = await readDataFromFile(fileName);
             if (data) {
-              set({ [dataMap[fileName]]: data });
+              // Sanitize Data on Initial Load
+              const key = dataMap[fileName];
+              if (Array.isArray(data)) {
+                  let hasChanges = false;
+
+                  // 1. Sanitize IDs
+                  let sanitizedData = data.map((item: any) => {
+                      if (!item.id || String(item.id) === 'null' || String(item.id) === 'NaN') {
+                          hasChanges = true;
+                          // Use Stable ID for products to fix previous random ID generation issues
+                          let newId;
+                          if (key === 'products' && item.name) {
+                              newId = generateStableId(item.name);
+                          } else {
+                              newId = key === 'products' ? generateRandomId() : `FIX${Date.now()}${Math.floor(Math.random() * 1000)}`;
+                          }
+                          return { ...item, id: newId };
+                      }
+                      return item;
+                  });
+
+                  // 2. Deduplicate Products by Name (Emergency Cleanup for "1000 items")
+                  if (key === 'products') {
+                      const uniqueProductsByName = new Map();
+                      const initialLength = sanitizedData.length;
+
+                      sanitizedData.forEach((p: any) => {
+                          const nameKey = p.name ? p.name.trim().toLowerCase() : String(p.id);
+                          if (!uniqueProductsByName.has(nameKey)) {
+                              uniqueProductsByName.set(nameKey, p);
+                          } else {
+                              // If duplicate exists, keep the one with the 'better' ID (e.g. numeric) if possible?
+                              // Or simply keep the last updated one?
+                              // For now, keeping the first one seen is stable.
+                              // Actually, if we have "Coffee" (ID 123) and "Coffee" (ID 456 - generated),
+                              // we prefer the one that matches our stable hash or looks like a real ID?
+                              // Simple approach: First wins.
+                          }
+                      });
+
+                      sanitizedData = Array.from(uniqueProductsByName.values());
+                      if (sanitizedData.length !== initialLength) {
+                          hasChanges = true;
+                          console.log(`Deduplicated products: Reduced from ${initialLength} to ${sanitizedData.length}`);
+                      }
+                  }
+
+                  // 3. Deduplicate by ID
+                  const uniqueMap = new Map();
+                  sanitizedData.forEach((item: any) => uniqueMap.set(String(item.id), item));
+                  const finalData = Array.from(uniqueMap.values());
+
+                  if (finalData.length !== data.length) hasChanges = true;
+
+                  // If data was corrected, save it back immediately to persist the fix
+                  if (hasChanges) {
+                      console.log(`Repaired/Deduplicated data in ${fileName}`);
+                      await saveDataToFile(fileName, finalData);
+                  }
+
+                  set({ [key]: finalData });
+
+              } else {
+                  set({ [key]: data });
+              }
             }
           }
 
@@ -1348,24 +1842,10 @@ export const usePosStore = create<PosState>()(
         }
       },
 
-      autoPrintClosingReport: () => {
-        const state = get();
-        const today = new Date().toISOString().split('T')[0];
-        const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-
-        if (state.lastClosingReportDate !== yesterday && state.lastClosingReportDate !== today) {
-          const reportData = state.getDailyClosingReport(yesterday);
-          if (reportData.grandTotal > 0 && window.electron && state.businessSetup) {
-            window.electron.printClosingReport(reportData, state.businessSetup);
-            set({ lastClosingReportDate: yesterday });
-          }
-        }
-      },
-
       finishSetup: async (businessData, adminUser) => {
         const fullBusinessData: BusinessSetup = {
           ...businessData,
-          receiptFooter: 'Developed and Managed by Whiz Tech\nContact: 0740-841-168',
+          receiptFooter: 'Developed and Managed by Whizpoint Solutions\nContact: 0740-841-168',
           printerType: businessData.printerType || 'thermal', // Default to thermal
           createdAt: new Date().toISOString(),
         };
@@ -1376,11 +1856,20 @@ export const usePosStore = create<PosState>()(
           createdAt: new Date().toISOString(),
         };
 
-        // 1. Save the business setup and the first admin user.
+        // 1. Save the business setup.
         await saveDataToFile('business-setup.json', fullBusinessData);
-        await saveDataToFile('users.json', [fullAdminUser]);
 
-        // 2. Update the store's state to reflect that setup is complete.
+        // 2. Add the first admin user via the secure IPC channel (users.json is blocked for direct save).
+        if (window.electron && window.electron.userManagement) {
+             try {
+                // Ensure the user ID is compatible with backend if needed, but 'addUser' handles it.
+                await window.electron.userManagement.addUser(fullAdminUser);
+             } catch (e) {
+                 console.error("Failed to add admin user during setup:", e);
+             }
+        }
+
+        // 3. Update the store's state to reflect that setup is complete.
         set({
           businessSetup: fullBusinessData,
           users: [fullAdminUser],
@@ -1389,6 +1878,7 @@ export const usePosStore = create<PosState>()(
           expenses: [],
           salaries: [],
           creditCustomers: [],
+          suppliers: [],
         });
 
         // 3. Trigger the business setup printout.
@@ -1402,6 +1892,56 @@ export const usePosStore = create<PosState>()(
           }
         };
         printWithRetry();
+      },
+
+      archiveTransactions: async (daysToKeep) => {
+          const state = get();
+          const cutoffDate = new Date();
+          cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
+          cutoffDate.setHours(0, 0, 0, 0);
+
+          const toKeep: Transaction[] = [];
+          const toArchive: Transaction[] = [];
+
+          state.transactions.forEach(t => {
+              const tDate = new Date(t.timestamp);
+              if (tDate < cutoffDate) {
+                  toArchive.push(t);
+              } else {
+                  toKeep.push(t);
+              }
+          });
+
+          if (toArchive.length === 0) return;
+
+          const newSummaries = { ...(state.dailySummaries || {}) };
+
+          toArchive.forEach(t => {
+              // Use local date string YYYY-MM-DD
+              const date = new Date(t.timestamp).toLocaleDateString('en-CA');
+
+              if (!newSummaries[date]) {
+                  newSummaries[date] = {
+                      date,
+                      totalSales: 0,
+                      cashTotal: 0,
+                      mpesaTotal: 0,
+                      creditTotal: 0,
+                      expenseTotal: 0,
+                      transactionCount: 0
+                  };
+              }
+              const s = newSummaries[date];
+              s.totalSales += t.total;
+              s.transactionCount += 1;
+              if (t.paymentMethod === 'cash') s.cashTotal += t.total;
+              if (t.paymentMethod === 'mpesa') s.mpesaTotal += t.total;
+              if (t.paymentMethod === 'credit') s.creditTotal += t.total;
+          });
+
+          set({ transactions: toKeep, dailySummaries: newSummaries });
+          await saveDataToFile('transactions.json', toKeep);
+          await saveDataToFile('daily-summaries.json', newSummaries);
       },
 
       pushDataToServer: async () => {
@@ -1454,7 +1994,8 @@ export const usePosStore = create<PosState>()(
                 salaries: state.salaries,
                 customers: state.creditCustomers,
                 transactions: state.transactions,
-                businessSetup: state.businessSetup
+                businessSetup: state.businessSetup,
+                suppliers: state.suppliers
             };
 
             const response = await fetch(`${apiUrl}/api/sync/full`, {
@@ -1476,18 +2017,17 @@ export const usePosStore = create<PosState>()(
             console.error('Full sync error:', error);
         }
       },
+
+      toggleSidebar: () => set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
     }),
     {
       name: 'pos-storage',
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          state.businessSetup = { ...state.businessSetup, isLoggedIn: false };
-        }
-      },
       partialize: (state) => ({
         businessSetup: state.businessSetup,
+        isSidebarCollapsed: state.isSidebarCollapsed,
         currentCashier: state.currentCashier,
         transactions: state.transactions ? state.transactions.slice(-100) : [],
+        dailySummaries: state.dailySummaries,
         creditCustomers: state.creditCustomers,
         creditPayments: state.creditPayments,
         inventoryLogs: state.inventoryLogs, // Persist inventory logs
@@ -1497,7 +2037,9 @@ export const usePosStore = create<PosState>()(
         products: state.products ? state.products.slice(-100) : [],
         inventoryProducts: state.inventoryProducts,
         loyaltyCustomers: state.loyaltyCustomers,
-        syncHistory: state.syncHistory ? state.syncHistory.slice(-50) : []
+        syncHistory: state.syncHistory ? state.syncHistory.slice(-50) : [],
+        suppliers: state.suppliers,
+        documents: state.documents,
       })
     }
   )

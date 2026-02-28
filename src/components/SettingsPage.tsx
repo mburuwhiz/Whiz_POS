@@ -23,8 +23,10 @@ import {
   Monitor,
   Printer,
   Shield,
-  Clock
+  Clock,
+  AlertTriangle
 } from 'lucide-react';
+import { ConfirmDialog } from './ConfirmDialog';
 
 export default function SettingsPage() {
   const { 
@@ -37,17 +39,34 @@ export default function SettingsPage() {
     isOnline,
     lastSyncTime,
     processSyncQueue,
-    pushDataToServer
+    pushDataToServer,
+    archiveTransactions,
+    deleteTransactions,
+    transactions
   } = usePosStore();
 
-  const [activeTab, setActiveTab] = useState<'business' | 'users' | 'security' | 'sync' | 'devices' | 'printers' | 'updates'>('business');
+  const [activeTab, setActiveTab] = useState<'business' | 'security' | 'sync' | 'devices' | 'printers' | 'updates' | 'data'>('business');
   const [editingBusiness, setEditingBusiness] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [showAddUser, setShowAddUser] = useState(false);
+  const [pruneDays, setPruneDays] = useState(30);
+  const [deleteDateRange, setDeleteDateRange] = useState({
+    start: new Date().toISOString().split('T')[0],
+    end: new Date().toISOString().split('T')[0]
+  });
 
-  // User QR State
-  const [showUserQr, setShowUserQr] = useState<User | null>(null);
-  const [qrCodeData, setQrCodeData] = useState('');
+  // Confirmation Dialog States
+  const [confirmDialogState, setConfirmDialogState] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    onConfirm: () => void;
+    variant?: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    onConfirm: () => {},
+    variant: 'danger'
+  });
 
   const [businessData, setBusinessData] = useState({
     businessName: '',
@@ -65,12 +84,14 @@ export default function SettingsPage() {
     onScreenKeyboard: false,
     autoLogoffEnabled: false,
     autoLogoffMinutes: 5,
+    printerPaperWidth: 80,
   });
 
   const [userData, setUserData] = useState({
     name: '',
     pin: '',
-    role: 'cashier' as 'admin' | 'manager' | 'cashier'
+    role: 'cashier' as 'admin' | 'manager' | 'cashier',
+    isActive: true
   });
 
   const [apiConfig, setApiConfig] = useState<{ apiUrl: string, apiKey: string, qrCodeDataUrl: string } | null>(null);
@@ -95,6 +116,7 @@ export default function SettingsPage() {
         onScreenKeyboard: businessSetup.onScreenKeyboard || false,
         autoLogoffEnabled: businessSetup.autoLogoffEnabled || false,
         autoLogoffMinutes: businessSetup.autoLogoffMinutes || 5,
+        printerPaperWidth: businessSetup.printerPaperWidth || 80,
       });
     }
   }, [businessSetup]);
@@ -127,60 +149,62 @@ export default function SettingsPage() {
     setEditingBusiness(false);
   };
 
-  const handleUserFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setUserData({ ...userData, [e.target.name]: e.target.value });
-  };
-
-  const handleAddUser = () => {
-    if (!userData.name || !userData.pin) return;
-
-    const newUser: User = {
-      id: `user-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      isActive: true,
-      ...userData
-    };
-    addUser(newUser);
-    resetUserForm();
-  };
-
-  const handleEditUser = (user: User) => {
-    setEditingUser(user);
-    setUserData({ name: user.name, pin: user.pin, role: user.role });
-    setShowAddUser(true);
-  };
-
-  const handleUpdateUser = () => {
-    if (!editingUser) return;
-    updateUser(editingUser.id, { ...editingUser, ...userData });
-    resetUserForm();
-  };
-
-  const handleDeleteUser = (userId: string) => {
-    if (window.confirm('Are you sure you want to delete this user?')) {
-      deleteUser(userId);
-    }
-  };
-
-  const handleShowQr = async (user: User) => {
-      setShowUserQr(user);
-      try {
-          const payload = { userId: user.id, pin: user.pin };
-          const dataUrl = await QRCode.toDataURL(JSON.stringify(payload));
-          setQrCodeData(dataUrl);
-      } catch (e) {
-          console.error("QR Gen Error", e);
-      }
-  };
-
-  const resetUserForm = () => {
-    setUserData({ name: '', pin: '', role: 'cashier' });
-    setEditingUser(null);
-    setShowAddUser(false);
-  }
-
   const handleBusinessDataChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setBusinessData({ ...businessData, [e.target.name]: e.target.value });
+  };
+
+  const showConfirm = (title: string, description: string, onConfirm: () => void, variant: 'danger' | 'warning' | 'info' = 'danger') => {
+      setConfirmDialogState({
+          isOpen: true,
+          title,
+          description,
+          onConfirm,
+          variant
+      });
+  };
+
+  const handleArchive = async () => {
+        try {
+            await archiveTransactions(pruneDays);
+            alert('Data archived successfully.');
+        } catch (e) {
+            console.error(e);
+            alert('Failed to archive data.');
+        }
+  };
+
+  const handleDeleteRange = () => {
+        if (!deleteDateRange.start || !deleteDateRange.end) {
+            alert("Invalid date range.");
+            return;
+        }
+        const start = new Date(deleteDateRange.start);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(deleteDateRange.end);
+        end.setHours(23, 59, 59, 999);
+        const todayStr = new Date().toLocaleDateString('en-CA');
+
+        const idsToDelete = transactions.filter(tx => {
+            const txDate = new Date(tx.timestamp);
+            const txDateStr = txDate.toLocaleDateString('en-CA');
+            if (txDate < start || txDate > end) return false;
+            if (txDateStr === todayStr) return false;
+            return true;
+        }).map(tx => tx.id);
+
+        if (idsToDelete.length === 0) {
+            alert("No eligible receipts found. Note: Today's receipts cannot be deleted.");
+            return;
+        }
+
+        showConfirm(
+            "Delete Receipts",
+            `Found ${idsToDelete.length} receipts to delete. This is PERMANENT and cannot be undone. Proceed?`,
+            () => {
+                deleteTransactions(idsToDelete);
+                alert(`${idsToDelete.length} receipts deleted.`);
+            }
+        );
   };
 
   return (
@@ -210,18 +234,6 @@ export default function SettingsPage() {
             >
               <Package className="w-5 h-5 mr-2" />
               Business
-            </button>
-            
-            <button
-              onClick={() => setActiveTab('users')}
-              className={`flex items-center px-6 py-4 font-medium border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === 'users' 
-                  ? 'border-blue-500 text-blue-600' 
-                  : 'border-transparent text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              <Users className="w-5 h-5 mr-2" />
-              Users
             </button>
 
             <button
@@ -282,6 +294,18 @@ export default function SettingsPage() {
             >
               <RefreshCw className="w-5 h-5 mr-2" />
               Updates
+            </button>
+
+            <button
+              onClick={() => setActiveTab('data')}
+              className={`flex items-center px-6 py-4 font-medium border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === 'data'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <Database className="w-5 h-5 mr-2" />
+              Data
             </button>
           </div>
         </div>
@@ -358,94 +382,29 @@ export default function SettingsPage() {
                 <input type="text" name="mpesaAccountNumber" value={businessData.mpesaAccountNumber} onChange={handleBusinessDataChange} disabled={!editingBusiness} className="w-full p-3 border rounded-lg bg-gray-50 disabled:bg-gray-200" />
               </div>
                <div className="md:col-span-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
                     <div className='flex items-center'>
                         <Keyboard className="w-5 h-5 mr-2 text-gray-600" />
-                        <label htmlFor="onScreenKeyboard" className="block text-sm font-medium text-gray-700">On-Screen Keyboard</label>
+                        <div>
+                            <label htmlFor="onScreenKeyboard" className="block text-sm font-medium text-gray-700">On-Screen Keyboard</label>
+                            <p className="text-xs text-gray-500">Enable virtual keyboard for touchscreens</p>
+                        </div>
                     </div>
                     <div className="flex items-center space-x-4">
-                        <div className="flex items-center">
-                            <input
-                                type="radio"
-                                id="enableKeyboard"
-                                name="onScreenKeyboard"
-                                checked={businessData.onScreenKeyboard}
-                                onChange={() => {
-                                    setBusinessData(prev => ({ ...prev, onScreenKeyboard: true }));
-                                    saveBusinessSetup({ ...businessSetup, ...businessData, onScreenKeyboard: true, isSetup: true } as any);
-                                }}
-                                className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                            />
-                            <label htmlFor="enableKeyboard" className="ml-2 block text-sm text-gray-900">Enable</label>
-                        </div>
-                        <div className="flex items-center">
-                            <input
-                                type="radio"
-                                id="disableKeyboard"
-                                name="onScreenKeyboard"
-                                checked={!businessData.onScreenKeyboard}
-                                onChange={() => {
-                                    setBusinessData(prev => ({ ...prev, onScreenKeyboard: false }));
-                                    saveBusinessSetup({ ...businessSetup, ...businessData, onScreenKeyboard: false, isSetup: true } as any);
-                                }}
-                                className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                            />
-                            <label htmlFor="disableKeyboard" className="ml-2 block text-sm text-gray-900">Disable</label>
-                        </div>
+                        <span className="text-sm text-gray-600">{businessData.onScreenKeyboard ? 'Enabled' : 'Disabled'}</span>
+                        <button
+                            onClick={() => {
+                                const newVal = !businessData.onScreenKeyboard;
+                                setBusinessData(prev => ({ ...prev, onScreenKeyboard: newVal }));
+                                saveBusinessSetup({ ...businessSetup, ...businessData, onScreenKeyboard: newVal, isSetup: true } as any);
+                            }}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${businessData.onScreenKeyboard ? 'bg-blue-600' : 'bg-gray-200'}`}
+                        >
+                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${businessData.onScreenKeyboard ? 'translate-x-6' : 'translate-x-1'}`} />
+                        </button>
                     </div>
                 </div>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* User Management */}
-        {activeTab === 'users' && (
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold text-gray-800">User Accounts</h2>
-              <button onClick={() => { setShowAddUser(true); setEditingUser(null); setUserData({ name: '', pin: '', role: 'cashier' }); }} className="flex items-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
-                <Plus className="w-5 h-5 mr-2" />
-                Add User
-              </button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {users.map(user => (
-                    <tr key={user.id}>
-                      <td className="px-6 py-4 whitespace-nowrap">{user.name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{user.role}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                          {user.isActive ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-3">
-                            <button onClick={() => handleEditUser(user)} className="text-blue-600 hover:text-blue-800" title="Edit">
-                                <Edit className="w-5 h-5" />
-                            </button>
-                            <button onClick={() => handleShowQr(user)} className="text-purple-600 hover:text-purple-800" title="Login Badge">
-                                <QrCode className="w-5 h-5" />
-                            </button>
-                            <button onClick={() => handleDeleteUser(user.id)} className="text-red-600 hover:text-red-800" title="Delete">
-                                <Trash2 className="w-5 h-5" />
-                            </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             </div>
           </div>
         )}
@@ -528,50 +487,137 @@ export default function SettingsPage() {
             </div>
         )}
 
+        {/* Data Management */}
+        {activeTab === 'data' && (
+            <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center gap-3 mb-4">
+                    <Database className="w-6 h-6 text-red-600" />
+                    <h2 className="text-xl font-semibold text-gray-800">Data Management</h2>
+                </div>
+                <p className="text-sm text-gray-600 mb-6">
+                    Manage storage and optimize performance by archiving old data.
+                </p>
+
+                <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-xl mb-6">
+                    <h3 className="font-bold text-red-800 mb-2">Archive Old Receipts (Preserve Stats)</h3>
+                    <p className="text-sm text-red-700 mb-4">
+                        This operation will delete transaction details older than the specified number of days but <strong>preserves sales totals</strong> in daily summaries.
+                    </p>
+
+                    <div className="flex items-end gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Older than (days)</label>
+                            <input
+                                type="number"
+                                min="1"
+                                value={pruneDays}
+                                onChange={(e) => setPruneDays(Math.max(1, parseInt(e.target.value) || 1))}
+                                className="p-3 border rounded-lg bg-white w-32"
+                            />
+                        </div>
+                        <button
+                            onClick={() => {
+                                showConfirm(
+                                    "Archive Receipts",
+                                    `Are you sure you want to archive receipts older than ${pruneDays} days? Details will be lost but stats kept.`,
+                                    handleArchive
+                                );
+                            }}
+                            className="flex items-center bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg shadow-sm transition-colors mb-[1px]"
+                        >
+                            <Trash2 className="w-5 h-5 mr-2" />
+                            Archive
+                        </button>
+                    </div>
+                </div>
+
+                <div className="bg-red-100 border border-red-300 rounded-lg p-6 max-w-xl">
+                    <div className="flex items-center gap-2 mb-2">
+                        <AlertTriangle className="w-5 h-5 text-red-700" />
+                        <h3 className="font-bold text-red-800">Delete Receipts (Permanent)</h3>
+                    </div>
+                    <p className="text-sm text-red-700 mb-4">
+                        Permanently delete receipts within a specific date range. <strong>This cannot be undone.</strong> Today's receipts cannot be deleted.
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                            <input
+                                type="date"
+                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                value={deleteDateRange.start}
+                                onChange={(e) => setDeleteDateRange(prev => ({ ...prev, start: e.target.value }))}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                            <input
+                                type="date"
+                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                value={deleteDateRange.end}
+                                onChange={(e) => setDeleteDateRange(prev => ({ ...prev, end: e.target.value }))}
+                            />
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={handleDeleteRange}
+                        className="w-full flex items-center justify-center bg-red-700 hover:bg-red-800 text-white px-6 py-3 rounded-lg shadow-sm transition-colors"
+                    >
+                        <Trash2 className="w-5 h-5 mr-2" />
+                        Delete Specific Range
+                    </button>
+                </div>
+            </div>
+        )}
+
         {/* Devices & Connection */}
         {activeTab === 'devices' && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center gap-3 mb-4">
-                <Smartphone className="w-6 h-6 text-blue-600" />
-                <h2 className="text-xl font-bold text-gray-800">Mobile App Connection</h2>
-            </div>
-            <p className="text-sm text-gray-600 mb-6">
-                Scan this QR code with the Mobile App to connect to this Desktop POS for printing and syncing.
-            </p>
+          <div className="space-y-6">
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center gap-3 mb-4">
+                    <Smartphone className="w-6 h-6 text-blue-600" />
+                    <h2 className="text-xl font-bold text-gray-800">Mobile App Connection</h2>
+                </div>
+                <p className="text-sm text-gray-600 mb-6">
+                    Scan this QR code with the Mobile App to connect to this Desktop POS for printing and syncing.
+                </p>
 
-            {apiConfig ? (
-                <div className="flex flex-col md:flex-row gap-8 items-center bg-gray-50 p-6 rounded-xl border border-gray-200">
-                    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                        <img src={apiConfig.qrCodeDataUrl} alt="Connection QR Code" className="w-48 h-48" />
-                    </div>
-                    <div className="flex-1 space-y-6 w-full">
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Desktop Server URL</label>
-                            <div className="flex items-center gap-2 mt-1">
-                            <code className="block w-full bg-white px-4 py-3 rounded-lg border border-gray-300 text-sm font-mono text-gray-800 shadow-sm">
-                                {apiConfig.apiUrl}
-                            </code>
-                            </div>
-                            <p className="text-xs text-gray-400 mt-1">Enter this exactly into the Mobile App.</p>
+                {apiConfig ? (
+                    <div className="flex flex-col md:flex-row gap-8 items-center bg-gray-50 p-6 rounded-xl border border-gray-200">
+                        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                            <img src={apiConfig.qrCodeDataUrl} alt="Connection QR Code" className="w-48 h-48" />
                         </div>
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Mobile Sync Key</label>
-                            <div className="flex items-center gap-2 mt-1">
-                            <code className="block w-full bg-white px-4 py-3 rounded-lg border border-gray-300 text-sm font-mono text-gray-800 break-all shadow-sm">
-                                {apiConfig.apiKey}
-                            </code>
+                        <div className="flex-1 space-y-6 w-full">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Desktop Server URL</label>
+                                <div className="flex items-center gap-2 mt-1">
+                                <code className="block w-full bg-white px-4 py-3 rounded-lg border border-gray-300 text-sm font-mono text-gray-800 shadow-sm">
+                                    {apiConfig.apiUrl}
+                                </code>
+                                </div>
+                                <p className="text-xs text-gray-400 mt-1">Enter this exactly into the Mobile App.</p>
                             </div>
-                            <p className="text-xs text-gray-400 mt-1">This key secures the connection between Mobile and Desktop.</p>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Mobile Sync Key</label>
+                                <div className="flex items-center gap-2 mt-1">
+                                <code className="block w-full bg-white px-4 py-3 rounded-lg border border-gray-300 text-sm font-mono text-gray-800 break-all shadow-sm">
+                                    {apiConfig.apiKey}
+                                </code>
+                                </div>
+                                <p className="text-xs text-gray-400 mt-1">This key secures the connection between Mobile and Desktop.</p>
+                            </div>
                         </div>
                     </div>
-                </div>
-            ) : (
-                <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-                    <div className="w-12 h-12 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-gray-500 font-medium">Generating secure connection credentials...</p>
-                    <p className="text-xs text-gray-400 mt-2">Please ensure the app is running in Desktop mode.</p>
-                </div>
-            )}
+                ) : (
+                    <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                        <div className="w-12 h-12 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
+                        <p className="text-gray-500 font-medium">Generating secure connection credentials...</p>
+                        <p className="text-xs text-gray-400 mt-2">Please ensure the app is running in Desktop mode.</p>
+                    </div>
+                )}
+              </div>
           </div>
         )}
 
@@ -624,7 +670,7 @@ export default function SettingsPage() {
                 </div>
 
               <div className="flex items-center gap-4 mt-6">
-                <button onClick={pushDataToServer} className="flex items-center bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg shadow-sm transition-colors">
+                <button onClick={() => showConfirm("Full Cloud Sync", "This will overwrite the server data with desktop data. Continue?", pushDataToServer, "warning")} className="flex items-center bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg shadow-sm transition-colors">
                   <RefreshCw className="w-5 h-5 mr-2" />
                   Full Cloud Synchronization (Overwrite Server)
                 </button>
@@ -655,6 +701,25 @@ export default function SettingsPage() {
                 </p>
 
                 <div className="max-w-xl space-y-6">
+                    <div>
+                         <label className="block text-sm font-medium text-gray-700 mb-2">Paper Width (mm)</label>
+                         <input
+                            type="number"
+                            min="40"
+                            max="120"
+                            value={businessData.printerPaperWidth || 80}
+                            onChange={(e) => {
+                                const val = parseInt(e.target.value) || 80;
+                                setBusinessData(prev => ({ ...prev, printerPaperWidth: val }));
+                                saveBusinessSetup({ ...businessSetup, ...businessData, printerPaperWidth: val, isSetup: true } as any);
+                            }}
+                            className="w-full p-3 border rounded-lg bg-white"
+                         />
+                         <p className="text-xs text-gray-500 mt-2">
+                             Set the width of your thermal paper (e.g., 80mm or 58mm). This ensures the receipt content scales correctly.
+                         </p>
+                    </div>
+
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Default Printer</label>
                         <select
@@ -723,73 +788,15 @@ export default function SettingsPage() {
         )}
       </div>
 
-      {/* Add/Edit User Modal */}
-      {(showAddUser || editingUser) && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full">
-            <div className="p-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-6">{editingUser ? 'Edit User' : 'Add New User'}</h2>
-              <form onSubmit={(e) => { e.preventDefault(); editingUser ? handleUpdateUser() : handleAddUser(); }} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Name</label>
-                  <input type="text" name="name" value={userData.name} onChange={handleUserFormChange} required className="w-full p-3 border rounded-lg" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">PIN</label>
-                  <input type="password" name="pin" value={userData.pin} onChange={handleUserFormChange} required maxLength={4} className="w-full p-3 border rounded-lg" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Role</label>
-                  <select name="role" value={userData.role} onChange={handleUserFormChange} className="w-full p-3 border rounded-lg">
-                    <option value="cashier">Cashier</option>
-                    <option value="manager">Manager</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </div>
-                <div className="flex justify-end space-x-3 pt-4">
-                  <button type="button" onClick={resetUserForm} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg">Cancel</button>
-                  <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg">{editingUser ? 'Update' : 'Add'}</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        isOpen={confirmDialogState.isOpen}
+        onCancel={() => setConfirmDialogState(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmDialogState.onConfirm}
+        title={confirmDialogState.title}
+        description={confirmDialogState.description}
+        variant={confirmDialogState.variant}
+      />
 
-      {/* User QR Badge Modal */}
-      {showUserQr && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl max-w-sm w-full overflow-hidden shadow-2xl">
-                <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-center">
-                    <div className="w-20 h-20 bg-white/20 rounded-full mx-auto mb-4 flex items-center justify-center backdrop-blur-md">
-                         <span className="text-3xl font-bold text-white">{showUserQr.name.charAt(0)}</span>
-                    </div>
-                    <h2 className="text-2xl font-bold text-white">{showUserQr.name}</h2>
-                    <p className="text-white/80 uppercase tracking-wider text-sm">{showUserQr.role}</p>
-                </div>
-
-                <div className="p-8 flex flex-col items-center gap-6">
-                    <div className="bg-white p-2 rounded-xl shadow-inner border border-gray-100">
-                        {qrCodeData ? (
-                            <img src={qrCodeData} alt="Login QR" className="w-48 h-48" />
-                        ) : (
-                            <div className="w-48 h-48 bg-gray-100 animate-pulse rounded"></div>
-                        )}
-                    </div>
-                    <p className="text-center text-gray-500 text-sm">
-                        Scan this badge with the Mobile App to log in instantly.
-                    </p>
-
-                    <button
-                        onClick={() => setShowUserQr(null)}
-                        className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
-                    >
-                        <X className="w-5 h-5" /> Close Badge
-                    </button>
-                </div>
-            </div>
-          </div>
-      )}
     </div>
   );
 }

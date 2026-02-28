@@ -19,6 +19,22 @@
     </form>
 </div>
 
+<!-- Charts Section -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+        <h3 class="text-sm font-bold text-gray-700 mb-4">Sales Trend</h3>
+        <div class="relative h-64">
+             <canvas id="salesChart"></canvas>
+        </div>
+    </div>
+    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+        <h3 class="text-sm font-bold text-gray-700 mb-4">Payment Methods</h3>
+        <div class="relative h-64 flex justify-center">
+             <canvas id="paymentChart"></canvas>
+        </div>
+    </div>
+</div>
+
 <!-- Summary Cards -->
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
     <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
@@ -88,6 +104,42 @@
     </div>
 </div>
 
+<!-- Full Product Breakdown -->
+<div class="mt-6 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="p-6 border-b border-gray-100 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors" onclick="const el = document.getElementById('fullProductList'); el.classList.toggle('hidden'); this.querySelector('svg').classList.toggle('rotate-180');">
+        <h3 class="font-bold text-gray-900">Full Product Performance</h3>
+        <i data-lucide="chevron-down" class="w-5 h-5 text-gray-500 transition-transform duration-200"></i>
+    </div>
+    <div id="fullProductList" class="hidden border-t border-gray-100">
+        <div class="overflow-x-auto p-0">
+            <table class="w-full text-sm text-left">
+                <thead class="bg-gray-50 text-gray-600 font-medium border-b border-gray-100">
+                    <tr>
+                        <th class="px-6 py-3">Product Name</th>
+                        <th class="px-6 py-3 text-center">Quantity Sold</th>
+                        <th class="px-6 py-3 text-right">Total Revenue</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    <% if (allProducts && allProducts.length > 0) { %>
+                        <% allProducts.forEach((product) => { %>
+                        <tr class="hover:bg-gray-50/50 transition-colors">
+                            <td class="px-6 py-3 font-medium text-gray-900"><%= product.name %></td>
+                            <td class="px-6 py-3 text-center text-gray-600"><%= product.quantity %></td>
+                            <td class="px-6 py-3 text-right font-medium text-gray-900">Ksh. <%= product.revenue.toLocaleString() %></td>
+                        </tr>
+                        <% }) %>
+                    <% } else { %>
+                        <tr>
+                            <td colspan="3" class="px-6 py-8 text-center text-gray-500">No sales data available.</td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <!-- Sales Breakdown & Top Products -->
     <div class="lg:col-span-2 space-y-6">
@@ -153,3 +205,73 @@
         </div>
     </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Sales Trend Chart
+    const salesCtx = document.getElementById('salesChart').getContext('2d');
+
+    // Group transactions by date
+    const transactions = <%- JSON.stringify(transactions || []) %>;
+    const salesByDate = {};
+    transactions.forEach(t => {
+        const date = new Date(t.timestamp).toLocaleDateString();
+        salesByDate[date] = (salesByDate[date] || 0) + t.total;
+    });
+
+    const labels = Object.keys(salesByDate).reverse(); // Reverse for chronological order if sorted desc
+    const data = Object.values(salesByDate).reverse();
+
+    new Chart(salesCtx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Sales (Ksh)',
+                data: data,
+                borderColor: '#2563eb',
+                backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: true, grid: { display: false } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+
+    // Payment Method Chart
+    const payCtx = document.getElementById('paymentChart').getContext('2d');
+    const paymentData = {
+        cash: <%= salesSummary.cash %>,
+        mpesa: <%= salesSummary.mpesa %>,
+        credit: <%= salesSummary.credit %>
+    };
+
+    new Chart(payCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Cash', 'M-Pesa', 'Credit'],
+            datasets: [{
+                data: [paymentData.cash, paymentData.mpesa, paymentData.credit],
+                backgroundColor: ['#22c55e', '#a855f7', '#f97316'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+</script>

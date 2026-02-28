@@ -19,9 +19,92 @@ const store = new Store();
  * Handles application lifecycle, window management, IPC communication, and a local API server for mobile printing.
  */
 
+// Custom Logger Setup
+const logFilePath = path.join(app.getPath('userData'), 'logs.txt');
+
+function logToFile(message) {
+    const timestamp = new Date().toISOString();
+    const logLine = `[${timestamp}] ${message}\n`;
+    fs.appendFile(logFilePath, logLine).catch(err => console.error('Failed to write to log file:', err));
+}
+
+// Override console methods to capture logs
+const originalLog = console.log;
+const originalError = console.error;
+
+console.log = (...args) => {
+    const message = args.map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : arg)).join(' ');
+    logToFile(`INFO: ${message}`);
+    originalLog.apply(console, args);
+};
+
+console.error = (...args) => {
+    const message = args.map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : arg)).join(' ');
+    logToFile(`ERROR: ${message}`);
+    originalError.apply(console, args);
+};
+
 // Define paths for storing user data and assets.
 const userDataPath = path.join(app.getPath('userData'), 'data');
 const productImagesPath = path.join(app.getPath('userData'), 'assets', 'product_images');
+
+/**
+ * Optimizes data on startup.
+ * - Dedupes users
+ * - Cleans expired sessions
+ * - Ensures data integrity
+ */
+async function optimizeData() {
+    try {
+        console.log('[Data Optimization] Starting...');
+
+        // 1. Optimize Users (Dedupe by ID or Name)
+        const users = await readJsonFile('users.json');
+        if (users.length > 0) {
+            const uniqueUsers = [];
+            const seenIds = new Set();
+            const seenNames = new Set();
+
+            users.forEach(u => {
+                if (!u.id || !u.name) return; // Skip invalid
+                // Prefer keeping the one with most recent updatedAt?
+                // Simple dedupe: First wins, but we should probably sort by updatedAt desc first if we want latest.
+                // Assuming append-only history might exist, but we read the whole file which is the current state.
+
+                if (!seenIds.has(u.id) && !seenNames.has(u.name.toLowerCase())) {
+                    seenIds.add(u.id);
+                    seenNames.add(u.name.toLowerCase());
+                    uniqueUsers.push(u);
+                }
+            });
+
+            if (uniqueUsers.length !== users.length) {
+                console.log(`[Data Optimization] Removed ${users.length - uniqueUsers.length} duplicate/invalid users.`);
+                await writeJsonFile('users.json', uniqueUsers);
+            }
+        }
+
+        // 2. Clean Sessions
+        const sessions = await readJsonFile('sessions.json');
+        if (Array.isArray(sessions) && sessions.length > 0) {
+            const now = new Date();
+            const validSessions = sessions.filter(s => {
+                if (!s.createdAt) return false;
+                const diffDays = (now - new Date(s.createdAt)) / (1000 * 60 * 60 * 24);
+                return diffDays < 7;
+            });
+
+            if (validSessions.length !== sessions.length) {
+                console.log(`[Data Optimization] Pruned ${sessions.length - validSessions.length} expired sessions.`);
+                await writeJsonFile('sessions.json', validSessions);
+            }
+        }
+
+        console.log('[Data Optimization] Complete.');
+    } catch (e) {
+        console.error('[Data Optimization] Failed:', e);
+    }
+}
 
 /**
  * Ensures that the necessary application directories exist.
@@ -42,9 +125,10 @@ async function ensureAppDirs() {
 async function readJsonFile(filename) {
     try {
         const data = await fs.readFile(path.join(userDataPath, filename), 'utf-8');
+        if (!data || data.trim() === '') return []; // Handle empty file
         return JSON.parse(data);
     } catch (e) {
-        return []; // Default to empty array or object depending on usage, but array is safer for lists
+        return [];
     }
 }
 
@@ -72,6 +156,7 @@ async function ensureDataFilesExist() {
     'mobile-receipts.json': [], // New file for queuing mobile receipts
     'credit-payments.json': [], // New file for credit payments
     'inventory-logs.json': [], // New file for inventory logs
+    'daily-summaries.json': {}, // New file for archived daily reports
   };
 
   for (const [fileName, content] of Object.entries(dataFiles)) {
@@ -109,6 +194,7 @@ function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    show: false, // Don't show until maximized
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       // contextIsolation is true by default and is a security best practice.
@@ -117,6 +203,8 @@ function createWindow() {
 
   // Remove the default menu bar
   mainWindow.setMenu(null);
+  mainWindow.maximize();
+  mainWindow.show();
 
   // In development, load from the Vite dev server
   if (!app.isPackaged) {
@@ -137,6 +225,174 @@ app.commandLine.appendSwitch('remote-debugging-port', '9222');
 let apiKey = null;
 let server = null;
 global.connectedDevicesMap = new Map();
+
+// --- NEW BACKEND IMPLEMENTATION: Session & User Management ---
+
+class SessionManager {
+    constructor() {
+        this.sessions = new Map(); // Token -> { user, deviceId, expiresAt }
+        this.loadSessions();
+    }
+
+    async loadSessions() {
+        const sessions = await readJsonFile('sessions.json');
+        if (Array.isArray(sessions)) {
+            sessions.forEach(s => {
+                // Restore if valid (e.g., less than 7 days old)
+                const createdAt = new Date(s.createdAt);
+                const now = new Date();
+                const diffDays = (now - createdAt) / (1000 * 60 * 60 * 24);
+                if (diffDays < 7) {
+                    this.sessions.set(s.token, { ...s, lastActive: new Date(s.lastActive) });
+                }
+            });
+            console.log(`Restored ${this.sessions.size} sessions.`);
+        }
+    }
+
+    async saveSessions() {
+        const sessionsArray = Array.from(this.sessions.entries()).map(([token, data]) => ({ token, ...data }));
+        await writeJsonFile('sessions.json', sessionsArray);
+    }
+
+    createSession(user, deviceId) {
+        const token = crypto.randomUUID();
+        // Session valid for 24 hours, but we can make it indefinite if needed
+        // Requirement: "unique session token per device"
+        this.sessions.set(token, {
+            user: { ...user }, // Store copy of user data
+            deviceId,
+            createdAt: new Date(),
+            lastActive: new Date()
+        });
+        this.saveSessions();
+        return token;
+    }
+
+    validateSession(token) {
+        if (!this.sessions.has(token)) return null;
+        const session = this.sessions.get(token);
+        session.lastActive = new Date(); // Update activity
+        // Optimize: Don't save on every read, maybe debounce or periodic save?
+        // For strict persistence, let's just save.
+        // this.saveSessions();
+        return session.user;
+    }
+
+    invalidateSession(token) {
+        this.sessions.delete(token);
+        this.saveSessions();
+    }
+
+    invalidateSessionsForUser(userId) {
+        // Optional: If we wanted to force logout everywhere.
+        // But prompt says: "Logging in on one device must not log out users on another"
+        // So we do NOT implement this for normal login.
+        // But maybe for 'Disable User'? Yes.
+        for (const [token, session] of this.sessions.entries()) {
+            // Strict ID check
+            if (session.user.id === userId || session.user.userId === userId) {
+                this.sessions.delete(token);
+            }
+        }
+        this.saveSessions();
+    }
+}
+
+const sessionManager = new SessionManager();
+
+// --- User Management Logic (Strict) ---
+
+const UserManager = {
+    async authenticate(userId, pin) {
+        const users = await readJsonFile('users.json');
+        const user = users.find(u => (u.id === userId || u.userId === userId));
+
+        if (!user) return { success: false, error: 'User not found' };
+        if (!user.isActive) return { success: false, error: 'User is disabled' };
+
+        // Strict PIN check
+        if (String(user.pin) === String(pin)) {
+            // Success
+            return { success: true, user };
+        }
+        return { success: false, error: 'Invalid PIN' };
+    },
+
+    async addUser(userData) {
+        try {
+            console.log(`[UserManager] Adding user: ${userData.name}`);
+            const users = await readJsonFile('users.json');
+
+            // Check for duplicates
+            if (users.some(u => u.name.toLowerCase() === userData.name.toLowerCase())) {
+                throw new Error('User with this name already exists');
+            }
+
+            const newUser = {
+                id: userData.id || `USER${Date.now()}`,
+                userId: userData.id || `USER${Date.now()}`, // Ensure compatibility
+                ...userData,
+                isActive: true, // Default to active
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+
+            users.push(newUser);
+            await writeJsonFile('users.json', users);
+            console.log(`[UserManager] User added successfully: ${newUser.id}`);
+            return newUser;
+        } catch (e) {
+            console.error(`[UserManager] Add failed: ${e.message}`);
+            throw e;
+        }
+    },
+
+    async updateUser(userId, updates) {
+        try {
+            console.log(`[UserManager] Updating user: ${userId}`);
+            const users = await readJsonFile('users.json');
+            const index = users.findIndex(u => (u.id === userId || u.userId === userId));
+
+            if (index === -1) throw new Error('User not found');
+
+            const updatedUser = {
+                ...users[index],
+                ...updates,
+                updatedAt: new Date().toISOString()
+            };
+            users[index] = updatedUser;
+
+            await writeJsonFile('users.json', users);
+            console.log(`[UserManager] User updated successfully: ${userId}`);
+
+            // If user is disabled, kill their sessions
+            if (updates.isActive === false) {
+                console.log(`[UserManager] Invalidating sessions for disabled user: ${userId}`);
+                sessionManager.invalidateSessionsForUser(userId);
+            }
+
+            return updatedUser;
+        } catch (e) {
+            console.error(`[UserManager] Update failed: ${e.message}`);
+            throw e;
+        }
+    },
+
+    async deleteUser(userId) {
+        const users = await readJsonFile('users.json');
+        const filteredUsers = users.filter(u => (u.id !== userId && u.userId !== userId));
+
+        if (users.length === filteredUsers.length) throw new Error('User not found');
+
+        await writeJsonFile('users.json', filteredUsers);
+
+        // Kill sessions
+        sessionManager.invalidateSessionsForUser(userId);
+
+        return true;
+    }
+};
 
 /**
  * Initialize API Key from storage or create if missing
@@ -223,19 +479,84 @@ function startApiServer() {
         next();
     });
 
+    // Modified Auth Middleware to support Session Tokens AND API Keys
     const authMiddleware = (req, res, next) => {
         const authHeader = req.headers['authorization'];
         const xApiKey = req.headers['x-api-key'];
 
-        if (xApiKey && xApiKey === apiKey) {
-            return next();
+        // 1. Check Session Token (Bearer)
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.split(' ')[1];
+            // Check if it's the static API Key (Legacy/Mobile simple auth)
+            if (token === apiKey) {
+                return next();
+            }
+            // Check Session Manager
+            const user = sessionManager.validateSession(token);
+            if (user) {
+                req.user = user; // Attach user to request
+                return next();
+            }
         }
-        if (authHeader && authHeader === `Bearer ${apiKey}`) {
+
+        // 2. Check X-API-KEY (Legacy/Mobile)
+        if (xApiKey && xApiKey === apiKey) {
             return next();
         }
 
         return res.status(401).json({ error: 'Unauthorized' });
     };
+
+    // --- NEW AUTH ENDPOINTS ---
+
+    // POST /api/auth/login
+    apiApp.post('/api/auth/login', async (req, res) => {
+        const { userId, pin, deviceId } = req.body;
+
+        if (!userId || !pin) return res.status(400).json({ error: 'Missing credentials' });
+
+        try {
+            const result = await UserManager.authenticate(userId, pin);
+
+            if (!result.success) {
+                return res.status(401).json({ error: result.error });
+            }
+
+            const token = sessionManager.createSession(result.user, deviceId || 'unknown-device');
+            res.json({
+                success: true,
+                token,
+                user: result.user
+            });
+        } catch (e) {
+            console.error('Login Error:', e);
+            res.status(500).json({ error: 'Internal Server Error' });
+        }
+    });
+
+    // POST /api/auth/logout
+    apiApp.post('/api/auth/logout', (req, res) => {
+        const authHeader = req.headers['authorization'];
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.split(' ')[1];
+            sessionManager.invalidateSession(token);
+        }
+        res.json({ success: true });
+    });
+
+    // POST /api/auth/verify
+    apiApp.post('/api/auth/verify', (req, res) => {
+        const authHeader = req.headers['authorization'];
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.split(' ')[1];
+            const user = sessionManager.validateSession(token);
+            if (user) {
+                return res.json({ success: true, user });
+            }
+        }
+        res.status(401).json({ success: false, error: 'Invalid or expired session' });
+    });
+
 
     // Public Status Endpoint for Connectivity Check
     // IMPORTANT: Defined before other routes to ensure availability
@@ -306,9 +627,9 @@ function startApiServer() {
             ]);
 
             // Filter transactions? Mobile might not need ALL history.
-            // But for now, sending last 100 might be safer to avoid huge payloads.
+            // But for now, sending last 1000 might be safer to avoid huge payloads.
             // posStore handles partial updates.
-            const limitedTransactions = Array.isArray(transactions) ? transactions.slice(0, 200) : [];
+            const limitedTransactions = Array.isArray(transactions) ? transactions.slice(0, 1000) : [];
 
             // Rewrite image URLs to be accessible via HTTP
             const ipAddress = getLocalIpAddress();
@@ -424,32 +745,37 @@ function startApiServer() {
                     await writeJsonFile('products.json', newProducts);
 
                 } else if (type === 'add-user') {
-                    const users = await readJsonFile('users.json');
-                    const newUser = { ...data, userId: data.id || data.userId };
-                    delete newUser.id;
-                    // Generate username if missing (Back-Office logic)
-                    if (!newUser.username && newUser.name) {
-                        newUser.username = newUser.name.toLowerCase().replace(/\s+/g, '');
+                    // Use Strict User Manager
+                    try {
+                        await UserManager.addUser(data);
+                    } catch (e) {
+                        console.error("Sync Add User Failed", e);
                     }
-                    users.push(newUser);
-                    await writeJsonFile('users.json', users);
 
                 } else if (type === 'update-user') {
-                    const users = await readJsonFile('users.json');
-                    const userId = data.id || data.userId;
-                    const idx = users.findIndex(u => u.userId === userId);
-                    if (idx !== -1) {
+                     // Use Strict User Manager
+                    try {
+                        const userId = data.id || data.userId;
                         const updates = data.updates || data;
                         delete updates.id;
-                        users[idx] = { ...users[idx], ...updates };
-                        await writeJsonFile('users.json', users);
+                        await UserManager.updateUser(userId, updates);
+                    } catch (e) {
+                         console.error("Sync Update User Failed", e);
                     }
 
                 } else if (type === 'delete-user') {
-                    const users = await readJsonFile('users.json');
-                    const userId = data.id || data.userId;
-                    const newUsers = users.filter(u => u.userId !== userId);
-                    await writeJsonFile('users.json', newUsers);
+                     // Use Strict User Manager
+                    try {
+                        const userId = data.id || data.userId;
+                        await UserManager.deleteUser(userId);
+                    } catch (e) {
+                         console.error("Sync Delete User Failed", e);
+                    }
+
+                } else if (type === 'delete-transaction') {
+                    const transactions = await readJsonFile('transactions.json');
+                    const newTransactions = transactions.filter(t => t.id !== data.id);
+                    await writeJsonFile('transactions.json', newTransactions);
                 }
             }
 
@@ -524,6 +850,7 @@ function startApiServer() {
 app.whenReady().then(async () => {
   await ensureAppDirs();
   await ensureDataFilesExist();
+  await optimizeData(); // Data Optimization on Startup
   await initApiKey(); // Init and persist API Key
   startApiServer();
 
@@ -535,6 +862,59 @@ app.whenReady().then(async () => {
   });
 
   createWindow();
+
+  // --- NEW IPC HANDLERS FOR AUTH & USERS ---
+
+  ipcMain.handle('auth-login', async (event, userId, pin, deviceId) => {
+      try {
+          const result = await UserManager.authenticate(userId, pin);
+          if (result.success) {
+              const token = sessionManager.createSession(result.user, deviceId || 'desktop-main');
+              return { success: true, token, user: result.user };
+          }
+          return { success: false, error: result.error };
+      } catch (e) {
+          return { success: false, error: e.message };
+      }
+  });
+
+  ipcMain.handle('auth-logout', async (event, token) => {
+      sessionManager.invalidateSession(token);
+      return { success: true };
+  });
+
+  ipcMain.handle('auth-verify', async (event, token) => {
+      const user = sessionManager.validateSession(token);
+      return { success: !!user, user };
+  });
+
+  ipcMain.handle('user-add', async (event, userData) => {
+      try {
+          await UserManager.addUser(userData);
+          return { success: true };
+      } catch (e) {
+          return { success: false, error: e.message };
+      }
+  });
+
+  ipcMain.handle('user-update', async (event, userId, updates) => {
+      try {
+          await UserManager.updateUser(userId, updates);
+          return { success: true };
+      } catch (e) {
+          return { success: false, error: e.message };
+      }
+  });
+
+  ipcMain.handle('user-delete', async (event, userId) => {
+      try {
+          await UserManager.deleteUser(userId);
+          return { success: true };
+      } catch (e) {
+          return { success: false, error: e.message };
+      }
+  });
+
 
   /**
    * IPC Handler: 'save-image'
@@ -558,6 +938,18 @@ app.whenReady().then(async () => {
           if (process.platform === 'win32' && sourcePath.startsWith('/') && sourcePath.includes(':')) {
               sourcePath = sourcePath.substring(1);
           }
+      }
+
+      // If the path is just a filename (no directory separators), assume it's already in the product images folder
+      // This happens if the user tries to "re-save" an image that is already local-asset://...
+      if (!sourcePath.includes(path.sep) && !sourcePath.includes('/')) {
+         const existingPath = path.join(productImagesPath, sourcePath);
+         try {
+             await fs.access(existingPath);
+             return { success: true, path: existingPath, fileName: sourcePath };
+         } catch (e) {
+             // Not found, proceed to fail
+         }
       }
 
       // Verify source file exists
@@ -589,6 +981,13 @@ app.whenReady().then(async () => {
    */
   ipcMain.handle('save-data', async (event, fileName, data) => {
     try {
+      // Intercept user modifications to ensure strictness
+      if (fileName === 'users.json') {
+          // STRICT: Do not allow overwriting users.json via legacy path
+          console.error("BLOCKED Legacy 'save-data' for users.json.");
+          return { success: false, error: "Use userManagement IPC instead." };
+      }
+
       const filePath = path.join(userDataPath, fileName);
       await fs.writeFile(filePath, JSON.stringify(data, null, 2));
       return { success: true };
@@ -610,12 +1009,15 @@ app.whenReady().then(async () => {
   ipcMain.handle('read-data', async (event, fileName) => {
     const filePath = path.join(userDataPath, fileName);
     try {
-      // Always try to read from the userData path first.
       const data = await fs.readFile(filePath, 'utf-8');
+      // Handle empty or whitespace-only files
+      if (!data || data.trim() === '') {
+          return { success: true, data: [] }; // Default to array, safest for most stores
+      }
       return { success: true, data: JSON.parse(data) };
     } catch (error) {
       if (error.code === 'ENOENT') {
-        // If the file doesn't exist in userData, *then* try to seed it from default assets
+        // Seed logic...
         try {
           let seedPath;
           if (app.isPackaged) {
@@ -627,11 +1029,18 @@ app.whenReady().then(async () => {
           }
 
           const seedData = await fs.readFile(seedPath, 'utf-8');
-          await fs.writeFile(filePath, seedData); // Copy seed data to userData path
+          await fs.writeFile(filePath, seedData);
           return { success: true, data: JSON.parse(seedData) };
         } catch (seedError) {
-          return { success: true, data: null };
+          // If seeding fails, write an empty array to prevent future read errors
+          await fs.writeFile(filePath, '[]');
+          return { success: true, data: [] };
         }
+      } else if (error instanceof SyntaxError) {
+          // Handle corrupted JSON
+          console.error(`Corrupted JSON in ${fileName}, resetting to empty array.`);
+          await fs.writeFile(filePath, '[]');
+          return { success: true, data: [] };
       }
       console.error(`Failed to read data from ${fileName}:`, error);
       return { success: false, error: error.message };
@@ -677,6 +1086,28 @@ app.whenReady().then(async () => {
           }
       }
       return devices;
+  });
+
+  // --- Logs ---
+  ipcMain.handle('get-logs', async () => {
+      try {
+          const content = await fs.readFile(logFilePath, 'utf-8');
+          // Filter last 48 hours
+          const lines = content.split('\n');
+          const now = new Date();
+          const filteredLines = lines.filter(line => {
+              const match = line.match(/^\[(.*?)\]/);
+              if (match && match[1]) {
+                  const logTime = new Date(match[1]);
+                  const hoursDiff = (now - logTime) / (1000 * 60 * 60);
+                  return hoursDiff <= 48;
+              }
+              return false; // Filter out malformed lines or empty lines
+          });
+          return filteredLines.join('\n');
+      } catch (e) {
+          return ''; // Return empty if file missing or error
+      }
   });
 
   // --- Developer & Direct DB Sync ---
@@ -785,6 +1216,46 @@ app.whenReady().then(async () => {
       }
   });
 
+  ipcMain.handle('direct-db-delete', async (event, mongoUri, ops) => {
+      if (!mongoUri) return { success: false, error: 'MongoDB URI is missing' };
+      if (!ops || !Array.isArray(ops) || ops.length === 0) return { success: true };
+
+      let client;
+      try {
+          client = new MongoClient(mongoUri);
+          await client.connect();
+          const db = client.db();
+
+          // Group by type/collection
+          const collectionMap = {
+              'delete-user': { collection: 'users', idField: 'userId' },
+              'delete-product': { collection: 'products', idField: 'productId' },
+              'delete-expense': { collection: 'expenses', idField: 'expenseId' },
+              'delete-salary': { collection: 'salaries', idField: 'salaryId' },
+              'delete-transaction': { collection: 'transactions', idField: 'transactionId' },
+              'delete-credit-customer': { collection: 'customers', idField: 'customerId' },
+              'delete-supplier': { collection: 'suppliers', idField: 'supplierId' }
+          };
+
+          for (const op of ops) {
+              const config = collectionMap[op.type];
+              if (config) {
+                  const id = op.data.id || op.data.userId || op.data.productId || op.data.expenseId || op.data.salaryId || op.data.transactionId || op.data.customerId;
+                  if (id) {
+                      await db.collection(config.collection).deleteOne({ [config.idField]: id });
+                  }
+              }
+          }
+
+          return { success: true };
+      } catch (e) {
+          console.error("Direct DB Delete Failed", e);
+          return { success: false, error: e.message };
+      } finally {
+          if (client) await client.close();
+      }
+  });
+
   ipcMain.handle('direct-db-push', async (event, mongoUri) => {
       if (!mongoUri) return { success: false, error: 'MongoDB URI is missing' };
 
@@ -795,20 +1266,21 @@ app.whenReady().then(async () => {
           const db = client.db(); // Uses db name from URI
 
           // Read local data
-          const [products, users, expenses, salaries, transactions, creditCustomers] = await Promise.all([
+          const [products, users, expenses, salaries, transactions, creditCustomers, suppliers] = await Promise.all([
               readJsonFile('products.json'),
               readJsonFile('users.json'),
               readJsonFile('expenses.json'),
               readJsonFile('salaries.json'),
               readJsonFile('transactions.json'),
-              readJsonFile('credit-customers.json')
+              readJsonFile('credit-customers.json'),
+              readJsonFile('suppliers.json')
           ]);
 
           // Sync Products (Collection: products)
           if (products.length > 0) {
               const ops = products.map(p => {
-                  // Ensure numeric types
                   const product = { ...p };
+                  delete product._id; // Strip _id
                   if (product.price) product.price = Number(product.price);
                   if (product.cost) product.cost = Number(product.cost);
                   if (product.stock) product.stock = Number(product.stock);
@@ -828,6 +1300,7 @@ app.whenReady().then(async () => {
           if (users.length > 0) {
               const ops = users.map(u => {
                   const user = { ...u, userId: u.id };
+                  delete user._id; // Strip _id
                   if (user.createdAt) user.createdAt = new Date(user.createdAt);
                   return {
                       updateOne: {
@@ -844,7 +1317,7 @@ app.whenReady().then(async () => {
           if (expenses.length > 0) {
             const ops = expenses.map(e => {
                 const expense = { ...e };
-                // Fix: map cashier to recordedBy to match Mongoose schema expectation if missing
+                delete expense._id; // Strip _id
                 if (expense.cashier && !expense.recordedBy) {
                     expense.recordedBy = expense.cashier;
                 }
@@ -866,6 +1339,7 @@ app.whenReady().then(async () => {
           if (salaries.length > 0) {
             const ops = salaries.map(s => {
                 const salary = { ...s };
+                delete salary._id; // Strip _id
                 if (salary.amount) salary.amount = Number(salary.amount);
                 if (salary.date) salary.date = new Date(salary.date);
                 return {
@@ -883,21 +1357,18 @@ app.whenReady().then(async () => {
           if (transactions.length > 0) {
               const ops = transactions.map(t => {
                   const transaction = { ...t, transactionId: t.id };
+                  delete transaction._id; // Strip _id
 
-                  // Fix: Map 'total' to 'totalAmount' for Back Office Schema Compatibility
                   if (transaction.total !== undefined) {
                       transaction.totalAmount = Number(transaction.total);
                   }
 
                   if (transaction.tax) transaction.tax = Number(transaction.tax);
                   if (transaction.subtotal) transaction.subtotal = Number(transaction.subtotal);
-                  // Ensure timestamp is a Date object for MongoDB Aggregation
                   if (transaction.timestamp) transaction.timestamp = new Date(transaction.timestamp);
 
-                  // Fix: Flatten items for simpler querying in Back Office
                   if (transaction.items && Array.isArray(transaction.items)) {
                       transaction.items = transaction.items.map(i => {
-                          // Check if it's nested like { product: {...}, quantity: 1 } (Desktop format)
                           if (i.product && i.product.id) {
                               return {
                                   productId: String(i.product.id),
@@ -906,7 +1377,6 @@ app.whenReady().then(async () => {
                                   price: Number(i.product.price)
                               };
                           }
-                          // Check if it's a flat item from Mobile { id, name, price, quantity }
                           if (i.id && !i.productId) {
                                return {
                                    ...i,
@@ -934,6 +1404,7 @@ app.whenReady().then(async () => {
           if (creditCustomers.length > 0) {
               const ops = creditCustomers.map(c => {
                   const customer = { ...c, customerId: c.id };
+                  delete customer._id; // Strip _id
                   if (customer.limit) customer.limit = Number(customer.limit);
                   if (customer.balance) customer.balance = Number(customer.balance);
                   if (customer.loyaltyPoints) customer.loyaltyPoints = Number(customer.loyaltyPoints);
@@ -946,6 +1417,22 @@ app.whenReady().then(async () => {
                   };
               });
               await db.collection('customers').bulkWrite(ops);
+          }
+
+          // Sync Suppliers (Collection: suppliers)
+          if (suppliers.length > 0) {
+              const ops = suppliers.map(s => {
+                  const supplier = { ...s, supplierId: s.id };
+                  delete supplier._id; // Strip _id
+                  return {
+                      updateOne: {
+                          filter: { supplierId: s.id },
+                          update: { $set: supplier },
+                          upsert: true
+                      }
+                  };
+              });
+              await db.collection('suppliers').bulkWrite(ops);
           }
 
           return { success: true };
@@ -974,12 +1461,13 @@ app.whenReady().then(async () => {
              return { ...rest, id: rest.productId ? Number(rest.productId) : rest.id };
         });
 
-        // 2. Fetch Users
-        const usersRaw = await db.collection('users').find({}).toArray();
-        const users = usersRaw.map(u => {
-            const { _id, ...rest } = u;
-            return { ...rest, id: rest.userId || rest.id };
-        });
+        // 2. Fetch Users - BLOCKED per user request ("pos not receive users from the back office")
+        // const usersRaw = await db.collection('users').find({}).toArray();
+        // const users = usersRaw.map(u => {
+        //     const { _id, ...rest } = u;
+        //     return { ...rest, id: rest.userId || rest.id };
+        // });
+        const users = []; // Return empty so we don't overwrite local users
 
         // 3. Fetch Expenses
         const expensesRaw = await db.collection('expenses').find({}).sort({ date: -1 }).limit(100).toArray();
@@ -1007,10 +1495,14 @@ app.whenReady().then(async () => {
             return { ...rest, id: rest.customerId || rest.id };
         });
 
-        // 6. Fetch Business Setup (Assuming stored in 'settings' or similar, but for now relying on local persistence primarily or sync API if needed.
-        // If business settings are in Mongo, fetch them. Based on `BusinessSettings.js`, likely collection is 'businesssettings' or 'settings'
-        // But the model name is BusinessSettings -> collection: businesssettings (by Mongoose default)
-        // Let's check for it.
+        // 6. Fetch Suppliers
+        const suppliersRaw = await db.collection('suppliers').find({}).toArray();
+        const suppliers = suppliersRaw.map(s => {
+            const { _id, ...rest } = s;
+            return { ...rest, id: rest.supplierId || rest.id };
+        });
+
+        // 7. Fetch Business Setup
         let businessSetup = null;
         try {
             const settingsRaw = await db.collection('businesssettings').findOne({});
@@ -1029,6 +1521,7 @@ app.whenReady().then(async () => {
                 expenses,
                 salaries,
                 creditCustomers,
+                suppliers,
                 businessSetup
             }
         };

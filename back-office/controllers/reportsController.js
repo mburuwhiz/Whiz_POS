@@ -63,6 +63,10 @@ exports.index = async (req, res) => {
             .sort((a, b) => b.revenue - a.revenue)
             .slice(0, 10);
 
+        const allProducts = Object.entries(productSales)
+            .map(([name, data]) => ({ name, ...data }))
+            .sort((a, b) => b.revenue - a.revenue);
+
         const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
         const totalSalaries = salaries.reduce((sum, s) => sum + s.amount, 0);
 
@@ -71,6 +75,7 @@ exports.index = async (req, res) => {
             dateRange: { startDate, endDate },
             salesSummary,
             topProducts,
+            allProducts,
             totalExpenses,
             totalSalaries,
             netProfit: salesSummary.totalSales - totalExpenses - totalSalaries,

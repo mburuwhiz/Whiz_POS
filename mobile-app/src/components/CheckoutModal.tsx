@@ -1,10 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, CheckCircle, Loader2, User, Search, Plus, Phone, Download } from 'lucide-react';
+import { X, CheckCircle, Loader2, User, Search, Plus, Phone, Download, Share2, Image as ImageIcon } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useMobileStore } from '../store/mobileStore';
 import { api } from '../services/api';
-import html2canvas from 'html2canvas';
+import { generateReceiptImage } from '../utils/receiptGenerator';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -13,11 +15,12 @@ interface CheckoutModalProps {
 }
 
 export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalProps) {
-  const { cart, clearCart, addToSyncQueue, currentUser, creditCustomers, addCreditCustomer, updateCreditCustomer } = useMobileStore();
+  const { cart, clearCart, addToSyncQueue, currentUser, creditCustomers, addCreditCustomer, updateCreditCustomer, businessSetup } = useMobileStore();
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'mpesa' | 'credit' | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [currentTransaction, setCurrentTransaction] = useState<any>(null); // To store tx for receipt generation
+  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
 
   // Credit Customer Logic
   const [isCreditSelectionOpen, setIsCreditSelectionOpen] = useState(false);
@@ -26,6 +29,8 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
   const [isAddingCustomer, setIsAddingCustomer] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState('');
   const [newCustomerPhone, setNewCustomerPhone] = useState('');
+
+  const customerNames = useMemo(() => [...new Set(creditCustomers.map(c => c.name))], [creditCustomers]);
 
   const filteredCustomers = useMemo(() => {
     return creditCustomers.filter(c =>
@@ -74,13 +79,19 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
     setIsProcessing(true);
 
     // Map items to match Desktop format { product: ..., quantity: ... }
+    // Optimize payload by stripping unnecessary product details (images, etc)
     const formattedItems = cart.map(item => ({
-        product: item,
+        product: {
+            id: item.id,
+            name: item.name,
+            price: item.price,
+            category: item.category
+        },
         quantity: item.quantity
     }));
 
-    // Short ID format: MOBREC + last 6 digits of timestamp
-    const transactionId = `MOBREC${Date.now().toString().slice(-6)}`;
+    // Standard TXN format
+    const transactionId = `TXN${Date.now()}`;
 
     const transaction = {
       id: transactionId,
@@ -90,9 +101,9 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
       timestamp: new Date().toISOString(),
       cashierId: currentUser?.id,
       cashierName: currentUser?.name,
-      cashier: currentUser?.name, // Added for compatibility with Desktop/Print templates
+      cashier: currentUser?.name || 'Mobile User',
       creditCustomerId: selectedCustomer?.id,
-      creditCustomer: selectedCustomer?.name, // Fix: Changed to creditCustomer to match Desktop store property
+      creditCustomer: selectedCustomer?.name,
       creditCustomerName: selectedCustomer?.name,
       status: 'completed'
     };
@@ -147,24 +158,77 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
       setCurrentTransaction(null);
   }
 
-  const handleDownloadReceipt = async () => {
-      const receiptElement = document.getElementById('receipt-capture');
-      if (receiptElement) {
-          try {
-              const canvas = await html2canvas(receiptElement, { scale: 2 }); // Higher scale for better quality
-              const dataUrl = canvas.toDataURL('image/png');
+  const generateImage = async () => {
+    if (!currentTransaction) return null;
+    try {
+       const dataUrl = await generateReceiptImage(currentTransaction, businessSetup);
+       setGeneratedImage(dataUrl);
+       return dataUrl;
+    } catch (e) {
+       console.error("Failed to generate receipt", e);
+       alert("Failed to generate receipt image");
+       return null;
+    }
+  };
 
-              // Trigger download
-              const link = document.createElement('a');
-              link.href = dataUrl;
-              link.download = `Receipt-${currentTransaction?.id || 'New'}.png`;
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-          } catch (e) {
-              console.error("Receipt generation failed", e);
-              alert("Failed to generate receipt image.");
-          }
+  const handleShareReceipt = async () => {
+      let dataUrl = generatedImage;
+      if (!dataUrl) dataUrl = await generateImage();
+      if (!dataUrl) return;
+
+      try {
+          const fileName = `receipt-${currentTransaction.id}.png`;
+          const savedFile = await Filesystem.writeFile({
+              path: fileName,
+              data: dataUrl,
+              directory: Directory.Cache
+          });
+
+          await Share.share({
+              title: 'Receipt',
+              text: `Receipt for transaction ${currentTransaction.id}`,
+              url: savedFile.uri,
+              dialogTitle: 'Share Receipt'
+          });
+      } catch (e) {
+          console.error('Error sharing', e);
+          // Fallback for web
+          const link = document.createElement('a');
+          link.href = dataUrl;
+          link.download = `Receipt-${currentTransaction.id}.png`;
+          link.click();
+      }
+  };
+
+  const handleSaveReceipt = async () => {
+      let dataUrl = generatedImage;
+      if (!dataUrl) dataUrl = await generateImage();
+      if (!dataUrl) return;
+
+      try {
+          const fileName = `Receipt-${currentTransaction.id}.png`;
+
+          // Use Capacitor Filesystem to save to Documents directory
+          // Strip base64 prefix if present
+          const base64Data = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
+
+          await Filesystem.writeFile({
+              path: fileName,
+              data: base64Data,
+              directory: Directory.Documents
+          });
+
+          alert('Receipt saved to Documents folder');
+
+      } catch (e) {
+          console.error("Save failed", e);
+          // Fallback for web
+          const link = document.createElement('a');
+          link.href = dataUrl;
+          link.download = `Receipt-${currentTransaction.id}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
       }
   };
 
@@ -172,36 +236,6 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      {/* Hidden Receipt Element for Capture */}
-      {currentTransaction && (
-          <div id="receipt-capture" className="fixed top-0 left-0 bg-white text-black p-4 w-[300px] pointer-events-none opacity-0 z-[-1]" style={{ fontFamily: 'monospace' }}>
-              <div className="text-center border-b pb-2 mb-2 border-black border-dashed">
-                  <h1 className="text-lg font-bold">WHIZ POS MOBILE</h1>
-                  <p className="text-xs">Receipt #{currentTransaction.id}</p>
-                  <p className="text-xs">{new Date(currentTransaction.timestamp).toLocaleString()}</p>
-              </div>
-
-              <div className="space-y-1 mb-2 border-b pb-2 border-black border-dashed text-sm">
-                  {currentTransaction.items.map((item: any, i: number) => (
-                      <div key={i} className="flex justify-between">
-                          <span>{item.product.name} x{item.quantity}</span>
-                          <span>{(item.product.price * item.quantity).toFixed(2)}</span>
-                      </div>
-                  ))}
-              </div>
-
-              <div className="text-right font-bold text-lg mb-2">
-                  TOTAL: {currentTransaction.total.toFixed(2)}
-              </div>
-
-              <div className="text-center text-xs border-t pt-2 border-black border-dashed">
-                  <p>Paid via {currentTransaction.paymentMethod.toUpperCase()}</p>
-                  <p>Served by: {currentTransaction.cashierName}</p>
-                  <p className="mt-2">Thank you!</p>
-              </div>
-          </div>
-      )}
-
       <motion.div
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
@@ -251,11 +285,15 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                         <input
                             type="text"
+                            list="mobile-customer-suggestions"
                             placeholder="Search customers..."
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
                             className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-sm"
                         />
+                        <datalist id="mobile-customer-suggestions">
+                            {customerNames.slice(0, 50).map((name, i) => <option key={i} value={name} />)}
+                        </datalist>
                     </div>
 
                     <button
@@ -366,13 +404,22 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
              <h3 className="text-2xl font-bold text-white mb-2">Payment Successful!</h3>
              <p className="text-slate-400 mb-6">Transaction recorded & queued.</p>
 
-             <button
-                onClick={handleDownloadReceipt}
-                className="flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl text-sky-400 font-medium transition-colors"
-             >
-                 <Download className="w-5 h-5" />
-                 Download Receipt Image
-             </button>
+             <div className="flex flex-col gap-3 w-full">
+                 <button
+                    onClick={handleShareReceipt}
+                    className="flex items-center justify-center gap-2 px-6 py-4 bg-sky-500 hover:bg-sky-600 rounded-xl text-white font-bold transition-colors w-full"
+                 >
+                     <Share2 className="w-5 h-5" />
+                     Share Receipt
+                 </button>
+                 <button
+                    onClick={handleSaveReceipt}
+                    className="flex items-center justify-center gap-2 px-6 py-4 bg-white/10 hover:bg-white/20 rounded-xl text-slate-300 font-medium transition-colors w-full"
+                 >
+                     <ImageIcon className="w-5 h-5" />
+                     Save to Gallery
+                 </button>
+             </div>
           </div>
         )}
       </motion.div>

@@ -1,4 +1,5 @@
 const Product = require('../models/Product');
+const InventoryLog = require('../models/InventoryLog');
 
 exports.index = async (req, res) => {
     try {
@@ -52,5 +53,22 @@ exports.deleteProduct = async (req, res) => {
     } catch (error) {
         console.error('Delete product error:', error);
         res.status(500).send('Error deleting product');
+    }
+};
+
+exports.logs = async (req, res) => {
+    try {
+        const logs = await InventoryLog.find().sort({ timestamp: -1 }).limit(200);
+        res.render('pages/inventory-logs', {
+            title: 'Inventory Logs',
+            logs
+        });
+    } catch (error) {
+        console.error(error);
+        res.render('pages/inventory-logs', {
+            title: 'Inventory Logs',
+            logs: [],
+            error: 'Failed to load logs'
+        });
     }
 };

@@ -2,15 +2,22 @@ import React, { useState } from 'react';
 import { usePosStore } from '../store/posStore';
 import { Expense } from '../types';
 import { DollarSign, Plus, Receipt, TrendingUp, Calendar, Search, Filter, Copy, Edit2, Trash2, X } from 'lucide-react';
+import ExpenseHistoryModal from './ExpenseHistoryModal';
 
 export default function ExpenseTracker() {
-  const { expenses, saveExpense, currentCashier, setCurrentPage, deleteExpense, updateExpense } = usePosStore(); // Added actions
-  const [showAddForm, setShowAddForm] = useState(false);
+  const { expenses, saveExpense, currentCashier, setCurrentPage, deleteExpense, updateExpense } = usePosStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [quickAddAmount, setQuickAddAmount] = useState('');
-  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+  const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedSupplier, setSelectedSupplier] = useState('');
+
+  // Main Add Form State (Legacy/Generic Add)
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     description: '',
     amount: '',
@@ -94,7 +101,15 @@ export default function ExpenseTracker() {
     setQuickAddAmount('');
   };
 
-  const handleEdit = (expense: Expense) => {
+  const isAdminOrManager = currentCashier?.role === 'admin' || currentCashier?.role === 'manager';
+
+  const handleEdit = (expense: Expense, e: React.MouseEvent) => {
+      e.stopPropagation(); // Prevent opening modal
+      if (!isAdminOrManager) {
+        setNotification({ type: 'error', message: "Only Admins or Managers can edit expenses." });
+        setTimeout(() => setNotification(null), 3000);
+        return;
+      }
       setFormData({
           description: expense.description,
           amount: expense.amount.toString(),
@@ -105,22 +120,27 @@ export default function ExpenseTracker() {
       setShowAddForm(true);
   };
 
-  const handleDuplicate = (expense: Expense) => {
-      setFormData({
-          description: expense.description,
-          amount: expense.amount.toString(),
-          category: expense.category,
-          receipt: expense.receipt || ''
-      });
-      setEditingExpenseId(null); // Ensure it's a new entry
-      setShowAddForm(true);
-  };
-
-  const handleDelete = (id: string) => {
+  const handleDelete = (id: string, e: React.MouseEvent) => {
+      e.stopPropagation(); // Prevent opening modal
+      if (!isAdminOrManager) {
+        setNotification({ type: 'error', message: "Only Admins or Managers can delete expenses." });
+        setTimeout(() => setNotification(null), 3000);
+        return;
+      }
       if(confirm('Are you sure you want to delete this expense?')) {
-          deleteExpense(id); // Assuming this action exists in store or I need to add it
+          deleteExpense(id);
+          setNotification({ type: 'success', message: "Expense deleted." });
+          setTimeout(() => setNotification(null), 3000);
       }
   };
+
+  const handleRowClick = (expense: Expense) => {
+    setSelectedSupplier(expense.description);
+    setIsModalOpen(true);
+  };
+
+  // Unique descriptions for autocomplete
+  const expenseDescriptions = [...new Set(expenses.map(e => e.description))];
 
   const resetForm = () => {
     setFormData({
@@ -133,7 +153,12 @@ export default function ExpenseTracker() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 relative">
+      {notification && (
+          <div className={`fixed top-4 right-4 px-6 py-4 rounded-lg shadow-lg z-50 text-white font-medium animate-bounce ${notification.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'}`}>
+              {notification.message}
+          </div>
+      )}
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="container mx-auto px-4 py-4">
@@ -275,7 +300,12 @@ export default function ExpenseTracker() {
                 </thead>
                 <tbody>
                   {filteredExpenses.slice(0, 20).map((expense) => (
-                    <tr key={expense.id} className="border-b hover:bg-gray-50">
+                    <tr
+                        key={expense.id}
+                        className="border-b hover:bg-gray-50 cursor-pointer"
+                        onClick={() => handleRowClick(expense)}
+                        title="Click to view history/add similar"
+                    >
                       <td className="py-3 px-6">
                         <div>
                           <div className="text-sm text-gray-800">
@@ -307,13 +337,10 @@ export default function ExpenseTracker() {
                       </td>
                       <td className="py-3 px-6 text-right">
                           <div className="flex items-center justify-end space-x-2">
-                              <button onClick={() => handleEdit(expense)} className="text-blue-600 hover:text-blue-800" title="Edit">
+                              <button onClick={(e) => handleEdit(expense, e)} className="text-blue-600 hover:text-blue-800" title="Edit">
                                   <Edit2 className="w-4 h-4" />
                               </button>
-                              <button onClick={() => handleDuplicate(expense)} className="text-green-600 hover:text-green-800" title="Duplicate">
-                                  <Copy className="w-4 h-4" />
-                              </button>
-                              <button onClick={() => handleDelete(expense.id)} className="text-red-600 hover:text-red-800" title="Delete">
+                              <button onClick={(e) => handleDelete(expense.id, e)} className="text-red-600 hover:text-red-800" title="Delete">
                                   <Trash2 className="w-4 h-4" />
                               </button>
                           </div>
@@ -369,7 +396,7 @@ export default function ExpenseTracker() {
         </div>
       </div>
 
-      {/* Add/Edit Expense Modal */}
+      {/* Main Add/Edit Expense Modal (Generic) */}
       {showAddForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
@@ -381,12 +408,18 @@ export default function ExpenseTracker() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                   <input
                     type="text"
+                    list="expense-suggestions"
                     value={formData.description}
                     onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Enter expense description"
                     autoFocus
                   />
+                  <datalist id="expense-suggestions">
+                    {expenseDescriptions.map((desc, i) => (
+                        <option key={i} value={desc} />
+                    ))}
+                  </datalist>
                 </div>
                 
                 <div>
@@ -447,6 +480,13 @@ export default function ExpenseTracker() {
           </div>
         </div>
       )}
+
+      {/* Supplier History Modal */}
+      <ExpenseHistoryModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        defaultSupplier={selectedSupplier}
+      />
     </div>
   );
 }

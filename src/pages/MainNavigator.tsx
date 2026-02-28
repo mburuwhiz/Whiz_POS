@@ -7,7 +7,7 @@ import ReportsPage from '../components/ReportsPage';
 import CreditCustomersPage from '../components/CreditCustomersPage';
 import DailyClosingScreen from '../components/DailyClosingScreen';
 import SettingsPage from '../components/SettingsPage';
-import ExpenseTracker from '../components/ExpenseTracker';
+import EnhancedExpenseTracker from '../components/EnhancedExpenseTracker';
 import SyncEngine from '../components/SyncEngine';
 import Dashboard from '../components/Dashboard';
 import InventoryManagement from '../components/InventoryManagement';
@@ -22,6 +22,8 @@ import PreviousReceiptsPage from '../components/PreviousReceiptsPage';
 import MobileReceiptsPage from './MobileReceiptsPage';
 import SalariesPage from './SalariesPage';
 import DeveloperPage from './DeveloperPage';
+import UsersPage from './UsersPage';
+import InvoiceGenerator from './InvoiceGenerator';
 
 const MainNavigator = () => {
   const { businessSetup, users } = usePosStore();
@@ -82,7 +84,7 @@ const MainNavigator = () => {
         } />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/customers" element={<CreditCustomersPage />} />
-        <Route path="/expenses" element={<ExpenseTracker />} />
+        <Route path="/expenses" element={<EnhancedExpenseTracker />} />
         <Route path="/salaries" element={<SalariesPage />} />
         <Route path="/closing" element={<DailyClosingScreen />} />
         <Route path="/sync" element={<OfflineSyncStatus />} />
@@ -96,8 +98,10 @@ const MainNavigator = () => {
         <Route path="/status" element={<OfflineSyncStatus />} />
         <Route path="/previous-receipts" element={<PreviousReceiptsPage />} />
         <Route path="/mobile-receipts" element={<MobileReceiptsPage />} />
+        <Route path="/invoices" element={<InvoiceGenerator />} />
         <Route path="/manage" element={<SettingsPage />} />
         <Route path="/developer" element={<DeveloperPage />} />
+        <Route path="/users" element={<UsersPage />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </AppLayout>

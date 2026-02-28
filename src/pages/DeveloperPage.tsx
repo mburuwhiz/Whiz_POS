@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { usePosStore } from '../store/posStore';
-import { Shield, Key, Database, Globe, Save, RefreshCw, Lock, CheckCircle, AlertTriangle, Delete, HardDrive, Upload, Download } from 'lucide-react';
+import { Shield, Key, Database, Globe, Save, RefreshCw, Lock, CheckCircle, AlertTriangle, Delete, HardDrive, Upload, Download, FileText, Copy, Printer, Smartphone } from 'lucide-react';
+import { Switch } from '@headlessui/react';
 
 const DeveloperPage = () => {
     const { businessSetup, saveBusinessSetup } = usePosStore();
@@ -15,8 +16,23 @@ const DeveloperPage = () => {
     const [mongoUri, setMongoUri] = useState('');
     const [backOfficeUrl, setBackOfficeUrl] = useState('');
     const [backOfficeApiKey, setBackOfficeApiKey] = useState('');
+    const [showDevFooter, setShowDevFooter] = useState(true);
     const [isPushing, setIsPushing] = useState(false);
     const [isBackingUp, setIsBackingUp] = useState(false);
+
+    // M-Pesa State
+    const [mpesaConfig, setMpesaConfig] = useState({
+        consumerKey: '',
+        consumerSecret: '',
+        passkey: '',
+        shortcode: '',
+        type: 'Till' as 'Paybill' | 'Till',
+        environment: 'Sandbox' as 'Sandbox' | 'Production'
+    });
+
+    // Logs State
+    const [logs, setLogs] = useState('');
+    const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
     useEffect(() => {
         loadConfig();
@@ -32,12 +48,46 @@ const DeveloperPage = () => {
                 // Load Back Office settings from Store (primary source) or Config (fallback)
                 setBackOfficeUrl(businessSetup?.backOfficeUrl || businessSetup?.apiUrl || '');
                 setBackOfficeApiKey(businessSetup?.backOfficeApiKey || businessSetup?.apiKey || '');
+                setShowDevFooter(businessSetup?.showDeveloperFooter !== false);
+
+                if (businessSetup?.mpesaConfig) {
+                    setMpesaConfig(businessSetup.mpesaConfig);
+                }
             }
         } catch (e) {
             console.error("Failed to load developer config", e);
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const fetchLogs = async () => {
+        if (!window.electron || !window.electron.getLogs) return;
+        setIsLoadingLogs(true);
+        try {
+            const logsData = await window.electron.getLogs();
+            setLogs(logsData);
+        } catch (e) {
+            console.error("Failed to fetch logs", e);
+        } finally {
+            setIsLoadingLogs(false);
+        }
+    };
+
+    const copyLogs = () => {
+        navigator.clipboard.writeText(logs);
+        setSuccessMsg('Logs copied to clipboard');
+        setTimeout(() => setSuccessMsg(''), 3000);
+    };
+
+    const downloadLogs = () => {
+        const element = document.createElement("a");
+        const file = new Blob([logs], {type: 'text/plain'});
+        element.href = URL.createObjectURL(file);
+        element.download = `whiz-pos-logs-${new Date().toISOString()}.txt`;
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
     };
 
     // Keypad Logic
@@ -84,6 +134,8 @@ const DeveloperPage = () => {
             backOfficeApiKey,
             apiUrl: backOfficeUrl,
             apiKey: backOfficeApiKey,
+            showDeveloperFooter: showDevFooter,
+            mpesaConfig,
             isSetup: true
         };
         // @ts-ignore
@@ -364,6 +416,106 @@ const DeveloperPage = () => {
                     </div>
                 </div>
 
+                {/* Receipt Configuration */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <div className="flex items-center gap-2 mb-4 border-b pb-2">
+                        <Printer className="w-5 h-5 text-teal-600" />
+                        <h2 className="text-xl font-semibold text-gray-800">Receipt Configuration</h2>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="font-medium text-gray-800">Show Developer Footer</p>
+                            <p className="text-sm text-gray-500">
+                                Display "System Designed by Whizpoint Solutions" at the bottom of receipts.
+                                Disable to save paper.
+                            </p>
+                        </div>
+                        <Switch
+                            checked={showDevFooter}
+                            onChange={setShowDevFooter}
+                            className={`${
+                                showDevFooter ? 'bg-teal-600' : 'bg-gray-200'
+                            } relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2`}
+                        >
+                            <span
+                                className={`${
+                                    showDevFooter ? 'translate-x-6' : 'translate-x-1'
+                                } inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
+                            />
+                        </Switch>
+                    </div>
+                </div>
+
+                {/* M-Pesa Daraja Settings */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <div className="flex items-center gap-2 mb-4 border-b pb-2">
+                        <Smartphone className="w-5 h-5 text-green-600" />
+                        <h2 className="text-xl font-semibold text-gray-800">M-Pesa Daraja Configuration</h2>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Environment</label>
+                            <select
+                                value={mpesaConfig.environment}
+                                onChange={(e) => setMpesaConfig({...mpesaConfig, environment: e.target.value as any})}
+                                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                            >
+                                <option value="Sandbox">Sandbox</option>
+                                <option value="Production">Production</option>
+                            </select>
+                         </div>
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Account Type</label>
+                            <select
+                                value={mpesaConfig.type}
+                                onChange={(e) => setMpesaConfig({...mpesaConfig, type: e.target.value as any})}
+                                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                            >
+                                <option value="Till">Buy Goods (Till)</option>
+                                <option value="Paybill">Paybill</option>
+                            </select>
+                         </div>
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Shortcode / Till No</label>
+                            <input
+                                type="text"
+                                value={mpesaConfig.shortcode}
+                                onChange={(e) => setMpesaConfig({...mpesaConfig, shortcode: e.target.value})}
+                                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                            />
+                         </div>
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Passkey</label>
+                            <input
+                                type="password"
+                                value={mpesaConfig.passkey}
+                                onChange={(e) => setMpesaConfig({...mpesaConfig, passkey: e.target.value})}
+                                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                            />
+                         </div>
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Consumer Key</label>
+                            <input
+                                type="password"
+                                value={mpesaConfig.consumerKey}
+                                onChange={(e) => setMpesaConfig({...mpesaConfig, consumerKey: e.target.value})}
+                                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                            />
+                         </div>
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Consumer Secret</label>
+                            <input
+                                type="password"
+                                value={mpesaConfig.consumerSecret}
+                                onChange={(e) => setMpesaConfig({...mpesaConfig, consumerSecret: e.target.value})}
+                                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                            />
+                         </div>
+                    </div>
+                </div>
+
                 {/* Status Messages */}
                 {successMsg && (
                     <div className="bg-green-50 text-green-700 p-4 rounded-lg flex items-center gap-2 animate-fade-in">
@@ -377,6 +529,55 @@ const DeveloperPage = () => {
                         {error}
                     </div>
                 )}
+
+                {/* System Logs */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <div className="flex items-center justify-between mb-4 border-b pb-2">
+                        <div className="flex items-center gap-2">
+                            <FileText className="w-5 h-5 text-gray-600" />
+                            <h2 className="text-xl font-semibold text-gray-800">System Logs (Last 48h)</h2>
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={fetchLogs}
+                                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                title="Refresh Logs"
+                            >
+                                <RefreshCw className={`w-5 h-5 ${isLoadingLogs ? 'animate-spin' : ''}`} />
+                            </button>
+                            <button
+                                onClick={copyLogs}
+                                disabled={!logs}
+                                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+                                title="Copy Logs"
+                            >
+                                <Copy className="w-5 h-5" />
+                            </button>
+                            <button
+                                onClick={downloadLogs}
+                                disabled={!logs}
+                                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+                                title="Download Logs"
+                            >
+                                <Download className="w-5 h-5" />
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="bg-gray-900 rounded-lg p-4 h-64 overflow-y-auto font-mono text-xs text-green-400">
+                        {isLoadingLogs ? (
+                            <div className="flex items-center justify-center h-full text-gray-500">
+                                Loading logs...
+                            </div>
+                        ) : logs ? (
+                            <pre className="whitespace-pre-wrap">{logs}</pre>
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-gray-500">
+                                No logs found. Click refresh to load.
+                            </div>
+                        )}
+                    </div>
+                </div>
 
                 {/* Save Button */}
                 <div className="flex justify-end pt-4">

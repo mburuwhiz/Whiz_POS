@@ -1,0 +1,5 @@
+
+> whiz-pos@6.0.2 dev
+> concurrently "npm:dev:vite" "npm:dev:electron"
+
+sh: 1: concurrently: not found

@@ -49,10 +49,12 @@ export default function ProductGrid() {
 
   const { categories: storeCategories } = usePosStore();
 
-  // Extract unique categories from products that might not be in the predefined list
+  // Extract unique categories that have at least one product
   const categories = React.useMemo(() => {
     const productCategories = new Set(uniqueProducts.map(p => p.category).filter(Boolean));
-    const allCats = new Set(['All', ...storeCategories, ...productCategories]);
+    // Filter storeCategories to only those that have at least one product
+    const activeStoreCategories = storeCategories.filter(cat => productCategories.has(cat));
+    const allCats = new Set(['All', ...activeStoreCategories]);
     return Array.from(allCats);
   }, [storeCategories, uniqueProducts]);
   const productNames = [...new Set(uniqueProducts.map(p => p.name))];

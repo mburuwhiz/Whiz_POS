@@ -1,29 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { usePosStore } from '../store/posStore';
-import { User } from '../types';
 import { cn } from '../lib/utils';
-import { Shield, User as UserIcon, Lock, ArrowRight } from 'lucide-react';
+import { Shield, ArrowRight, Delete, X, Fingerprint } from 'lucide-react';
 import { useToast } from './ui/use-toast';
 
 const LoginScreen = () => {
   const { users, setSession, businessSetup } = usePosStore();
   const { toast } = useToast();
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-
-  const displayUsers = users.sort((a, b) => a.role === 'admin' ? -1 : 1);
-
-  const handleUserSelect = (user: User) => {
-    if (!user.isActive) {
-      setError('User is disabled. Contact Admin.');
-      return;
-    }
-    setSelectedUser(user);
-    setPin('');
-    setError('');
-  };
 
   const handleKeyPress = (key: string) => {
     if (isLoading) return;
@@ -41,125 +27,150 @@ const LoginScreen = () => {
         const newPin = pin + key;
         setPin(newPin);
         if (newPin.length === 4) {
-          // Auto-login attempt
           handleLogin(newPin);
         }
       }
     }
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key >= '0' && e.key <= '9') {
+        handleKeyPress(e.key);
+      } else if (e.key === 'Backspace') {
+        handleKeyPress('delete');
+      } else if (e.key === 'Enter') {
+        handleKeyPress('enter');
+      } else if (e.key === 'Escape') {
+        handleKeyPress('clear');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [pin, isLoading]);
+
   const handleLogin = async (explicitPin?: string) => {
     const loginPin = explicitPin || pin;
     if (isLoading) return;
 
-    let userToLogin = selectedUser;
-
-    // If no user selected, try to find user by PIN (Auto-login)
-    if (!userToLogin && loginPin.length === 4) {
-      userToLogin = users.find(u => u.pin === loginPin && u.isActive) || null;
-    }
-
-    if (!userToLogin) {
-      if (loginPin.length === 4) {
-        setError('Invalid PIN or account disabled');
-        setPin('');
-      }
-      return;
-    }
-
-    if (!userToLogin.isActive) {
-      setError('User account is disabled.');
-      return;
-    }
-
     if (loginPin.length < 4) {
-        setError('Enter 4-digit PIN');
-        return;
+      setError('Enter 4-digit PIN');
+      return;
     }
 
     setIsLoading(true);
+    setError('');
 
     try {
-        if (window.electron && window.electron.auth) {
-            const result = await window.electron.auth.login(userToLogin.id, loginPin, 'desktop-main');
-            if (result.success && result.token && result.user) {
-                toast("Login Successful", "success");
-                setSession(result.user, result.token);
-            } else {
-                setError(result.error || 'Login failed');
-                setPin('');
-            }
-        } else {
-            // Fallback for dev/web environment
-            if (loginPin === userToLogin.pin) {
-                toast("Login Successful (Dev Mode)", "success");
-                setSession(userToLogin, 'dev-token');
-            } else {
-                setError('Incorrect PIN');
-                setPin('');
-            }
-        }
-    } catch (e) {
-        setError('System Error during Login');
-        console.error(e);
-    } finally {
+      // Find user by PIN
+      const userToLogin = users.find(u => u.pin === loginPin && u.isActive);
+
+      if (!userToLogin) {
+        setError('Invalid PIN or account disabled');
+        setPin('');
         setIsLoading(false);
+        return;
+      }
+
+      if (window.electron && window.electron.auth) {
+        const result = await window.electron.auth.login(userToLogin.id, loginPin, 'desktop-main');
+        if (result.success && result.token && result.user) {
+          toast("Login Successful", "success");
+          setSession(result.user, result.token);
+        } else {
+          setError(result.error || 'Login failed');
+          setPin('');
+        }
+      } else {
+        // Fallback for dev/web environment
+        toast("Login Successful (Dev Mode)", "success");
+        setSession(userToLogin, 'dev-token');
+      }
+    } catch (e) {
+      setError('System Error during Login');
+      console.error(e);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center relative overflow-hidden font-sans select-none">
 
-      {/* Background Decor */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-700" />
+      {/* Background Image with Overlay */}
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105"
+        style={{ backgroundImage: `url('assets/login-bg.png')` }}
+      >
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
       </div>
 
-      {/* Simplified Login Card */}
-      <div className="w-full max-w-md bg-white rounded-[2rem] shadow-2xl p-10 z-10 relative">
-        <div className="relative z-10 w-full">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-blue-600 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg transform rotate-3">
-              <Shield className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold text-slate-900 mb-1">
-              {businessSetup?.businessName || 'Whiz POS'}
-            </h1>
-            <p className="text-slate-500 text-sm font-medium">Enter your 4-digit PIN</p>
+      {/* Main Container */}
+      <div className="z-10 w-full max-w-5xl px-6 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+
+        {/* Left Side: Branding & PIN Display */}
+        <div className="flex flex-col items-center lg:items-start text-center lg:text-left space-y-8 animate-in fade-in slide-in-from-left-8 duration-700">
+          <div className="relative">
+             <div className="w-24 h-24 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-3xl flex items-center justify-center shadow-2xl transform -rotate-6 border border-white/20">
+                <Shield className="w-12 h-12 text-white" />
+             </div>
+             <div className="absolute -top-2 -right-2 w-10 h-10 bg-white/10 backdrop-blur-md rounded-full border border-white/20 flex items-center justify-center">
+                <Fingerprint className="w-5 h-5 text-cyan-300" />
+             </div>
           </div>
 
-          {/* PIN Display */}
-              <div className="flex justify-center gap-4 mb-10 h-8">
-                {[0, 1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className={cn(
-                      "w-4 h-4 rounded-full transition-all duration-200 ring-2 ring-offset-2",
-                      pin.length > i
-                        ? "bg-blue-600 ring-blue-600 scale-110"
-                        : "bg-slate-200 ring-transparent",
-                      isLoading && "animate-pulse bg-blue-400"
-                    )}
-                  />
-                ))}
-              </div>
+          <div className="space-y-2">
+            <h1 className="text-5xl lg:text-6xl font-black text-white tracking-tight drop-shadow-lg">
+              {businessSetup?.businessName?.toUpperCase() || 'ADEN CAFE'}
+            </h1>
+            <p className="text-cyan-100/70 text-lg font-medium tracking-wide">
+              Your Daily Dose, Secured
+            </p>
+          </div>
 
-          {/* Error & Keypad */}
-          <div className="space-y-6">
-            {error && (
-              <div className="bg-red-50 text-red-600 px-4 py-2 rounded-xl text-xs font-bold text-center flex items-center justify-center gap-2 animate-in fade-in slide-in-from-top-1">
-                <Shield className="w-3 h-3" /> {error}
-              </div>
-            )}
+          {/* PIN Display Dots */}
+          <div className="flex gap-5 py-4">
+            {[0, 1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className={cn(
+                  "w-5 h-5 rounded-full transition-all duration-300 border-2",
+                  pin.length > i
+                    ? "bg-white border-white scale-125 shadow-[0_0_15px_rgba(255,255,255,0.8)]"
+                    : "bg-transparent border-white/30"
+                )}
+              />
+            ))}
+          </div>
 
-            <div className="grid grid-cols-3 gap-3">
+          <button
+            onClick={() => handleLogin()}
+            disabled={pin.length < 4 || isLoading}
+            className="group relative px-8 py-4 bg-white text-slate-900 rounded-2xl font-black text-lg hover:bg-cyan-50 transition-all shadow-2xl active:scale-95 disabled:opacity-50 flex items-center gap-3 overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+            {isLoading ? 'VERIFYING...' : 'VERIFY ACCESS'}
+            <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+          </button>
+
+          {error && (
+            <div className="bg-red-500/20 border border-red-500/50 text-red-200 px-6 py-3 rounded-2xl text-sm font-bold flex items-center gap-3 animate-bounce">
+              <X className="w-4 h-4" /> {error}
+            </div>
+          )}
+        </div>
+
+        {/* Right Side: Glass Keypad */}
+        <div className="flex justify-center lg:justify-end animate-in fade-in slide-in-from-right-8 duration-700">
+          <div className="bg-white/10 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/20 shadow-2xl w-full max-w-[400px]">
+            <div className="grid grid-cols-3 gap-4">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
                 <button
                   key={num}
                   onClick={() => handleKeyPress(num.toString())}
                   disabled={isLoading}
-                  className="h-14 rounded-xl text-xl font-bold bg-slate-50 hover:bg-blue-600 hover:text-white transition-all active:scale-95 disabled:opacity-50"
+                  className="aspect-square rounded-2xl text-3xl font-bold text-white bg-white/5 hover:bg-white/20 transition-all active:scale-90 border border-white/10 flex items-center justify-center"
                 >
                   {num}
                 </button>
@@ -167,47 +178,52 @@ const LoginScreen = () => {
               <button
                 onClick={() => handleKeyPress('clear')}
                 disabled={isLoading}
-                className="h-14 rounded-xl text-sm font-black bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-all active:scale-95 disabled:opacity-50"
+                className="aspect-square rounded-2xl flex items-center justify-center bg-red-500/20 hover:bg-red-500/40 text-red-200 transition-all border border-red-500/30 active:scale-90"
               >
-                CLR
+                <X className="w-8 h-8" />
               </button>
               <button
                 onClick={() => handleKeyPress('0')}
                 disabled={isLoading}
-                className="h-14 rounded-xl text-xl font-bold bg-slate-50 hover:bg-blue-600 hover:text-white transition-all active:scale-95 disabled:opacity-50"
+                className="aspect-square rounded-2xl text-3xl font-bold text-white bg-white/5 hover:bg-white/20 transition-all active:scale-90 border border-white/10 flex items-center justify-center"
               >
                 0
               </button>
               <button
                 onClick={() => handleKeyPress('delete')}
                 disabled={isLoading}
-                className="h-14 rounded-xl flex items-center justify-center font-bold bg-slate-50 hover:bg-slate-900 hover:text-white transition-all active:scale-95 disabled:opacity-50 text-slate-600"
+                className="aspect-square rounded-2xl flex items-center justify-center bg-slate-500/20 hover:bg-slate-500/40 text-white transition-all border border-white/10 active:scale-90"
               >
-                DEL
+                <Delete className="w-8 h-8" />
               </button>
             </div>
-
-            <button
-              onClick={() => handleKeyPress('enter')}
-              disabled={pin.length < 4 || isLoading}
-              className="w-full h-14 bg-slate-900 text-white rounded-xl text-sm font-black hover:bg-blue-700 transition-all shadow-xl active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {isLoading ? 'SECURE LOGIN...' : 'VERIFY ACCESS'} <ArrowRight className="w-4 h-4" />
-            </button>
           </div>
         </div>
       </div>
 
-      {/* Moving Footer - Fixed to bottom */}
-      <div className="fixed bottom-0 left-0 w-full bg-slate-900/50 backdrop-blur-md text-slate-400 py-4 overflow-hidden z-0 border-t border-white/5">
-        <div className="animate-marquee whitespace-nowrap flex gap-10">
-          {[1, 2, 3, 4].map((i) => (
-            <span key={i} className="text-[10px] font-black uppercase tracking-[0.2em] mx-8 opacity-50">
-              Developed and managed by Whizpoint Solutions — Call 0740 841 168 to get yours.
+      {/* Scrolling Footer */}
+      <div className="fixed bottom-0 left-0 w-full bg-black/60 backdrop-blur-md border-t border-white/10 py-3 overflow-hidden z-20">
+        <div className="flex whitespace-nowrap animate-marquee-fast">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <span key={i} className="text-xs font-bold text-white/80 uppercase tracking-widest mx-12 flex items-center gap-4">
+              <span className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
+              SYSTEM DEVELOPED AND MAINTAINED BY <span className="text-cyan-400">WHIZPOINT SOLUTIONS</span>
+              <span className="text-white/40">|</span>
+              TELL/WHATSAPP <span className="text-cyan-400">0740 841 168</span> TO GET STARTED
             </span>
           ))}
         </div>
       </div>
+
+      <style>{`
+        @keyframes marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        .animate-marquee-fast {
+          animation: marquee 30s linear infinite;
+        }
+      `}</style>
     </div>
   );
 };

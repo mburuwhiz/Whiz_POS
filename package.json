@@ -110,6 +110,8 @@
       "runAfterFinish": true,
       "installerIcon": "assets/logo.ico",
       "uninstallerIcon": "assets/logo.ico",
+      "installerSidebar": "src/assets/setup_install_bg.png",
+      "uninstallerSidebar": "src/assets/setup_install_bg.png",
       "license": "resources/license.txt",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true

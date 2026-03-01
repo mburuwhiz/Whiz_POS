@@ -7,13 +7,13 @@
 ; Branding
 BrandingText "WHIZ POS ${VERSION}"
 
-; Installer Header Icons & Graphics
-!define MUI_ICON "assets/logo.ico"
-!define MUI_UNICON "assets/logo.ico"
+; ------------------------------------------
+; UI STYLING
+; ------------------------------------------
+!define MUI_INSTFILESPAGE_PROGRESSBAR smooth
 
-; Modern UI Images
-!define MUI_WELCOMEFINISHPAGE_BITMAP "src/assets/setup_install_bg.png"
-!define MUI_UNWELCOMEFINISHPAGE_BITMAP "src/assets/setup_install_bg.png"
+; Note: Icons and Background bitmaps are handled by electron-builder via package.json
+; to avoid "already defined" errors during NSIS compilation.
 
 ; ------------------------------------------
 ; PAGE 1: Welcome Page
@@ -40,7 +40,7 @@ BrandingText "WHIZ POS ${VERSION}"
 !define MUI_INSTFILESPAGE_ABORTHEADER_TEXT "Installation Aborted"
 !define MUI_INSTFILESPAGE_ABORTHEADER_SUBTEXT "Whiz POS installation was interrupted."
 
-; Custom Installation Labels from Image 4
+; Custom Installation Labels
 !define MUI_PAGE_HEADER_TEXT "Installing WHIZ POS ${VERSION}"
 !define MUI_PAGE_HEADER_SUBTEXT "This will take a few moments..."
 
@@ -72,7 +72,6 @@ Section "Main"
   DetailPrint "Extracting files..."
 
   ; Note: electron-builder handles the actual file extraction
-  ; This section provides the "Premium" verbose feedback seen in designs
 SectionEnd
 
 ; ==========================================

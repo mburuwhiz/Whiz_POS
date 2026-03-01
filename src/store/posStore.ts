@@ -400,6 +400,7 @@ interface PosState {
   inventoryProducts: Product[];
   loyaltyCustomers: any[];
   syncHistory: any[];
+  categories: string[];
 
   // Actions
   login: (user: User) => void;
@@ -472,6 +473,9 @@ interface PosState {
   addProduct: (product: Product) => void;
   updateProduct: (id: number, updates: Partial<Product>) => void;
   deleteProduct: (id: number) => void;
+  setCategories: (categories: string[]) => void;
+  addCategory: (category: string) => void;
+  deleteCategory: (category: string) => void;
   addLoyaltyCustomer: (customer: any) => void;
   updateLoyaltyCustomer: (id: string, updates: any) => void;
   addSyncHistoryItem: (item: any) => void;
@@ -521,6 +525,7 @@ export const usePosStore = create<PosState>()(
       mobileReceipts: [],
       sessionToken: null,
       isSidebarCollapsed: false,
+      categories: ['Coffee', 'Tea', 'Pastries', 'Sandwiches', 'Cold Drinks', 'Others'],
 
       /**
        * Logs in a user and updates the session state.
@@ -1687,6 +1692,28 @@ export const usePosStore = create<PosState>()(
         });
       },
 
+      setCategories: (categories) => {
+        set({ categories });
+        saveDataToFile('categories.json', categories);
+      },
+
+      addCategory: (category) => {
+        set((state) => {
+          if (state.categories.includes(category)) return {};
+          const updatedCategories = [...state.categories, category];
+          saveDataToFile('categories.json', updatedCategories);
+          return { categories: updatedCategories };
+        });
+      },
+
+      deleteCategory: (category) => {
+        set((state) => {
+          const updatedCategories = state.categories.filter(c => c !== category);
+          saveDataToFile('categories.json', updatedCategories);
+          return { categories: updatedCategories };
+        });
+      },
+
       updateUser: async (id, updates) => {
         // Strict IPC Only
         if (window.electron && window.electron.userManagement) {
@@ -1762,6 +1789,12 @@ export const usePosStore = create<PosState>()(
             'suppliers.json': 'suppliers',
             'documents.json': 'documents'
           };
+
+          // Load Categories
+          const { data: catData } = await readDataFromFile('categories.json');
+          if (catData && Array.isArray(catData)) {
+            set({ categories: catData });
+          }
 
           for (const fileName of fileNames) {
             const { data } = await readDataFromFile(fileName);
@@ -1856,42 +1889,27 @@ export const usePosStore = create<PosState>()(
           createdAt: new Date().toISOString(),
         };
 
-        // 1. Save the business setup.
+        // 1. Save the business setup to file.
         await saveDataToFile('business-setup.json', fullBusinessData);
 
-        // 2. Add the first admin user via the secure IPC channel (users.json is blocked for direct save).
+        // 2. Add the first admin user via the secure IPC channel.
         if (window.electron && window.electron.userManagement) {
              try {
-                // Ensure the user ID is compatible with backend if needed, but 'addUser' handles it.
                 await window.electron.userManagement.addUser(fullAdminUser);
              } catch (e) {
                  console.error("Failed to add admin user during setup:", e);
              }
         }
 
-        // 3. Update the store's state to reflect that setup is complete.
-        set({
-          businessSetup: fullBusinessData,
-          users: [fullAdminUser],
-          products: [],
-          transactions: [],
-          expenses: [],
-          salaries: [],
-          creditCustomers: [],
-          suppliers: [],
-        });
-
         // 3. Trigger the business setup printout.
-        const printWithRetry = (retries = 5) => {
-          if (window.electron && window.electron.printBusinessSetup) {
-            window.electron.printBusinessSetup(fullBusinessData, fullAdminUser);
-          } else if (retries > 0) {
-            setTimeout(() => printWithRetry(retries - 1), 500);
-          } else {
-            console.error("Failed to print business setup: Electron API not available.");
-          }
-        };
-        printWithRetry();
+        if (window.electron && window.electron.printBusinessSetup) {
+          window.electron.printBusinessSetup(fullBusinessData, fullAdminUser);
+        }
+
+        // Note: We intentionally do NOT update the store state 'businessSetup' here.
+        // This prevents App.tsx from immediately unmounting the registration page,
+        // allowing the user to see the "All caught up" screen.
+        // The page will reload and pick up the new state when the user clicks "Go to Login".
       },
 
       archiveTransactions: async (daysToKeep) => {

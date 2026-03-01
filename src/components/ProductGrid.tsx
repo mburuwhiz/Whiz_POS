@@ -47,8 +47,16 @@ export default function ProductGrid() {
     });
   }, [products]);
 
-  // Extract unique categories
-  const categories = ['All', ...new Set(uniqueProducts.map(p => p.category).filter(Boolean))];
+  const { categories: storeCategories } = usePosStore();
+
+  // Extract unique categories that have at least one product
+  const categories = React.useMemo(() => {
+    const productCategories = new Set(uniqueProducts.map(p => p.category).filter(Boolean));
+    // Filter storeCategories to only those that have at least one product
+    const activeStoreCategories = storeCategories.filter(cat => productCategories.has(cat));
+    const allCats = new Set(['All', ...activeStoreCategories]);
+    return Array.from(allCats);
+  }, [storeCategories, uniqueProducts]);
   const productNames = [...new Set(uniqueProducts.map(p => p.name))];
 
   const filteredProducts = uniqueProducts.filter((product) => {

@@ -6,6 +6,7 @@ import MainNavigator from './pages/MainNavigator';
 import BusinessRegistrationPage from './pages/BusinessRegistrationPage';
 import LoginScreen from './components/LoginScreen';
 import OnScreenKeyboard from './components/OnScreenKeyboard';
+import ChangelogModal from './components/ChangelogModal';
 import ErrorBoundary from './components/ErrorBoundary';
 import AutoLogoutModal from './components/AutoLogoutModal';
 import { useEffect, useRef, useState } from 'react';
@@ -19,6 +20,22 @@ function App() {
     logout: state.logout,
     currentCashier: state.currentCashier
   }));
+
+  const [showChangelog, setShowChangelog] = useState(false);
+
+  useEffect(() => {
+    const lastVersion = localStorage.getItem('last_seen_version');
+    const currentVersion = '2024.1';
+
+    if (isDataLoaded && lastVersion !== currentVersion) {
+      setShowChangelog(true);
+    }
+  }, [isDataLoaded]);
+
+  const handleCloseChangelog = () => {
+    localStorage.setItem('last_seen_version', '2024.1');
+    setShowChangelog(false);
+  };
 
   // Auto-logoff Logic
   // Default to 5 minutes if not set or 0. Ensure at least 1 minute to prevent immediate loops if config is bad.
@@ -131,6 +148,9 @@ function App() {
           {isAutoLogoffEnabled && isIdle && (
             <AutoLogoutModal onLogout={logout} userName={currentCashier?.name} />
           )}
+
+          {/* Changelog Modal */}
+          {showChangelog && <ChangelogModal onClose={handleCloseChangelog} />}
         </div>
       </Router>
     </ErrorBoundary>

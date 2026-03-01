@@ -1,8 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { usePosStore } from '../store/posStore';
-import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Package, Calendar, Activity, Target, PieChart, X } from 'lucide-react';
+import {
+  TrendingUp, TrendingDown, DollarSign, ShoppingCart,
+  Users, Package, Calendar, Activity, Target,
+  PieChart, X, ArrowUpRight, ArrowDownRight,
+  LayoutDashboard, Zap, Clock
+} from 'lucide-react';
 import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import { motion, AnimatePresence } from 'framer-motion';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -11,442 +17,430 @@ interface DashboardMetric {
   value: string | number;
   change: number;
   icon: React.ReactNode;
-  color: 'green' | 'red' | 'blue' | 'yellow' | 'purple';
-}
-
-interface TopProduct {
+  color: 'emerald' | 'rose' | 'blue' | 'amber' | 'violet';
   id: string;
-  name: string;
-  quantity: number;
-  revenue: number;
 }
 
 export default function Dashboard() {
   const { transactions, products, expenses, setCurrentPage } = usePosStore();
   const [timeRange, setTimeRange] = useState<'today' | 'week' | 'month' | 'year'>('today');
-  const [metrics, setMetrics] = useState<DashboardMetric[]>([]);
-  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
-  const [recentTransactions, setRecentTransactions] = useState(transactions.slice(0, 50));
   const [showPieChart, setShowPieChart] = useState(false);
 
-  // Calculate date range filter
-  const getDateFilter = () => {
+  // Memoized date filter
+  const dateRange = useMemo(() => {
     const now = new Date();
     const start = new Date();
+    const prevStart = new Date();
+    const prevEnd = new Date();
     
     switch (timeRange) {
       case 'today':
         start.setHours(0, 0, 0, 0);
+        prevStart.setDate(start.getDate() - 1);
+        prevStart.setHours(0, 0, 0, 0);
+        prevEnd.setDate(start.getDate() - 1);
+        prevEnd.setHours(23, 59, 59, 999);
         break;
       case 'week':
         start.setDate(now.getDate() - 7);
+        prevStart.setDate(start.getDate() - 7);
+        prevEnd.setDate(start.getDate() - 1);
         break;
       case 'month':
         start.setMonth(now.getMonth() - 1);
+        prevStart.setMonth(start.getMonth() - 1);
+        prevEnd.setDate(start.getDate() - 1);
         break;
       case 'year':
         start.setFullYear(now.getFullYear() - 1);
+        prevStart.setFullYear(start.getFullYear() - 1);
+        prevEnd.setDate(start.getDate() - 1);
         break;
     }
     
-    return { start, end: now };
-  };
+    return { start, end: now, prevStart, prevEnd };
+  }, [timeRange]);
 
-  // Filter transactions by date range
-  const getFilteredTransactions = () => {
-    const { start, end } = getDateFilter();
-    return transactions.filter(t => {
-      const transactionDate = new Date(t.timestamp);
-      return transactionDate >= start && transactionDate <= end;
-    });
-  };
-
-  // Calculate metrics
-  useEffect(() => {
-    const filteredTransactions = getFilteredTransactions();
-    const previousFilteredTransactions = transactions.filter(t => {
-      const { start, end } = getDateFilter();
-      const prevStart = new Date(start);
-      const prevEnd = new Date(end);
-      
-      // Adjust for previous period
-      switch (timeRange) {
-        case 'today':
-          prevStart.setDate(prevStart.getDate() - 1);
-          prevEnd.setDate(prevEnd.getDate() - 1);
-          break;
-        case 'week':
-          prevStart.setDate(prevStart.getDate() - 7);
-          prevEnd.setDate(prevEnd.getDate() - 7);
-          break;
-        case 'month':
-          prevStart.setMonth(prevStart.getMonth() - 1);
-          prevEnd.setMonth(prevEnd.getMonth() - 1);
-          break;
-        case 'year':
-          prevStart.setFullYear(prevStart.getFullYear() - 1);
-          prevEnd.setFullYear(prevEnd.getFullYear() - 1);
-          break;
-      }
-      
-      const transactionDate = new Date(t.timestamp);
-      return transactionDate >= prevStart && transactionDate <= prevEnd;
+  // Memoized metrics calculation
+  const { metrics, topProducts, recentTransactions } = useMemo(() => {
+    const filteredTx = transactions.filter(t => {
+      const d = new Date(t.timestamp);
+      return d >= dateRange.start && d <= dateRange.end;
     });
 
-    const totalRevenue = filteredTransactions.reduce((sum, t) => 
-      sum + (t.total || t.items.reduce((itemSum, item) => itemSum + (item.product.price * item.quantity), 0)), 0
-    );
-    
-    const previousRevenue = previousFilteredTransactions.reduce((sum, t) => 
-      sum + (t.total || t.items.reduce((itemSum, item) => itemSum + (item.product.price * item.quantity), 0)), 0
+    const prevTx = transactions.filter(t => {
+      const d = new Date(t.timestamp);
+      return d >= dateRange.prevStart && d <= dateRange.prevEnd;
+    });
+
+    const calcRevenue = (txs: any[]) => txs.reduce((sum, t) =>
+      sum + (t.total || t.items.reduce((itemSum: number, item: any) => itemSum + (item.product.price * item.quantity), 0)), 0
     );
 
-    const totalOrders = filteredTransactions.length;
-    const previousOrders = previousFilteredTransactions.length;
+    const revenue = calcRevenue(filteredTx);
+    const prevRevenue = calcRevenue(prevTx);
     
-    const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-    const previousAverageOrderValue = previousOrders > 0 ? previousRevenue / previousOrders : 0;
+    const orders = filteredTx.length;
+    const prevOrders = prevTx.length;
 
-    const totalCustomers = new Set(filteredTransactions.map(t => t.customerName || 'Walk-in')).size;
-    const previousCustomers = new Set(previousFilteredTransactions.map(t => t.customerName || 'Walk-in')).size;
+    const aov = orders > 0 ? revenue / orders : 0;
+    const prevAov = prevOrders > 0 ? prevRevenue / prevOrders : 0;
 
-    // Filter expenses by the same date range as transactions
-    const { start, end } = getDateFilter();
-    const filteredExpenses = expenses.filter(e => {
-      const expenseDate = new Date(e.timestamp || 0); // Handle missing timestamps
-      return expenseDate >= start && expenseDate <= end;
-    });
+    const customers = new Set(filteredTx.map(t => t.customerName || 'Walk-in')).size;
+    const prevCustomers = new Set(prevTx.map(t => t.customerName || 'Walk-in')).size;
 
-    const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
-    const netProfit = totalRevenue - totalExpenses;
+    const currentExpenses = expenses.filter(e => {
+      const d = new Date(e.timestamp || 0);
+      return d >= dateRange.start && d <= dateRange.end;
+    }).reduce((sum, e) => sum + e.amount, 0);
 
-    const newDashboardMetrics: DashboardMetric[] = [
-      {
-        title: 'Total Revenue',
-        value: `KES ${totalRevenue.toFixed(2)}`,
-        change: previousRevenue > 0 ? ((totalRevenue - previousRevenue) / previousRevenue) * 100 : 0,
-        icon: <DollarSign className="w-6 h-6" />,
-        color: totalRevenue >= previousRevenue ? 'green' : 'red'
-      },
-      {
-        title: 'Total Orders',
-        value: totalOrders,
-        change: previousOrders > 0 ? ((totalOrders - previousOrders) / previousOrders) * 100 : 0,
-        icon: <ShoppingCart className="w-6 h-6" />,
-        color: totalOrders >= previousOrders ? 'green' : 'red'
-      },
-      {
-        title: 'Average Order Value',
-        value: `KES ${averageOrderValue.toFixed(2)}`,
-        change: previousAverageOrderValue > 0 ? ((averageOrderValue - previousAverageOrderValue) / previousAverageOrderValue) * 100 : 0,
-        icon: <Target className="w-6 h-6" />,
-        color: averageOrderValue >= previousAverageOrderValue ? 'green' : 'red'
-      },
-      {
-        title: 'Total Customers',
-        value: totalCustomers,
-        change: previousCustomers > 0 ? ((totalCustomers - previousCustomers) / previousCustomers) * 100 : 0,
-        icon: <Users className="w-6 h-6" />,
-        color: totalCustomers >= previousCustomers ? 'green' : 'red'
-      },
-      {
-        title: 'Net Profit',
-        value: `KES ${netProfit.toFixed(2)}`,
-        change: 0, // Would need previous period expenses for comparison
-        icon: <TrendingUp className="w-6 h-6" />,
-        color: netProfit >= 0 ? 'green' : 'red'
-      },
-      {
-        title: 'Active Products',
-        value: products.filter(p => p.available).length,
-        change: 0,
-        icon: <Package className="w-6 h-6" />,
-        color: 'blue'
-      }
-    ];
+    const profit = revenue - currentExpenses;
 
-    setMetrics(newDashboardMetrics);
-  }, [transactions, products, expenses, timeRange]);
-
-  // Calculate top products
-  useEffect(() => {
-    const filteredTransactions = getFilteredTransactions();
+    // Top Products
     const productSales = new Map<string, { quantity: number; revenue: number; name: string }>();
-
-    filteredTransactions.forEach(transaction => {
-      if (!transaction || !Array.isArray(transaction.items)) return;
-
-      transaction.items.forEach(item => {
-        if (!item || !item.product || !item.product.id) return;
-
-        const productId = String(item.product.id);
-        const productName = item.product.name || 'Unknown Product';
-        const productPrice = item.product.price || 0;
-
-        const existing = productSales.get(productId) || {
-          quantity: 0, 
-          revenue: 0, 
-          name: productName
-        };
-
-        productSales.set(productId, {
-          quantity: existing.quantity + (item.quantity || 0),
-          revenue: existing.revenue + (productPrice * (item.quantity || 0)),
+    filteredTx.forEach(t => {
+      t.items?.forEach(item => {
+        const id = String(item.product.id);
+        const existing = productSales.get(id) || { quantity: 0, revenue: 0, name: item.product.name };
+        productSales.set(id, {
+          quantity: existing.quantity + item.quantity,
+          revenue: existing.revenue + (item.product.price * item.quantity),
           name: existing.name
         });
       });
     });
 
-    const top = Array.from(productSales.entries())
+    const sortedTop = Array.from(productSales.entries())
       .map(([id, data]) => ({ id, ...data }))
       .sort((a, b) => b.revenue - a.revenue);
 
-    setTopProducts(top);
-  }, [transactions, timeRange]);
+    const dashboardMetrics: DashboardMetric[] = [
+      {
+        id: 'revenue',
+        title: 'Total Revenue',
+        value: `KES ${revenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+        change: prevRevenue > 0 ? ((revenue - prevRevenue) / prevRevenue) * 100 : 0,
+        icon: <DollarSign className="w-5 h-5" />,
+        color: 'emerald'
+      },
+      {
+        id: 'orders',
+        title: 'Total Orders',
+        value: orders,
+        change: prevOrders > 0 ? ((orders - prevOrders) / prevOrders) * 100 : 0,
+        icon: <ShoppingCart className="w-5 h-5" />,
+        color: 'blue'
+      },
+      {
+        id: 'profit',
+        title: 'Net Profit',
+        value: `KES ${profit.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+        change: 0,
+        icon: <TrendingUp className="w-5 h-5" />,
+        color: 'violet'
+      },
+      {
+        id: 'aov',
+        title: 'Avg. Order Value',
+        value: `KES ${aov.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+        change: prevAov > 0 ? ((aov - prevAov) / prevAov) * 100 : 0,
+        icon: <Target className="w-5 h-5" />,
+        color: 'amber'
+      },
+      {
+        id: 'customers',
+        title: 'Unique Customers',
+        value: customers,
+        change: prevCustomers > 0 ? ((customers - prevCustomers) / prevCustomers) * 100 : 0,
+        icon: <Users className="w-5 h-5" />,
+        color: 'rose'
+      }
+    ];
 
-  // Update recent transactions
-  useEffect(() => {
-    setRecentTransactions(transactions.slice(0, 100)); // Increased limit
-  }, [transactions]);
-
-  const getMetricColor = (color: DashboardMetric['color']) => {
-    switch (color) {
-      case 'green': return 'bg-green-50 text-green-600 border-green-200';
-      case 'red': return 'bg-red-50 text-red-600 border-red-200';
-      case 'blue': return 'bg-blue-50 text-blue-600 border-blue-200';
-      case 'yellow': return 'bg-yellow-50 text-yellow-600 border-yellow-200';
-      case 'purple': return 'bg-purple-50 text-purple-600 border-purple-200';
-      default: return 'bg-gray-50 text-gray-600 border-gray-200';
-    }
-  };
+    return {
+      metrics: dashboardMetrics,
+      topProducts: sortedTop,
+      recentTransactions: transactions.slice(0, 10)
+    };
+  }, [transactions, expenses, dateRange]);
 
   const chartData = {
     labels: topProducts.slice(0, 5).map(p => p.name),
-    datasets: [
-      {
-        data: topProducts.slice(0, 5).map(p => p.revenue),
-        backgroundColor: [
-          'rgba(54, 162, 235, 0.8)',
-          'rgba(255, 99, 132, 0.8)',
-          'rgba(255, 206, 86, 0.8)',
-          'rgba(75, 192, 192, 0.8)',
-          'rgba(153, 102, 255, 0.8)',
-        ],
-        borderColor: [
-          'rgba(54, 162, 235, 1)',
-          'rgba(255, 99, 132, 1)',
-          'rgba(255, 206, 86, 1)',
-          'rgba(75, 192, 192, 1)',
-          'rgba(153, 102, 255, 1)',
-        ],
-        borderWidth: 1,
-      },
-    ],
+    datasets: [{
+      data: topProducts.slice(0, 5).map(p => p.revenue),
+      backgroundColor: [
+        'rgba(16, 185, 129, 0.7)',
+        'rgba(59, 130, 246, 0.7)',
+        'rgba(139, 92, 246, 0.7)',
+        'rgba(245, 158, 11, 0.7)',
+        'rgba(244, 63, 94, 0.7)',
+      ],
+      borderColor: '#fff',
+      borderWidth: 2,
+    }],
+  };
+
+  const getMetricStyles = (color: DashboardMetric['color']) => {
+    const styles = {
+      emerald: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
+      rose: 'bg-rose-500/10 text-rose-600 border-rose-500/20',
+      blue: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
+      amber: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
+      violet: 'bg-violet-500/10 text-violet-600 border-violet-500/20',
+    };
+    return styles[color];
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <Activity className="w-8 h-8 text-blue-600" />
-              <div>
-                <h1 className="text-2xl font-bold text-gray-800">Business Dashboard</h1>
-                <p className="text-gray-600">Real-time analytics and insights</p>
-              </div>
+    <div className="min-h-screen bg-[#F8FAFC] p-4 md:p-8 space-y-8 font-sans">
+      <div className="max-w-7xl mx-auto space-y-8">
+
+        {/* Modern Header */}
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center space-x-4">
+            <div className="p-3 bg-white rounded-2xl shadow-sm border border-slate-200">
+              <LayoutDashboard className="w-8 h-8 text-blue-600" />
             </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setShowPieChart(true)}
-                className="p-2 text-gray-600 hover:text-blue-600 transition-colors"
-                title="Show Product Sales Chart"
-              >
-                <PieChart className="w-6 h-6" />
-              </button>
-              <div className="h-6 w-px bg-gray-300 mx-2"></div>
-              <Calendar className="w-5 h-5 text-gray-600" />
-              <select
-                value={timeRange}
-                onChange={(e) => setTimeRange(e.target.value as any)}
-                className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="today">Today</option>
-                <option value="week">This Week</option>
-                <option value="month">This Month</option>
-                <option value="year">This Year</option>
-              </select>
+            <div>
+              <h1 className="text-3xl font-black text-slate-900 tracking-tight">Analytics Dashboard</h1>
+              <p className="text-slate-500 font-medium">Monitoring your business pulse in real-time</p>
             </div>
           </div>
-        </div>
+
+          <div className="flex items-center bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200">
+            {(['today', 'week', 'month', 'year'] as const).map((range) => (
+              <button
+                key={range}
+                onClick={() => setTimeRange(range)}
+                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                  timeRange === range
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                }`}
+              >
+                {range.charAt(0).toUpperCase() + range.slice(1)}
+              </button>
+            ))}
+          </div>
+        </header>
+
+        {/* Feature Widget: Real-time pulse */}
+        <section className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-[2.5rem] p-8 md:p-10 shadow-2xl relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-[100px] -mr-48 -mt-48 transition-all group-hover:bg-blue-500/20" />
+          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="space-y-4">
+              <div className="inline-flex items-center space-x-2 px-3 py-1 bg-blue-500/20 rounded-full border border-blue-500/30">
+                <Zap className="w-4 h-4 text-blue-400 fill-blue-400" />
+                <span className="text-blue-400 text-xs font-black uppercase tracking-widest">Live Performance</span>
+              </div>
+              <h2 className="text-4xl font-bold text-white tracking-tight">Your business is <span className="text-blue-400">thriving</span> today.</h2>
+              <p className="text-slate-400 max-w-md text-lg leading-relaxed">
+                You've processed <span className="text-white font-bold">{metrics[1].value} orders</span> so far.
+                Keep up the great momentum!
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-4 w-full md:w-auto">
+              <div className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-md">
+                <p className="text-slate-500 text-sm font-bold mb-1">Gross Revenue</p>
+                <p className="text-2xl font-black text-white">{metrics[0].value}</p>
+                <div className="flex items-center mt-2 text-emerald-400 text-sm font-bold">
+                  <ArrowUpRight className="w-4 h-4 mr-1" />
+                  {metrics[0].change.toFixed(1)}%
+                </div>
+              </div>
+              <div className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-md">
+                <p className="text-slate-500 text-sm font-bold mb-1">Top Item</p>
+                <p className="text-xl font-black text-white truncate max-w-[150px]">{topProducts[0]?.name || 'None'}</p>
+                <p className="text-slate-400 text-sm mt-2">{topProducts[0]?.quantity || 0} units sold</p>
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* Metrics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-          {metrics.map((metric, index) => (
-            <div key={index} className="bg-white rounded-lg shadow-sm p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <p className="text-gray-600 text-sm mb-1">{metric.title}</p>
-                  <p className="text-2xl font-bold text-gray-800">{metric.value}</p>
-                  {metric.change !== 0 && (
-                    <div className={`flex items-center text-sm mt-1 ${
-                      metric.change > 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {metric.change > 0 ? (
-                        <TrendingUp className="w-4 h-4 mr-1" />
-                      ) : (
-                        <TrendingDown className="w-4 h-4 mr-1" />
-                      )}
-                      {Math.abs(metric.change).toFixed(1)}%
-                    </div>
-                  )}
-                </div>
-                <div className={`p-3 rounded-full ${getMetricColor(metric.color)}`}>
+        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+          {metrics.map((metric, idx) => (
+            <motion.div
+              key={metric.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.1 }}
+              className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-200 hover:shadow-xl hover:-translate-y-1 transition-all group"
+            >
+              <div className="flex justify-between items-start mb-4">
+                <div className={`p-3 rounded-2xl ${getMetricStyles(metric.color)} transition-transform group-hover:scale-110`}>
                   {metric.icon}
                 </div>
+                {metric.change !== 0 && (
+                  <div className={`flex items-center px-2 py-1 rounded-lg text-xs font-black ${
+                    metric.change > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                  }`}>
+                    {metric.change > 0 ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownRight className="w-3 h-3 mr-0.5" />}
+                    {Math.abs(metric.change).toFixed(1)}%
+                  </div>
+                )}
+              </div>
+              <p className="text-slate-500 font-bold text-sm mb-1">{metric.title}</p>
+              <h3 className="text-2xl font-black text-slate-900 truncate">{metric.value}</h3>
+            </motion.div>
+          ))}
+        </section>
+
+        {/* Main Content Areas */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+          {/* Recent Activity */}
+          <section className="lg:col-span-2 bg-white rounded-[2.5rem] shadow-sm border border-slate-200 overflow-hidden flex flex-col min-h-[500px]">
+            <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <div className="flex items-center space-x-3">
+                <Clock className="w-6 h-6 text-blue-600" />
+                <h3 className="text-xl font-black text-slate-900 tracking-tight">Recent Activity</h3>
+              </div>
+              <button
+                onClick={() => setCurrentPage('reports')}
+                className="text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors"
+              >
+                View Audit Log
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2">
+              <div className="space-y-2">
+                {recentTransactions.map((tx) => (
+                  <div key={tx.id} className="group flex items-center justify-between p-4 rounded-2xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center font-black text-slate-400 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
+                        {tx.paymentMethod.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-900">{tx.customerName || 'Walk-in Customer'}</p>
+                        <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">
+                          {new Date(tx.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {tx.paymentMethod}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-black text-slate-900">KES {tx.total.toLocaleString()}</p>
+                      <span className={`text-[10px] font-black uppercase tracking-tighter px-2 py-0.5 rounded-md ${
+                        tx.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                      }`}>
+                        {tx.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
-        </div>
+          </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Top Products - Full List */}
-          <div className="bg-white rounded-lg shadow-sm flex flex-col max-h-[600px]">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-800">Products Sold (Full List)</h2>
+          {/* Product Performance */}
+          <section className="bg-white rounded-[2.5rem] shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full">
+            <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <div className="flex items-center space-x-3">
+                <PieChart className="w-6 h-6 text-violet-600" />
+                <h3 className="text-xl font-black text-slate-900 tracking-tight">Best Sellers</h3>
+              </div>
+              <button onClick={() => setShowPieChart(true)} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+                <Activity className="w-5 h-5 text-slate-400" />
+              </button>
             </div>
-            <div className="p-6 overflow-y-auto">
-              {topProducts.length > 0 ? (
-                <div className="space-y-4">
-                  {topProducts.map((product, index) => (
-                    <div key={product.id} className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-sm">
-                          {index + 1}
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-800">{product.name}</p>
-                          <p className="text-sm text-gray-500">{product.quantity} sold</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-gray-800">KES {product.revenue.toFixed(2)}</p>
-                      </div>
+            <div className="p-6 flex-1 overflow-y-auto space-y-4">
+              {topProducts.slice(0, 10).map((p, i) => (
+                <div key={p.id} className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 flex items-center justify-center text-xs font-black text-slate-400 bg-slate-100 rounded-lg">
+                      {i + 1}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">No sales data available</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Recent Transactions */}
-          <div className="bg-white rounded-lg shadow-sm flex flex-col max-h-[600px]">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-800">Recent Transactions</h2>
-            </div>
-            <div className="p-6 overflow-y-auto">
-              {recentTransactions.length > 0 ? (
-                <div className="space-y-4">
-                  {recentTransactions.map((transaction) => (
-                    <div key={transaction.id} className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-800">
-                          {transaction.customerName || 'Walk-in Customer'}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          {new Date(transaction.timestamp).toLocaleString()}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-gray-800">
-                          KES {(transaction.total || transaction.items.reduce((itemSum, item) => itemSum + (item.product.price * item.quantity), 0)).toFixed(2)}
-                        </p>
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          transaction.paymentMethod === 'cash' ? 'bg-green-100 text-green-800' :
-                          transaction.paymentMethod === 'mpesa' ? 'bg-blue-100 text-blue-800' :
-                          'bg-purple-100 text-purple-800'
-                        }`}>
-                          {transaction.paymentMethod}
-                        </span>
-                      </div>
+                    <div>
+                      <p className="font-bold text-slate-800 text-sm truncate max-w-[120px]">{p.name}</p>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{p.quantity} Units</p>
                     </div>
-                  ))}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-black text-slate-900">KES {p.revenue.toLocaleString()}</p>
+                    <div className="w-24 h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
+                      <div
+                        className="h-full bg-blue-500 rounded-full"
+                        style={{ width: `${(p.revenue / topProducts[0].revenue) * 100}%` }}
+                      />
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                <div className="text-center py-8">
-                  <ShoppingCart className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">No transactions yet</p>
-                </div>
-              )}
+              ))}
             </div>
-          </div>
+          </section>
         </div>
 
-        {/* Quick Actions */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <button
-              onClick={() => setCurrentPage('pos')}
-              className="p-4 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg text-left transition-colors"
-            >
-              <DollarSign className="w-6 h-6 text-blue-600 mb-2" />
-              <p className="font-medium text-blue-800">Process Sale</p>
-              <p className="text-sm text-blue-600">Start new transaction</p>
-            </button>
-            
-            <button
-              onClick={() => setCurrentPage('inventory')}
-              className="p-4 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg text-left transition-colors"
-            >
-              <Package className="w-6 h-6 text-green-600 mb-2" />
-              <p className="font-medium text-green-800">Manage Inventory</p>
-              <p className="text-sm text-green-600">Update stock levels</p>
-            </button>
-            
-            <button
-              onClick={() => setCurrentPage('reports')}
-              className="p-4 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg text-left transition-colors"
-            >
-              <Users className="w-6 h-6 text-purple-600 mb-2" />
-              <p className="font-medium text-purple-800">View Reports</p>
-              <p className="text-sm text-purple-600">Analytics & insights</p>
-            </button>
+        {/* Quick Actions Container */}
+        <section className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-200">
+          <h3 className="text-lg font-black text-slate-900 mb-6 tracking-tight">Lightning Actions</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: 'Process Sale', icon: <DollarSign />, page: 'pos', color: 'blue' },
+              { label: 'Restock', icon: <Package />, page: 'inventory', color: 'emerald' },
+              { label: 'Reports', icon: <Activity />, page: 'reports', color: 'violet' },
+              { label: 'Settings', icon: <Zap />, page: 'settings', color: 'slate' }
+            ].map((action) => (
+              <button
+                key={action.page}
+                onClick={() => setCurrentPage(action.page as any)}
+                className="flex items-center space-x-3 p-4 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-all active:scale-95 border border-slate-200"
+              >
+                <div className={`p-2 rounded-lg bg-white shadow-sm text-${action.color}-600`}>
+                  {action.icon}
+                </div>
+                <span className="font-bold text-slate-700">{action.label}</span>
+              </button>
+            ))}
           </div>
-        </div>
+        </section>
       </div>
 
-      {/* Pie Chart Popup */}
-      {showPieChart && (
-        <div
-          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-          onClick={() => setShowPieChart(false)}
-        >
-          <div
-            className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg relative"
-            onClick={e => e.stopPropagation()}
+      {/* Pie Chart Modal */}
+      <AnimatePresence>
+        {showPieChart && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-6"
+            onClick={() => setShowPieChart(false)}
           >
-            <button
-              onClick={() => setShowPieChart(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-[3rem] shadow-2xl p-10 w-full max-w-xl relative"
+              onClick={e => e.stopPropagation()}
             >
-              <X className="w-6 h-6" />
-            </button>
+              <button
+                onClick={() => setShowPieChart(false)}
+                className="absolute top-8 right-8 p-2 hover:bg-slate-100 rounded-2xl text-slate-400 hover:text-slate-900 transition-all"
+              >
+                <X className="w-8 h-8" />
+              </button>
 
-            <h3 className="text-xl font-bold text-gray-800 mb-6 text-center">Top Products Revenue</h3>
+              <h3 className="text-2xl font-black text-slate-900 mb-8 tracking-tight">Revenue Breakdown</h3>
 
-            <div className="aspect-square w-full max-w-sm mx-auto">
-              <Pie data={chartData} options={{ responsive: true, maintainAspectRatio: true }} />
-            </div>
-          </div>
-        </div>
-      )}
+              <div className="aspect-square w-full max-w-sm mx-auto">
+                <Pie data={chartData} options={{
+                  responsive: true,
+                  maintainAspectRatio: true,
+                  plugins: {
+                    legend: {
+                      position: 'bottom',
+                      labels: {
+                        usePointStyle: true,
+                        padding: 20,
+                        font: { weight: 'bold', family: 'sans-serif' }
+                      }
+                    }
+                  }
+                }} />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

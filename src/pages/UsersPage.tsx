@@ -39,6 +39,13 @@ export default function UsersPage() {
       return;
     }
 
+    // Check if PIN is already taken
+    const isPinTaken = users.some(u => u.pin === currentUser.pin && u.id !== currentUser.id);
+    if (isPinTaken) {
+      toast("This PIN is already assigned to another user.", 'error');
+      return;
+    }
+
     if (isEdit && currentUser.id) {
       updateUser(currentUser.id, currentUser);
       toast("User updated successfully");

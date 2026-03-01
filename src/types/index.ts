@@ -4,8 +4,10 @@ export interface Product {
   price: number;
   category: string;
   image: string;
+  localImage?: string;
   available: boolean;
   stock?: number;
+  minStock?: number;
 }
 
 export interface CartItem {
@@ -59,16 +61,34 @@ export interface Expense {
 
 export interface BusinessSetup {
   businessName: string;
-  businessId: string;
-  apiKey: string;
+  businessId?: string;
+  apiUrl?: string;
+  apiKey?: string;
+  backOfficeUrl?: string;
+  backOfficeApiKey?: string;
+  mongoDbUri?: string;
   address: string;
-  phone: string;
-  email: string;
-  taxRate: number;
-  currency: string;
-  receiptHeader: string;
-  receiptFooter: string;
-  printerType: string;
+  phone?: string;
+  email?: string;
+  taxRate?: number;
+  currency?: string;
+  receiptHeader?: string;
+  receiptFooter?: string;
+  printerType: 'thermal' | 'standard';
+  selectedPrinter?: string;
+  showPrintPreview?: boolean;
+  onScreenKeyboard?: boolean;
+  printerPaperWidth?: number;
   isSetup: boolean;
+  isLoggedIn: boolean;
   createdAt: string;
+  servedByLabel: string;
+  mpesaPaybill: string;
+  mpesaTill: string;
+  mpesaAccountNumber: string;
+  tax: number;
+  subtotal: number;
+  locationName?: string;
+  autoLogoffEnabled?: boolean;
+  autoLogoffMinutes?: number;
 }

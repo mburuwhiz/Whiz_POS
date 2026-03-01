@@ -112,6 +112,7 @@
       "uninstallerIcon": "assets/logo.ico",
       "installerSidebar": "src/assets/setup_install_bg.png",
       "uninstallerSidebar": "src/assets/setup_install_bg.png",
+      "installerHeader": "src/assets/setup_install_bg.png",
       "license": "resources/license.txt",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true

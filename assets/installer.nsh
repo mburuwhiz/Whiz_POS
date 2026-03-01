@@ -19,7 +19,7 @@ BrandingText "WHIZ POS ${VERSION}"
 ; PAGE 1: Welcome Page
 ; ------------------------------------------
 !define MUI_WELCOMEPAGE_TITLE "Welcome to the Whiz POS Ecosystem"
-!define MUI_WELCOMEPAGE_TEXT "Complete this wizard to install the core Point of Sale application and connect your business.\r\n\r\nThis setup will install Whiz POS [cite: ${VERSION}] and prepare your system for seamless business operations."
+!define MUI_WELCOMEPAGE_TEXT "Complete this wizard to install the core Point of Sale application and connect your business.$\r$\n$\r$\nThis setup will install Whiz POS v${VERSION} and prepare your system for seamless business operations."
 
 ; ------------------------------------------
 ; PAGE 2: License Agreement
@@ -41,14 +41,14 @@ BrandingText "WHIZ POS ${VERSION}"
 !define MUI_INSTFILESPAGE_ABORTHEADER_SUBTEXT "Whiz POS installation was interrupted."
 
 ; Custom Installation Labels
-!define MUI_PAGE_HEADER_TEXT "Installing WHIZ POS ${VERSION}"
+!define MUI_PAGE_HEADER_TEXT "Installing WHIZ POS v${VERSION}"
 !define MUI_PAGE_HEADER_SUBTEXT "This will take a few moments..."
 
 ; ------------------------------------------
 ; PAGE 5: Finish Page
 ; ------------------------------------------
-!define MUI_FINISHPAGE_TITLE "Setup Complete (${VERSION})"
-!define MUI_FINISHPAGE_TEXT "Whiz POS has been successfully installed on your computer.\r\n\r\nClick 'Finish' to exit the setup wizard."
+!define MUI_FINISHPAGE_TITLE "Setup Complete (v${VERSION})"
+!define MUI_FINISHPAGE_TEXT "Whiz POS has been successfully installed on your computer.$\r$\n$\r$\nClick 'Finish' to exit the setup wizard."
 !define MUI_FINISHPAGE_RUN_TEXT "Launch Whiz POS"
 
 ; ==========================================
@@ -63,11 +63,11 @@ Section "Main"
   DetailPrint "  • Back Office Web (analytics, inventory, admin)"
   DetailPrint "  • Mobile App (remote ordering)"
   DetailPrint " "
-  DetailPrint "Latest System Fixes"
-  DetailPrint "  Receipt printer margins fixed for correct padding on 80mm paper."
+  DetailPrint "Latest Fixes (v5.2.3)"
+  DetailPrint "Receipt printer margins fixed for correct padding on 80mm paper."
   DetailPrint " "
   DetailPrint "Architecture Notes"
-  DetailPrint "  Mobile App -> Desktop POS (Offline queueing) -> Back Office (Sync API, MongoDB)"
+  DetailPrint "Mobile App -> Desktop POS (Offline queueing) -> Back Office (Sync API, MongoDB)"
   DetailPrint "----------------------------------------"
   DetailPrint "Extracting files..."
 
@@ -79,7 +79,7 @@ SectionEnd
 ; ==========================================
 
 !define MUI_UNWELCOMEPAGE_TITLE "Uninstall Whiz POS"
-!define MUI_UNWELCOMEPAGE_TEXT "This wizard will guide you through the uninstallation of Whiz POS ${VERSION}. Your business data (MongoDB) will be preserved unless specifically deleted."
+!define MUI_UNWELCOMEPAGE_TEXT "This wizard will guide you through the uninstallation of Whiz POS v${VERSION}. Your business data (MongoDB) will be preserved unless specifically deleted."
 
 !define MUI_UNFINISHPAGE_TITLE "Uninstallation Complete"
 !define MUI_UNFINISHPAGE_TEXT "Whiz POS has been successfully removed from your computer."

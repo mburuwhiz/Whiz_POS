@@ -3,6 +3,7 @@ import { usePosStore } from '../store/posStore';
 import { cn } from '../lib/utils';
 import { Shield, ArrowRight, Delete, X, Fingerprint } from 'lucide-react';
 import { useToast } from './ui/use-toast';
+import { soundManager } from '../lib/soundUtils';
 
 const LoginScreen = () => {
   const { users, setSession, businessSetup } = usePosStore();
@@ -15,15 +16,18 @@ const LoginScreen = () => {
     if (isLoading) return;
 
     if (key === 'clear') {
+      soundManager.playPop();
       setPin('');
       setError('');
     } else if (key === 'delete') {
+      soundManager.playPop();
       setPin(prev => prev.slice(0, -1));
       setError('');
     } else if (key === 'enter') {
       handleLogin();
     } else {
       if (pin.length < 4) {
+        soundManager.playClick();
         const newPin = pin + key;
         setPin(newPin);
         if (newPin.length === 4) {
@@ -67,6 +71,7 @@ const LoginScreen = () => {
       const userToLogin = users.find(u => u.pin === loginPin && u.isActive);
 
       if (!userToLogin) {
+        soundManager.playError();
         setError('Invalid PIN or account disabled');
         setPin('');
         setIsLoading(false);
@@ -76,14 +81,17 @@ const LoginScreen = () => {
       if (window.electron && window.electron.auth) {
         const result = await window.electron.auth.login(userToLogin.id, loginPin, 'desktop-main');
         if (result.success && result.token && result.user) {
+          soundManager.playSuccess();
           toast("Login Successful", "success");
           setSession(result.user, result.token);
         } else {
+          soundManager.playError();
           setError(result.error || 'Login failed');
           setPin('');
         }
       } else {
         // Fallback for dev/web environment
+        soundManager.playSuccess();
         toast("Login Successful (Dev Mode)", "success");
         setSession(userToLogin, 'dev-token');
       }

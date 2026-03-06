@@ -27,6 +27,7 @@ const DeveloperPage = () => {
 
     // M-Pesa State
     const [mpesaConfig, setMpesaConfig] = useState({
+        enabled: false,
         backendUrl: '',
         apiKey: '',
         consumerKey: '',
@@ -107,12 +108,12 @@ const DeveloperPage = () => {
                 setBackOfficeUrl(config.backOfficeUrl || config.apiUrl || '');
                 setBackOfficeApiKey(config.backOfficeApiKey || config.apiKey || '');
                 setShowDevFooter(config.showDeveloperFooter !== false);
-                if (config.mpesaConfig) setMpesaConfig({ ...mpesaConfig, ...config.mpesaConfig });
+                if (config.mpesaConfig) setMpesaConfig((prev) => ({ ...prev, ...config.mpesaConfig }));
             } else {
                 setBackOfficeUrl(businessSetup?.backOfficeUrl || businessSetup?.apiUrl || '');
                 setBackOfficeApiKey(businessSetup?.backOfficeApiKey || businessSetup?.apiKey || '');
                 setShowDevFooter(businessSetup?.showDeveloperFooter !== false);
-                if (businessSetup?.mpesaConfig) setMpesaConfig({ ...mpesaConfig, ...businessSetup.mpesaConfig });
+                if (businessSetup?.mpesaConfig) setMpesaConfig((prev) => ({ ...prev, ...businessSetup.mpesaConfig }));
             }
         } catch (e) {
             console.error("Failed to load developer config", e);
@@ -498,9 +499,20 @@ const DeveloperPage = () => {
                     {/* Menu Content: M-Pesa Setup */}
                     {activeMenu === 'mpesa' && (
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                            <div className="bg-gray-50 p-4 border-b border-gray-100 flex items-center gap-3">
-                                <Smartphone className="w-5 h-5 text-green-600" />
-                                <h2 className="text-lg font-bold text-gray-800">Backend & M-Pesa Daraja Integration</h2>
+                            <div className="bg-gray-50 p-4 border-b border-gray-100 flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-3">
+                                    <Smartphone className="w-5 h-5 text-green-600" />
+                                    <h2 className="text-lg font-bold text-gray-800">Backend & M-Pesa Daraja Integration</h2>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <span className="text-sm font-semibold text-gray-700">Enable M-Pesa Automation</span>
+                                    <button
+                                        onClick={() => setMpesaConfig({ ...mpesaConfig, enabled: !mpesaConfig.enabled })}
+                                        className={`w-12 h-6 rounded-full transition-colors relative flex items-center ${mpesaConfig.enabled ? 'bg-green-500' : 'bg-gray-300'}`}
+                                    >
+                                        <div className={`w-4 h-4 rounded-full bg-white shadow-sm absolute transition-transform duration-200 ease-in-out ${mpesaConfig.enabled ? 'translate-x-[26px]' : 'translate-x-[4px]'}`} />
+                                    </button>
+                                </div>
                             </div>
                             <div className="p-6 grid gap-6 md:grid-cols-2 bg-gray-50/30">
                                 <div className="md:col-span-2">

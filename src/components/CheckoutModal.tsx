@@ -355,58 +355,70 @@ export default function CheckoutModal() {
 
                 {paymentMethod === 'mpesa' && (
                     <div className="space-y-4">
-                        <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
-                            <button
-                                onClick={() => setMpesaVerificationMode('manual')}
-                                className={`flex-1 py-3 text-sm font-bold rounded-md transition-all ${mpesaVerificationMode === 'manual' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                            >
-                                Enter Manual Code
-                            </button>
-                            <button
-                                onClick={() => setMpesaVerificationMode('auto')}
-                                className={`flex-1 py-3 text-sm font-bold rounded-md transition-all ${mpesaVerificationMode === 'auto' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                            >
-                                Send Prompt to Phone
-                            </button>
-                        </div>
+                        {businessSetup?.mpesaConfig?.enabled ? (
+                            <>
+                                <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
+                                    <button
+                                        onClick={() => setMpesaVerificationMode('manual')}
+                                        className={`flex-1 py-3 text-sm font-bold rounded-md transition-all ${mpesaVerificationMode === 'manual' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                    >
+                                        Enter Manual Code
+                                    </button>
+                                    <button
+                                        onClick={() => setMpesaVerificationMode('auto')}
+                                        className={`flex-1 py-3 text-sm font-bold rounded-md transition-all ${mpesaVerificationMode === 'auto' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                    >
+                                        Send Prompt to Phone
+                                    </button>
+                                </div>
 
-                        {mpesaVerificationMode === 'manual' ? (
-                            <div className="space-y-3 mt-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        M-Pesa Confirmation Code
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={mpesaCode}
-                                        onChange={(e) => setMpesaCode(e.target.value.toUpperCase())}
-                                        placeholder="e.g. QWE123RTY"
-                                        className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none uppercase font-mono text-xl tracking-widest text-center"
-                                    />
-                                </div>
-                            </div>
+                                {mpesaVerificationMode === 'manual' ? (
+                                    <div className="space-y-3 mt-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                M-Pesa Confirmation Code
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={mpesaCode}
+                                                onChange={(e) => setMpesaCode(e.target.value.toUpperCase())}
+                                                placeholder="e.g. QWE123RTY"
+                                                className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none uppercase font-mono text-xl tracking-widest text-center"
+                                            />
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4 mt-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Customer Phone Number
+                                            </label>
+                                            <input
+                                                type="tel"
+                                                value={phoneNumber}
+                                                onChange={(e) => setPhoneNumber(e.target.value)}
+                                                placeholder="07XX XXX XXX or 01XX XXX XXX"
+                                                className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-xl text-center tracking-wider"
+                                            />
+                                        </div>
+                                        <button
+                                            className={`w-full py-4 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-3 text-lg shadow-md ${isStkPushing ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 active:scale-[0.98]'}`}
+                                            onClick={handleStkPush}
+                                            disabled={isStkPushing}
+                                        >
+                                            {isStkPushing ? <Loader2 className="w-6 h-6 animate-spin" /> : <Smartphone className="w-6 h-6" />}
+                                            {isStkPushing ? 'Waiting for PIN & Processing...' : 'Send Payment Prompt'}
+                                        </button>
+                                    </div>
+                                )}
+                            </>
                         ) : (
-                            <div className="space-y-4 mt-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Customer Phone Number
-                                    </label>
-                                    <input
-                                        type="tel"
-                                        value={phoneNumber}
-                                        onChange={(e) => setPhoneNumber(e.target.value)}
-                                        placeholder="07XX XXX XXX or 01XX XXX XXX"
-                                        className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-xl text-center tracking-wider"
-                                    />
-                                </div>
-                                <button
-                                    className={`w-full py-4 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-3 text-lg shadow-md ${isStkPushing ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 active:scale-[0.98]'}`}
-                                    onClick={handleStkPush}
-                                    disabled={isStkPushing}
-                                >
-                                    {isStkPushing ? <Loader2 className="w-6 h-6 animate-spin" /> : <Smartphone className="w-6 h-6" />}
-                                    {isStkPushing ? 'Waiting for PIN & Processing...' : 'Send Payment Prompt'}
-                                </button>
+                            <div className="text-center p-6 bg-gray-50 rounded-xl border border-gray-200">
+                                <Smartphone className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                                <h4 className="text-lg font-bold text-gray-800 mb-2">Manual M-Pesa Payment</h4>
+                                <p className="text-gray-600">
+                                    M-Pesa automation is currently disabled. Please ask the customer to pay via M-Pesa manually. Click <strong>Complete Payment</strong> below once confirmed.
+                                </p>
                             </div>
                         )}
                     </div>
@@ -438,7 +450,7 @@ export default function CheckoutModal() {
                     onClick={handleComplete}
                     disabled={
                       (paymentMethod === 'cash' && amountTendered !== '' && tendered < total) ||
-                      (paymentMethod === 'mpesa' && mpesaVerificationMode === 'manual' && mpesaCode.length < 5) ||
+                      (paymentMethod === 'mpesa' && businessSetup?.mpesaConfig?.enabled && mpesaVerificationMode === 'manual' && mpesaCode.length < 5) ||
                       (paymentMethod === 'credit' && !creditCustomer)
                     }
                     className="flex-[2] px-6 py-4 bg-green-500 text-white font-bold text-lg rounded-xl hover:bg-green-600 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"

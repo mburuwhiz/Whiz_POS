@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { usePosStore } from '../store/posStore';
 import { Shield, Key, Database, Globe, Save, RefreshCw, Lock, CheckCircle, AlertTriangle, Delete, HardDrive, Upload, Download, FileText, Copy, Printer, Smartphone } from 'lucide-react';
 import { Switch } from '@headlessui/react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 
 const DeveloperPage = () => {
     const { businessSetup, saveBusinessSetup } = usePosStore();
@@ -10,6 +12,7 @@ const DeveloperPage = () => {
     const [pin, setPin] = useState('');
     const [error, setError] = useState('');
     const [successMsg, setSuccessMsg] = useState('');
+    const navigate = useNavigate();
 
     // Config State
     const [storedPin, setStoredPin] = useState('1410399');
@@ -209,8 +212,11 @@ const DeveloperPage = () => {
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent animate-spin rounded-full"></div>
+            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="w-8 h-8 border-4 border-cyan-500 border-t-transparent animate-spin rounded-full mx-auto mb-4"></div>
+                    <p className="text-cyan-100/70 font-medium tracking-wide">Loading Settings...</p>
+                </div>
             </div>
         );
     }
@@ -218,70 +224,147 @@ const DeveloperPage = () => {
     // PIN Entry Screen (Keypad)
     if (!isAuthenticated) {
         return (
-            <div className="flex items-center justify-center min-h-[80vh]">
-                <div className="bg-white p-8 rounded-xl shadow-lg max-w-sm w-full">
-                    <div className="text-center mb-6">
-                        <div className="bg-blue-100 p-3 rounded-full w-16 h-16 mx-auto flex items-center justify-center mb-4">
-                            <Lock className="w-8 h-8 text-blue-600" />
-                        </div>
-                        <h2 className="text-2xl font-bold text-gray-800">Developer Access</h2>
-                        <p className="text-gray-500 text-sm">Enter Developer PIN</p>
-                    </div>
-
-                    {/* PIN Dots */}
-                    <div className="flex justify-center gap-2 mb-6 h-4">
-                        {Array.from({ length: Math.max(pin.length, 4) }).map((_, i) => (
-                            <div
-                                key={i}
-                                className={`w-3 h-3 rounded-full transition-colors ${i < pin.length ? 'bg-blue-600' : 'bg-gray-200'}`}
-                            />
-                        ))}
-                    </div>
-
-                    {error && (
-                        <div className="text-red-500 text-sm text-center mb-4 animate-bounce">
-                            {error}
-                        </div>
-                    )}
-
-                    {/* Keypad */}
-                    <div className="grid grid-cols-3 gap-3 mb-6">
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-                            <button
-                                key={num}
-                                onClick={() => handleKeyPress(num.toString())}
-                                className="h-14 rounded-lg bg-gray-50 hover:bg-gray-100 text-xl font-semibold text-gray-700 transition-colors shadow-sm border border-gray-100 active:scale-95"
-                            >
-                                {num}
-                            </button>
-                        ))}
-                        <button
-                            onClick={handleClear}
-                            className="h-14 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 font-medium transition-colors shadow-sm border border-red-100 active:scale-95"
-                        >
-                            Clear
-                        </button>
-                        <button
-                            onClick={() => handleKeyPress('0')}
-                            className="h-14 rounded-lg bg-gray-50 hover:bg-gray-100 text-xl font-semibold text-gray-700 transition-colors shadow-sm border border-gray-100 active:scale-95"
-                        >
-                            0
-                        </button>
-                        <button
-                            onClick={handleBackspace}
-                            className="h-14 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-600 transition-colors shadow-sm border border-gray-100 flex items-center justify-center active:scale-95"
-                        >
-                            <Delete className="w-6 h-6" />
-                        </button>
-                    </div>
-
-                    <button
-                        onClick={handleLogin}
-                        className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-md transition-colors active:scale-95"
-                    >
-                        Unlock Settings
-                    </button>
+            <div className="min-h-screen bg-slate-950 flex items-center justify-center relative overflow-hidden font-sans select-none">
+                {/* Background Image with Overlay */}
+                <div
+                    className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105"
+                    style={{ backgroundImage: `url('assets/login-bg.png')` }}
+                >
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
                 </div>
+
+                <div className="z-10 w-full max-w-5xl px-6 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                    {/* Left Side: Branding & PIN Display */}
+                    <div className="flex flex-col items-center lg:items-start text-center lg:text-left space-y-8 animate-in fade-in slide-in-from-left-8 duration-700">
+
+        <button
+            onClick={() => navigate('/')}
+            className="absolute top-8 left-8 p-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white transition-all border border-white/20"
+        >
+            <ArrowLeft className="w-6 h-6" />
+        </button>
+
+          <div className="relative">
+                             <div className="w-24 h-24 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-3xl flex items-center justify-center shadow-2xl transform -rotate-6 border border-white/20">
+                                <Shield className="w-12 h-12 text-white" />
+                             </div>
+                             <div className="absolute -top-2 -right-2 w-10 h-10 bg-white/10 backdrop-blur-md rounded-full border border-white/20 flex items-center justify-center">
+                                <Lock className="w-5 h-5 text-cyan-300" />
+                             </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <h1 className="text-5xl lg:text-6xl font-black text-white tracking-tight drop-shadow-lg">
+                                DEVELOPER
+                            </h1>
+                            <p className="text-cyan-100/70 text-lg font-medium tracking-wide">
+                                Enter System Access PIN
+                            </p>
+                        </div>
+
+                        {/* PIN Display Dots */}
+                        <div className="flex gap-5 py-4">
+                            {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+                                <div
+                                    key={i}
+                                    className={`w-5 h-5 rounded-full transition-all duration-300 border-2 ${
+                                        pin.length > i
+                                            ? "bg-white border-white scale-125 shadow-[0_0_15px_rgba(255,255,255,0.8)]"
+                                            : "bg-transparent border-white/30"
+                                    }`}
+                                />
+                            ))}
+                        </div>
+
+                        {/* Hidden input to allow keyboard typing */}
+                        <input
+                            type="password"
+                            className="opacity-0 absolute -z-10"
+                            value={pin}
+                            onChange={(e) => setPin(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    handleLogin();
+                                }
+                            }}
+                            autoFocus
+                        />
+
+                        <button
+                            onClick={handleLogin}
+                            disabled={pin.length < 4}
+                            className="group relative px-8 py-4 bg-white text-slate-900 rounded-2xl font-black text-lg hover:bg-cyan-50 transition-all shadow-2xl active:scale-95 disabled:opacity-50 flex items-center gap-3 overflow-hidden"
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                            VERIFY ACCESS
+                        </button>
+
+                        {error && (
+                            <div className="bg-red-500/20 border border-red-500/50 text-red-200 px-6 py-3 rounded-2xl text-sm font-bold flex items-center gap-3 animate-bounce">
+                                {error}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Right Side: Glass Keypad */}
+                    <div className="flex justify-center lg:justify-end animate-in fade-in slide-in-from-right-8 duration-700">
+                        <div className="bg-white/10 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/20 shadow-2xl w-full max-w-[400px]">
+                            <div className="grid grid-cols-3 gap-4">
+                                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                                    <button
+                                        key={num}
+                                        onClick={() => handleKeyPress(num.toString())}
+                                        className="aspect-square rounded-2xl text-3xl font-bold text-white bg-white/5 hover:bg-white/20 transition-all active:scale-90 border border-white/10 flex items-center justify-center"
+                                    >
+                                        {num}
+                                    </button>
+                                ))}
+                                <button
+                                    onClick={handleClear}
+                                    className="aspect-square rounded-2xl flex items-center justify-center bg-red-500/20 hover:bg-red-500/40 text-red-200 transition-all border border-red-500/30 active:scale-90"
+                                >
+                                    <span className="text-xl font-bold">CLR</span>
+                                </button>
+                                <button
+                                    onClick={() => handleKeyPress('0')}
+                                    className="aspect-square rounded-2xl text-3xl font-bold text-white bg-white/5 hover:bg-white/20 transition-all active:scale-90 border border-white/10 flex items-center justify-center"
+                                >
+                                    0
+                                </button>
+                                <button
+                                    onClick={handleBackspace}
+                                    className="aspect-square rounded-2xl flex items-center justify-center bg-slate-500/20 hover:bg-slate-500/40 text-white transition-all border border-white/10 active:scale-90"
+                                >
+                                    <Delete className="w-8 h-8" />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Scrolling Footer */}
+                <div className="fixed bottom-0 left-0 w-full bg-black/60 backdrop-blur-md border-t border-white/10 py-3 overflow-hidden z-20">
+                    <div className="flex whitespace-nowrap animate-marquee-fast">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                            <span key={i} className="text-xs font-bold text-white/80 uppercase tracking-widest mx-12 flex items-center gap-4">
+                                <span className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
+                                SYSTEM DEVELOPED AND MAINTAINED BY <span className="text-cyan-400">WHIZPOINT SOLUTIONS</span>
+                                <span className="text-white/40">|</span>
+                                TELL/WHATSAPP <span className="text-cyan-400">0740 841 168</span> TO GET STARTED
+                            </span>
+                        ))}
+                    </div>
+                </div>
+
+                <style>{`
+                    @keyframes marquee {
+                        0% { transform: translateX(0); }
+                        100% { transform: translateX(-50%); }
+                    }
+                    .animate-marquee-fast {
+                        animation: marquee 30s linear infinite;
+                    }
+                `}</style>
             </div>
         );
     }

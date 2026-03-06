@@ -1,10 +1,11 @@
 import React from 'react';
-import { HashRouter as Router } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import { usePosStore } from './store/posStore';
 import CheckoutModal from './components/CheckoutModal';
 import MainNavigator from './pages/MainNavigator';
 import BusinessRegistrationPage from './pages/BusinessRegistrationPage';
 import LoginScreen from './components/LoginScreen';
+import DeveloperPage from './pages/DeveloperPage';
 import OnScreenKeyboard from './components/OnScreenKeyboard';
 import ChangelogModal from './components/ChangelogModal';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -122,7 +123,14 @@ function App() {
   }, []);
 
   if (!isDataLoaded) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-sky-500 border-t-transparent animate-spin rounded-full mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading WHIZ POS...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!businessSetup || !businessSetup.isSetup) {
@@ -137,7 +145,10 @@ function App() {
     <ErrorBoundary>
       <Router>
         <div className="min-h-screen bg-gray-100">
-          {showLogin ? <LoginScreen /> : <MainNavigator />}
+          <Routes>
+            <Route path="/developer" element={<DeveloperPage />} />
+            <Route path="*" element={showLogin ? <LoginScreen /> : <MainNavigator />} />
+          </Routes>
 
           {/* Global Modals */}
           <CheckoutModal />

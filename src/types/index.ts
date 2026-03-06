@@ -26,6 +26,10 @@ export interface Transaction {
   cashier: string;
   creditCustomer?: string;
   status: 'completed' | 'pending' | 'refunded';
+  amountTendered?: number;
+  change?: number;
+  mpesaCode?: string;
+  phoneNumber?: string;
 }
 
 export interface CreditCustomer {

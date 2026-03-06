@@ -3,6 +3,7 @@ import { usePosStore } from '../store/posStore';
 import { cn } from '../lib/utils';
 import { Shield, ArrowRight, Delete, X, Fingerprint } from 'lucide-react';
 import { useToast } from './ui/use-toast';
+import { useNavigate } from 'react-router-dom';
 import { soundManager } from '../lib/soundUtils';
 
 const LoginScreen = () => {
@@ -11,6 +12,7 @@ const LoginScreen = () => {
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleKeyPress = (key: string) => {
     if (isLoading) return;
@@ -84,6 +86,7 @@ const LoginScreen = () => {
           soundManager.playSuccess();
           toast("Login Successful", "success");
           setSession(result.user, result.token);
+          navigate('/', { replace: true });
         } else {
           soundManager.playError();
           setError(result.error || 'Login failed');
@@ -94,6 +97,7 @@ const LoginScreen = () => {
         soundManager.playSuccess();
         toast("Login Successful (Dev Mode)", "success");
         setSession(userToLogin, 'dev-token');
+        navigate('/', { replace: true });
       }
     } catch (e) {
       setError('System Error during Login');
@@ -232,6 +236,15 @@ const LoginScreen = () => {
           animation: marquee 30s linear infinite;
         }
       `}</style>
+      {/* Floating Developer Access Button */}
+      <button
+        onClick={() => navigate('/developer')}
+        className="fixed bottom-12 left-6 z-50 p-3 bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/20 rounded-full text-white/50 hover:text-white transition-all shadow-lg"
+        title="Developer Mode"
+      >
+        <Shield className="w-5 h-5" />
+      </button>
+
     </div>
   );
 };

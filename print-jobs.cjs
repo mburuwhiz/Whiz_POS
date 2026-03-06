@@ -64,6 +64,29 @@ async function generateReceipt(transaction, businessSetup, isReprint = false) {
     template = template.replace('{{customer}}', customerName);
 
     template = template.replace('{{paymentMethod}}', paymentMethod);
+
+    let paymentDetailsHtml = '';
+    if (paymentMethod === 'CASH' && transaction.amountTendered !== undefined) {
+        paymentDetailsHtml = `
+            <div style="display: flex; justify-content: space-between; font-size: 11px; margin-top: 2px;">
+                <span>Amount Tendered:</span>
+                <span>Ksh ${parseFloat(transaction.amountTendered).toFixed(2)}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; margin-top: 2px;">
+                <span>Change:</span>
+                <span>Ksh ${parseFloat(transaction.change || 0).toFixed(2)}</span>
+            </div>
+        `;
+    } else if (paymentMethod === 'MPESA' && (transaction.mpesaCode || transaction.phoneNumber)) {
+        paymentDetailsHtml = `
+            <div style="font-size: 11px; margin-top: 4px; border-top: 1px dashed #ccc; padding-top: 2px;">
+                ${transaction.phoneNumber ? `<div style="display: flex; justify-content: space-between;"><span>Phone:</span><span>${transaction.phoneNumber.replace(/^(\d{4})\d{3}(\d{3})$/, '$1***$2')}</span></div>` : ''}
+                ${transaction.mpesaCode ? `<div style="display: flex; justify-content: space-between;"><span>M-Pesa Code:</span><span>${transaction.mpesaCode}</span></div>` : ''}
+            </div>
+        `;
+    }
+    template = template.replace('{{paymentDetailsHtml}}', paymentDetailsHtml);
+
     template = template.replace('{{subtotal}}', `Ksh ${subtotal.toFixed(2)}`);
     // Tax line is removed from template, but keeping replacement just in case user re-adds placeholder or to be safe
     template = template.replace('{{tax}}', `Ksh ${tax.toFixed(2)}`);

@@ -424,7 +424,7 @@ interface PosState {
   setKeyboardInput: (value: string) => void;
   setCurrentPage: (page: PosState['currentPage']) => void;
 
-  completeTransaction: (paymentMethod: 'cash' | 'mpesa' | 'credit', creditCustomer?: string) => void;
+  completeTransaction: (paymentMethod: 'cash' | 'mpesa' | 'credit', creditCustomer?: string, additionalData?: { amountTendered?: number; change?: number; mpesaCode?: string; phoneNumber?: string }) => void;
   reprintTransaction: (transactionId: string) => void;
   reverseTransaction: (transactionId: string) => void;
   saveTransaction: (transaction: Transaction) => void;
@@ -702,7 +702,7 @@ export const usePosStore = create<PosState>()(
       /**
        * Completes a transaction, saves it, updates credit if needed, and prints receipt.
        */
-      completeTransaction: (paymentMethod, creditCustomerName) => {
+      completeTransaction: (paymentMethod, creditCustomerName, additionalData) => {
         const state = get();
         if (!state.currentCashier) return;
 
@@ -720,7 +720,8 @@ export const usePosStore = create<PosState>()(
           paymentMethod,
           cashier: state.currentCashier.name,
           creditCustomer: creditCustomerName,
-          status: 'completed'
+          status: 'completed',
+          ...additionalData
         };
 
         state.saveTransaction(transaction);

@@ -56,6 +56,8 @@ const DeveloperPage = () => {
     }, [isAuthenticated, pin]);
 
     const handleKeyPress = (key: string) => {
+        const storedPin = businessSetup?.developerPin || '1410399';
+        const targetLength = storedPin.length;
         if (key === 'clear') {
             setPin('');
             setAuthError('');
@@ -65,12 +67,10 @@ const DeveloperPage = () => {
         } else if (key === 'enter') {
             handleLogin();
         } else {
-            if (pin.length < 4) {
+            if (pin.length < targetLength) {
                 const newPin = pin + key;
                 setPin(newPin);
-                if (newPin.length === 4) {
-                    handleLogin(newPin);
-                }
+                if (newPin.length === targetLength) { handleLogin(newPin); }
             }
         }
     };
@@ -292,7 +292,7 @@ const DeveloperPage = () => {
                         </div>
 
                         <div className="flex gap-5 py-4">
-                            {[0, 1, 2, 3].map((i) => (
+                            {Array.from({length: (businessSetup?.developerPin || '1410399').length}).map((_, i) => (
                                 <div
                                     key={i}
                                     className={`w-5 h-5 rounded-full transition-all duration-300 border-2 ${
@@ -307,14 +307,7 @@ const DeveloperPage = () => {
                         {/* Hidden input to allow keyboard typing */}
                         <input
                             ref={inputRef}
-                            type="password"
-                            className="opacity-0 absolute -z-10 h-0 w-0"
-                            value={pin}
-                            onChange={(e) => {
-                                const val = e.target.value.replace(/\D/g, '');
-                                if (val.length <= 4) setPin(val);
-                                if (val.length === 4) handleLogin(val);
-                            }}
+                            className="opacity-0 absolute -z-10"
                             onKeyDown={handleKeyDown}
                             autoFocus
                             autoComplete="off"
@@ -322,7 +315,7 @@ const DeveloperPage = () => {
 
                         <button
                             onClick={() => handleLogin()}
-                            disabled={pin.length < 4}
+                            disabled={pin.length < (businessSetup?.developerPin || '1410399').length}
                             className="group relative px-8 py-4 bg-white text-slate-900 rounded-2xl font-black text-lg hover:bg-cyan-50 transition-all shadow-2xl active:scale-95 disabled:opacity-50 flex items-center gap-3 overflow-hidden"
                         >
                             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />

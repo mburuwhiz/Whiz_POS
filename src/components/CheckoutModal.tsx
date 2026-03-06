@@ -66,7 +66,8 @@ export default function CheckoutModal() {
    * Finalizes the transaction.
    * Validates credit customer selection if payment method is credit.
    */
-  const handleComplete = (overrideMpesaCode?: string) => {
+  const handleComplete = (overrideMpesaCode?: string | React.MouseEvent | any) => {
+    const finalMpesaCode = typeof overrideMpesaCode === 'string' ? overrideMpesaCode : undefined;
     if (paymentMethod === 'credit' && !creditCustomer.trim()) {
       soundManager.playError();
       alert('Please select a customer for credit payment');
@@ -86,7 +87,7 @@ export default function CheckoutModal() {
         additionalData.change = change;
     }
     if (paymentMethod === 'mpesa') {
-        if (overrideMpesaCode || mpesaCode) additionalData.mpesaCode = overrideMpesaCode || mpesaCode;
+        if (finalMpesaCode || mpesaCode) additionalData.mpesaCode = finalMpesaCode || mpesaCode;
         if (phoneNumber) additionalData.phoneNumber = phoneNumber;
     }
 
@@ -126,13 +127,13 @@ export default function CheckoutModal() {
 
   const handleStkPush = async () => {
     if (!phoneNumber || phoneNumber.length < 9) {
-      toast({ title: "Error", description: "Please enter a valid phone number (e.g. 254712345678 or 0712345678)", variant: "destructive" });
+      toast("Please enter a valid phone number (e.g. 254712345678 or 0712345678)", "error");
       return;
     }
 
     const config = businessSetup?.mpesaConfig;
     if (!config?.backendUrl || !config?.apiKey) {
-      toast({ title: "Error", description: "M-Pesa backend URL or API Key is not configured in Developer settings.", variant: "destructive" });
+      toast("M-Pesa backend URL or API Key is not configured in Developer settings.", "error");
       return;
     }
 
@@ -140,7 +141,7 @@ export default function CheckoutModal() {
     soundManager.playClick();
 
     try {
-      toast({ title: "Processing", description: "Initiating STK Push via backend..." });
+      toast("Initiating STK Push via backend...", "info");
 
       const payload = {
         phoneNumber,
@@ -169,11 +170,11 @@ export default function CheckoutModal() {
       const checkoutRequestID = responseData.CheckoutRequestID || responseData.data?.CheckoutRequestID;
 
       if (!checkoutRequestID) {
-        toast({ title: "Warning", description: "Prompt sent, but missing request ID for tracking." });
+        toast("Prompt sent, but missing request ID for tracking.", "info");
         return;
       }
 
-      toast({ title: "Prompt Sent", description: `Waiting for user ${phoneNumber} to enter PIN...` });
+      toast(`Waiting for user ${phoneNumber} to enter PIN...`, "info");
 
       let attempts = 0;
       let isSuccess = false;
@@ -209,14 +210,14 @@ export default function CheckoutModal() {
 
       if (isSuccess) {
         soundManager.playCheckout();
-        toast({ title: "Success", description: "Payment Received Successfully!" });
+        toast("Payment Received Successfully!", "info");
         handleComplete(finalCode);
       } else {
         throw new Error("Transaction timed out waiting for confirmation.");
       }
 
     } catch (e: any) {
-      toast({ title: "Payment Failed", description: e.message || "Failed to process STK Push", variant: "destructive" });
+      toast(e.message || "Failed to process STK Push", "error");
       soundManager.playError();
     } finally {
       setIsStkPushing(false);

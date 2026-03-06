@@ -291,10 +291,15 @@ export interface BusinessSetup {
   autoLogoffEnabled?: boolean;
   autoLogoffMinutes?: number;
   mpesaConfig?: {
+    enabled: boolean;
+    backendUrl: string;
+    apiKey: string;
     consumerKey: string;
     consumerSecret: string;
     passkey: string;
     shortcode: string;
+    partyB: string;
+    callbackUrl: string;
     type: 'Paybill' | 'Till';
     environment: 'Sandbox' | 'Production';
   };

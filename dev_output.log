@@ -24,3 +24,12 @@
 [dev:vite]
 [dev:vite] warn - The class `duration-[10s]` is ambiguous and matches multiple utilities.
 [dev:vite] warn - If this is content and not a class, replace it with `duration-&lsqb;10s&rsqb;` to silence this warning.
+[dev:vite] 3:31:19 PM [vite] hmr update /src/pages/DeveloperPage.tsx, /src/index.css
+[dev:vite] 3:33:20 PM [vite] hmr update /src/pages/DeveloperPage.tsx, /src/index.css
+[dev:vite] 3:36:44 PM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html
+[dev:vite] 3:36:44 PM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html
+[dev:vite] 3:36:45 PM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html
+[dev:vite] 3:36:45 PM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html
+[dev:vite] 3:36:45 PM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html
+[dev:vite] 3:37:29 PM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html
+[dev:vite] 3:38:24 PM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html

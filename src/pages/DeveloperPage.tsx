@@ -102,8 +102,8 @@ const DeveloperPage = () => {
     const loadConfig = async () => {
         try {
             if (window.electron && window.electron.readData) {
-                const configStr = await window.electron.readData('business-setup.json');
-                const config = JSON.parse(configStr || '{}');
+                const configData = await window.electron.readData('business-setup.json');
+                const config = typeof configData === 'string' ? JSON.parse(configData || '{}') : (configData || {});
                 setBackOfficeUrl(config.backOfficeUrl || config.apiUrl || '');
                 setBackOfficeApiKey(config.backOfficeApiKey || config.apiKey || '');
                 setShowDevFooter(config.showDeveloperFooter !== false);
@@ -126,12 +126,12 @@ const DeveloperPage = () => {
         try {
             if (window.electron && window.electron.readData) {
                 const logData = await window.electron.readData('app-errors.log');
-                setLogs(logData || 'No logs recorded.');
+                setLogs(typeof logData === 'string' ? logData : JSON.stringify(logData || 'No logs recorded.'));
             } else {
                 setLogs('Logs are only available in the Desktop App environment.');
             }
         } catch (e) {
-            setLogs('Failed to read logs.');
+            setLogs('Failed to read logs. ' + (e instanceof Error ? e.message : String(e)));
         } finally {
             setIsLoadingLogs(false);
         }
@@ -707,7 +707,7 @@ const DeveloperPage = () => {
                                 {isLoadingLogs ? (
                                     <div className="flex items-center justify-center h-full text-gray-500">Retrieving system buffer...</div>
                                 ) : logs ? (
-                                    <pre className="whitespace-pre-wrap">{logs}</pre>
+                                    <pre className="whitespace-pre-wrap">{typeof logs === 'string' ? logs : JSON.stringify(logs, null, 2)}</pre>
                                 ) : (
                                     <div className="flex items-center justify-center h-full text-gray-500">No buffer data available. Click refresh to poll.</div>
                                 )}

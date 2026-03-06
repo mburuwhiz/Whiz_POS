@@ -11,7 +11,11 @@ import { useToast } from './ui/use-toast';
  */
 export default function CheckoutModal() {
   const { isCheckoutOpen, closeCheckout, cart, completeTransaction, businessSetup } = usePosStore();
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'mpesa' | 'credit'>('cash');
+
+  // Flow state: 'select' -> 'details'
+  const [checkoutStep, setCheckoutStep] = useState<'select' | 'details'>('select');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'mpesa' | 'credit' | null>(null);
+
   const [creditCustomer, setCreditCustomer] = useState('');
   const [isCreditModalOpen, setIsCreditModalOpen] = useState(false);
   const [amountTendered, setAmountTendered] = useState<string>('');
@@ -22,6 +26,18 @@ export default function CheckoutModal() {
   const [mpesaCode, setMpesaCode] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [mpesaVerificationMode, setMpesaVerificationMode] = useState<'manual' | 'auto'>('manual');
+
+  // Reset state when opened/closed
+  useEffect(() => {
+    if (isCheckoutOpen) {
+      setCheckoutStep('select');
+      setPaymentMethod(null);
+      setAmountTendered('');
+      setMpesaCode('');
+      setPhoneNumber('');
+      setCreditCustomer('');
+    }
+  }, [isCheckoutOpen]);
 
   // Calculate totals
   const subtotal = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
@@ -50,7 +66,7 @@ export default function CheckoutModal() {
    * Finalizes the transaction.
    * Validates credit customer selection if payment method is credit.
    */
-  const handleComplete = () => {
+  const handleComplete = (overrideMpesaCode?: string) => {
     if (paymentMethod === 'credit' && !creditCustomer.trim()) {
       soundManager.playError();
       alert('Please select a customer for credit payment');
@@ -70,7 +86,7 @@ export default function CheckoutModal() {
         additionalData.change = change;
     }
     if (paymentMethod === 'mpesa') {
-        if (mpesaCode) additionalData.mpesaCode = mpesaCode;
+        if (overrideMpesaCode || mpesaCode) additionalData.mpesaCode = overrideMpesaCode || mpesaCode;
         if (phoneNumber) additionalData.phoneNumber = phoneNumber;
     }
 
@@ -97,19 +113,26 @@ export default function CheckoutModal() {
   const handlePaymentMethodChange = (method: 'cash' | 'mpesa' | 'credit') => {
     soundManager.playPop();
     setPaymentMethod(method);
+    setCheckoutStep('details');
     if (method === 'credit') {
       setIsCreditModalOpen(true);
     }
   };
 
+  const handleBackToSelect = () => {
+    setCheckoutStep('select');
+    setPaymentMethod(null);
+  };
+
   const handleStkPush = async () => {
-    if (!phoneNumber) {
-      toast("Please enter a phone number", "error");
+    if (!phoneNumber || phoneNumber.length < 9) {
+      toast({ title: "Error", description: "Please enter a valid phone number (e.g. 254712345678 or 0712345678)", variant: "destructive" });
       return;
     }
 
-    if (!businessSetup?.mpesaConfig?.consumerKey || !businessSetup?.mpesaConfig?.shortcode) {
-      toast("M-Pesa Daraja credentials not configured in Developer settings.", "error");
+    const config = businessSetup?.mpesaConfig;
+    if (!config?.backendUrl || !config?.apiKey) {
+      toast({ title: "Error", description: "M-Pesa backend URL or API Key is not configured in Developer settings.", variant: "destructive" });
       return;
     }
 
@@ -117,26 +140,84 @@ export default function CheckoutModal() {
     soundManager.playClick();
 
     try {
-      // Simulate API Call to Daraja
-      toast("Initiating STK Push...", "default");
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      toast({ title: "Processing", description: "Initiating STK Push via backend..." });
 
-      toast(`Prompt sent to ${phoneNumber}. Waiting for user to enter PIN...`, "default");
+      const payload = {
+        phoneNumber,
+        amount: total,
+        accountReference: 'POS-Checkout',
+        transactionDesc: 'Payment for items'
+      };
 
-      // Simulate polling/waiting for callback
-      await new Promise(resolve => setTimeout(resolve, 4000));
+      const backendUrl = config.backendUrl.replace(/\/$/, '');
+      const response = await fetch(`${backendUrl}/api/mpesa/stkpush`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': config.apiKey,
+          'Authorization': `Bearer ${config.apiKey}`
+        },
+        body: JSON.stringify(payload)
+      });
 
-      soundManager.playSuccess();
-      toast("Payment Received Successfully!", "success");
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.message || 'Failed to initiate STK Push on backend');
+      }
 
-      // Auto-fill a mock receipt code
-      const generatedCode = "MPESA" + Math.random().toString(36).substring(2, 8).toUpperCase();
-      setMpesaCode(generatedCode);
-      setMpesaVerificationMode('manual'); // Switch to manual to show the code before completion
+      const responseData = await response.json();
+      const checkoutRequestID = responseData.CheckoutRequestID || responseData.data?.CheckoutRequestID;
 
-    } catch (error) {
+      if (!checkoutRequestID) {
+        toast({ title: "Warning", description: "Prompt sent, but missing request ID for tracking." });
+        return;
+      }
+
+      toast({ title: "Prompt Sent", description: `Waiting for user ${phoneNumber} to enter PIN...` });
+
+      let attempts = 0;
+      let isSuccess = false;
+      let finalCode = "";
+      const maxAttempts = 15; // 45 seconds polling
+
+      while (attempts < maxAttempts && !isSuccess) {
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        attempts++;
+
+        try {
+          const checkResponse = await fetch(`${backendUrl}/api/mpesa/status/${checkoutRequestID}`, {
+            headers: {
+               'x-api-key': config.apiKey,
+               'Authorization': `Bearer ${config.apiKey}`
+            }
+          });
+
+          if (checkResponse.ok) {
+             const statusData = await checkResponse.json();
+             if (statusData.status === 'completed' || statusData.status === 'Success' || statusData.ResultCode === 0) {
+               isSuccess = true;
+               finalCode = statusData.receiptNumber || statusData.MpesaReceiptNumber || "AUTO-CONFIRMED";
+               setMpesaCode(finalCode);
+             } else if (statusData.status === 'failed' || (statusData.ResultCode !== undefined && statusData.ResultCode !== 0)) {
+               throw new Error(statusData.ResultDesc || 'Transaction failed or was cancelled by user.');
+             }
+          }
+        } catch (pollErr: any) {
+           console.log("Polling... ", pollErr.message);
+        }
+      }
+
+      if (isSuccess) {
+        soundManager.playCheckout();
+        toast({ title: "Success", description: "Payment Received Successfully!" });
+        handleComplete(finalCode);
+      } else {
+        throw new Error("Transaction timed out waiting for confirmation.");
+      }
+
+    } catch (e: any) {
+      toast({ title: "Payment Failed", description: e.message || "Failed to process STK Push", variant: "destructive" });
       soundManager.playError();
-      toast("STK Push failed or timed out", "error");
     } finally {
       setIsStkPushing(false);
     }
@@ -177,161 +258,195 @@ export default function CheckoutModal() {
             </button>
           </div>
 
-          <div className="p-6">
-            <div className="space-y-3 mb-6 bg-gray-50 p-4 rounded-xl">
-              <div className="flex justify-between text-md">
-                <span className="text-gray-600">Subtotal</span>
-                <span className="font-medium">KES {subtotal.toFixed(2)}</span>
+          {checkoutStep === 'select' ? (
+            <div className="p-6">
+              <div className="space-y-3 mb-6 bg-gray-50 p-4 rounded-xl">
+                <div className="flex justify-between text-md">
+                  <span className="text-gray-600">Subtotal</span>
+                  <span className="font-medium">KES {subtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-md">
+                  <span className="text-gray-600">VAT (0%)</span>
+                  <span className="font-medium">KES {tax.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-2xl font-bold text-gray-800 pt-3 border-t-2 border-dashed">
+                  <span>Total</span>
+                  <span className="text-blue-600">KES {total.toFixed(2)}</span>
+                </div>
               </div>
-              <div className="flex justify-between text-md">
-                <span className="text-gray-600">VAT (0%)</span>
-                <span className="font-medium">KES {tax.toFixed(2)}</span>
+
+              <div className="space-y-4">
+                <h3 className="font-semibold text-gray-700 mb-2 text-lg">Select Payment Method</h3>
+
+                <PaymentButton
+                    method="cash"
+                    current={paymentMethod}
+                    setMethod={setPaymentMethod}
+                    icon={<Wallet className="w-8 h-8 text-green-500" />}
+                    label="Cash"
+                />
+
+                <PaymentButton
+                    method="mpesa"
+                    current={paymentMethod}
+                    setMethod={setPaymentMethod}
+                    icon={<Smartphone className="w-8 h-8 text-blue-500" />}
+                    label="M-Pesa"
+                />
+
+                <PaymentButton
+                    method="credit"
+                    current={paymentMethod}
+                    setMethod={setPaymentMethod}
+                    icon={<CreditCard className="w-8 h-8 text-orange-500" />}
+                    label="Credit"
+                />
               </div>
-              <div className="flex justify-between text-2xl font-bold text-gray-800 pt-3 border-t-2 border-dashed">
-                <span>Total</span>
-                <span className="text-blue-600">KES {total.toFixed(2)}</span>
-              </div>
-            </div>
 
-            <div className="space-y-4">
-              <h3 className="font-semibold text-gray-700 mb-2 text-lg">Payment Method</h3>
-
-              <PaymentButton
-                  method="cash"
-                  current={paymentMethod}
-                  setMethod={setPaymentMethod}
-                  icon={<Wallet className="w-8 h-8 text-green-500" />}
-                  label="Cash"
-              />
-
-              {paymentMethod === 'cash' && (
-                  <div className="bg-gray-50 p-4 rounded-xl space-y-3 mt-2 animate-in fade-in slide-in-from-top-2">
-                      <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Amount Tendered (Optional)
-                          </label>
-                          <input
-                              type="number"
-                              value={amountTendered}
-                              onChange={(e) => setAmountTendered(e.target.value)}
-                              placeholder={`e.g. ${total}`}
-                              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-lg"
-                          />
-                      </div>
-                      {amountTendered !== '' && tendered >= total && (
-                          <div className="flex justify-between text-lg font-bold text-green-600 bg-green-50 p-2 rounded-lg">
-                              <span>Change:</span>
-                              <span>KES {change.toFixed(2)}</span>
-                          </div>
-                      )}
-                  </div>
-              )}
-
-              <PaymentButton
-                  method="mpesa"
-                  current={paymentMethod}
-                  setMethod={setPaymentMethod}
-                  icon={<Smartphone className="w-8 h-8 text-blue-500" />}
-                  label="M-Pesa"
-              />
-
-              {paymentMethod === 'mpesa' && (
-                  <div className="bg-gray-50 p-4 rounded-xl space-y-4 mt-2 animate-in fade-in slide-in-from-top-2 border border-blue-100">
-                      <div className="flex gap-2 p-1 bg-white rounded-lg border border-gray-200">
-                          <button
-                              onClick={() => setMpesaVerificationMode('manual')}
-                              className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${mpesaVerificationMode === 'manual' ? 'bg-blue-100 text-blue-700 shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
-                          >
-                              Manual Code
-                          </button>
-                          <button
-                              onClick={() => setMpesaVerificationMode('auto')}
-                              className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${mpesaVerificationMode === 'auto' ? 'bg-blue-100 text-blue-700 shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
-                          >
-                              Auto (STK Push)
-                          </button>
-                      </div>
-
-                      {mpesaVerificationMode === 'manual' ? (
-                          <div className="space-y-3">
-                              <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                                      M-Pesa Code
-                                  </label>
-                                  <input
-                                      type="text"
-                                      value={mpesaCode}
-                                      onChange={(e) => setMpesaCode(e.target.value.toUpperCase())}
-                                      placeholder="e.g. QWE123RTY"
-                                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none uppercase font-mono"
-                                  />
-                              </div>
-                          </div>
-                      ) : (
-                          <div className="space-y-3">
-                              <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                                      Customer Phone Number
-                                  </label>
-                                  <input
-                                      type="tel"
-                                      value={phoneNumber}
-                                      onChange={(e) => setPhoneNumber(e.target.value)}
-                                      placeholder="07... or 01..."
-                                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                  />
-                              </div>
-                              <button
-                                  className={`w-full py-3 text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 ${isStkPushing ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
-                                  onClick={handleStkPush}
-                                  disabled={isStkPushing}
-                              >
-                                  {isStkPushing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Smartphone className="w-5 h-5" />}
-                                  {isStkPushing ? 'Processing Payment...' : 'Send Payment Prompt'}
-                              </button>
-                          </div>
-                      )}
-                  </div>
-              )}
-
-              <PaymentButton
-                  method="credit"
-                  current={paymentMethod}
-                  setMethod={setPaymentMethod}
-                  icon={<CreditCard className="w-8 h-8 text-orange-500" />}
-                  label="Credit"
-              />
-            </div>
-
-            {paymentMethod === 'credit' && (
-              <div className="mt-6 animate-in fade-in slide-in-from-top-2">
-                <label className="block text-md font-medium text-gray-700 mb-2">
-                  Customer
-                </label>
+              <div className="mt-8">
                 <button
-                  onClick={() => setIsCreditModalOpen(true)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg text-left"
+                  onClick={closeCheckout}
+                  className="w-full px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-100 transition-colors"
                 >
-                  {creditCustomer || 'Select a customer'}
+                  Cancel Order
                 </button>
               </div>
-            )}
-
-            <div className="flex gap-4 mt-8">
-              <button
-                onClick={closeCheckout}
-                className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleComplete}
-                className="flex-1 px-6 py-3 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 transition-colors"
-              >
-                Complete Payment
-              </button>
             </div>
-          </div>
+          ) : (
+            <div className="p-6 animate-in fade-in slide-in-from-right-4">
+               {/* Detail View Header */}
+               <div className="flex items-center gap-3 mb-6 pb-4 border-b">
+                  <button onClick={handleBackToSelect} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors">
+                      <X className="w-5 h-5 text-gray-600 rotate-45" /> {/* Makes it look like a back button using X temporarily, ideally use ArrowLeft */}
+                  </button>
+                  <h3 className="text-xl font-bold text-gray-800 capitalize">{paymentMethod} Payment</h3>
+                  <div className="ml-auto text-xl font-bold text-blue-600">KES {total.toFixed(2)}</div>
+               </div>
+
+                {paymentMethod === 'cash' && (
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Amount Tendered (Optional)
+                            </label>
+                            <input
+                                type="number"
+                                value={amountTendered}
+                                onChange={(e) => setAmountTendered(e.target.value)}
+                                placeholder={`e.g. ${total}`}
+                                className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-2xl font-bold"
+                            />
+                        </div>
+                        {amountTendered !== '' && tendered >= total && (
+                            <div className="flex justify-between items-center text-xl font-bold text-green-700 bg-green-50 p-4 rounded-xl border border-green-200">
+                                <span>Change to return:</span>
+                                <span>KES {change.toFixed(2)}</span>
+                            </div>
+                        )}
+                        {amountTendered !== '' && tendered < total && (
+                            <div className="flex justify-between items-center text-md font-bold text-red-600 bg-red-50 p-4 rounded-xl border border-red-200">
+                                <span>Insufficient amount</span>
+                                <span>Needs KES {(total - tendered).toFixed(2)} more</span>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {paymentMethod === 'mpesa' && (
+                    <div className="space-y-4">
+                        <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
+                            <button
+                                onClick={() => setMpesaVerificationMode('manual')}
+                                className={`flex-1 py-3 text-sm font-bold rounded-md transition-all ${mpesaVerificationMode === 'manual' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                            >
+                                Enter Manual Code
+                            </button>
+                            <button
+                                onClick={() => setMpesaVerificationMode('auto')}
+                                className={`flex-1 py-3 text-sm font-bold rounded-md transition-all ${mpesaVerificationMode === 'auto' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                            >
+                                Send Prompt to Phone
+                            </button>
+                        </div>
+
+                        {mpesaVerificationMode === 'manual' ? (
+                            <div className="space-y-3 mt-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        M-Pesa Confirmation Code
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={mpesaCode}
+                                        onChange={(e) => setMpesaCode(e.target.value.toUpperCase())}
+                                        placeholder="e.g. QWE123RTY"
+                                        className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none uppercase font-mono text-xl tracking-widest text-center"
+                                    />
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-4 mt-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Customer Phone Number
+                                    </label>
+                                    <input
+                                        type="tel"
+                                        value={phoneNumber}
+                                        onChange={(e) => setPhoneNumber(e.target.value)}
+                                        placeholder="07XX XXX XXX or 01XX XXX XXX"
+                                        className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-xl text-center tracking-wider"
+                                    />
+                                </div>
+                                <button
+                                    className={`w-full py-4 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-3 text-lg shadow-md ${isStkPushing ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 active:scale-[0.98]'}`}
+                                    onClick={handleStkPush}
+                                    disabled={isStkPushing}
+                                >
+                                    {isStkPushing ? <Loader2 className="w-6 h-6 animate-spin" /> : <Smartphone className="w-6 h-6" />}
+                                    {isStkPushing ? 'Waiting for PIN & Processing...' : 'Send Payment Prompt'}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {paymentMethod === 'credit' && (
+                  <div className="space-y-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Select Customer Account
+                    </label>
+                    <button
+                      onClick={() => setIsCreditModalOpen(true)}
+                      className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl text-left text-lg font-medium hover:bg-gray-50 transition-colors flex justify-between items-center"
+                    >
+                      {creditCustomer || <span className="text-gray-400">Click to select customer...</span>}
+                      <CreditCard className="w-6 h-6 text-gray-400" />
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex gap-4 mt-8 pt-6 border-t">
+                  <button
+                    onClick={handleBackToSelect}
+                    className="flex-1 px-6 py-4 border-2 border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={handleComplete}
+                    disabled={
+                      (paymentMethod === 'cash' && amountTendered !== '' && tendered < total) ||
+                      (paymentMethod === 'mpesa' && mpesaVerificationMode === 'manual' && mpesaCode.length < 5) ||
+                      (paymentMethod === 'credit' && !creditCustomer)
+                    }
+                    className="flex-[2] px-6 py-4 bg-green-500 text-white font-bold text-lg rounded-xl hover:bg-green-600 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
+                  >
+                    Complete Payment
+                  </button>
+                </div>
+            </div>
+          )}
         </div>
       </div>
       <CreditCustomerModal

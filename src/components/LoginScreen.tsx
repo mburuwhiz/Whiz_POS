@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { usePosStore } from '../store/posStore';
 import { cn } from '../lib/utils';
-import { Shield, ArrowRight, Delete, X, Fingerprint } from 'lucide-react';
+import { Shield, ArrowRight, Delete, X, Fingerprint, Monitor } from 'lucide-react';
 import { useToast } from './ui/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { soundManager } from '../lib/soundUtils';
@@ -13,6 +13,19 @@ const LoginScreen = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+
+  const toggleFullScreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((err) => {
+        console.error('Error attempting to enable full-screen mode:', err);
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  };
+
 
   const handleKeyPress = (key: string) => {
     if (isLoading) return;
@@ -243,6 +256,14 @@ const LoginScreen = () => {
         title="Developer Mode"
       >
         <Shield className="w-5 h-5" />
+      </button>
+      {/* Fullscreen Toggle */}
+      <button
+        onClick={toggleFullScreen}
+        className="fixed bottom-12 right-6 z-50 p-3 bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/20 rounded-full text-white/50 hover:text-white transition-all shadow-lg"
+        title="Toggle Fullscreen"
+      >
+        <Monitor className="w-5 h-5" />
       </button>
 
     </div>

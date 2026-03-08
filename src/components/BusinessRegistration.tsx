@@ -24,7 +24,7 @@ const steps = [
 
 export default function BusinessRegistration() {
   const [currentStep, setCurrentStep] = useState(0);
-  const { finishSetup } = usePosStore();
+  const { finishSetup, users, saveBusinessSetup } = usePosStore();
 
   const [formData, setFormData] = useState({
     businessName: '',
@@ -112,6 +112,44 @@ export default function BusinessRegistration() {
     }
   };
 
+  const handleRecovery = async () => {
+    if (!window.confirm("This will restore basic system configuration to allow you to log in with your existing PIN. Are you sure you want to proceed?")) {
+      return;
+    }
+
+    soundManager.playClick();
+    setIsSubmitting(true);
+
+    const recoveryData = {
+      businessName: 'Recovered Business',
+      address: 'Please update in settings',
+      phone: '',
+      email: '',
+      servedByLabel: 'Cashier',
+      mpesaPaybill: '',
+      mpesaTill: '',
+      mpesaAccountNumber: '',
+      tax: 0,
+      subtotal: 0,
+      isSetup: true,
+      isLoggedIn: false,
+      printerType: 'thermal' as const,
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      await saveBusinessSetup(recoveryData);
+      soundManager.playSuccess();
+      window.location.reload();
+    } catch (error) {
+      console.error('Recovery failed:', error);
+      soundManager.playError();
+      alert("Recovery failed. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const stepVariants = {
     enter: { x: 50, opacity: 0 },
     center: { x: 0, opacity: 1 },
@@ -128,12 +166,22 @@ export default function BusinessRegistration() {
             </div>
             <h1 className="text-4xl font-bold text-white">Hi, Thank you for choosing Whiz Pos</h1>
             <p className="text-xl text-blue-100">Let's get you started. We are so excited to help you grow your business today. 👋</p>
-            <button
-              onClick={handleNext}
-              className="mt-8 bg-blue-600 hover:bg-blue-500 text-white px-10 py-4 rounded-2xl font-bold text-xl transition-all hover:scale-105 active:scale-95 shadow-xl shadow-blue-900/20"
-            >
-              Let's Begin
-            </button>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
+              <button
+                onClick={handleNext}
+                className="bg-blue-600 hover:bg-blue-500 text-white px-10 py-4 rounded-2xl font-bold text-xl transition-all hover:scale-105 active:scale-95 shadow-xl shadow-blue-900/20"
+              >
+                Let's Begin
+              </button>
+              {users.length > 0 && (
+                <button
+                  onClick={handleRecovery}
+                  className="bg-orange-600 hover:bg-orange-500 text-white px-10 py-4 rounded-2xl font-bold text-xl transition-all hover:scale-105 active:scale-95 shadow-xl shadow-orange-900/20"
+                >
+                  Recover Data
+                </button>
+              )}
+            </div>
           </motion.div>
         );
 

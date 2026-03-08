@@ -5,7 +5,8 @@ import {
   Building2, User, Mail, Phone, MapPin,
   Tag, CreditCard, Lock, CheckCircle2,
   ChevronRight, ChevronLeft, Printer, LogIn,
-  Sparkles, PartyPopper
+  Sparkles, PartyPopper, HardDrive, Database,
+  Navigation
 } from 'lucide-react';
 import { soundManager } from '../lib/soundUtils';
 import setupBg from '../assets/setup_install_bg.png';
@@ -112,8 +113,43 @@ export default function BusinessRegistration() {
     }
   };
 
+  const handleRestoreBackup = async () => {
+    if (!window.electron) {
+      alert('Restore is only supported in Desktop mode');
+      return;
+    }
+
+    if (!window.confirm('WARNING: Restoring will overwrite all current local data with the backup archive. Are you sure you want to proceed?')) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    soundManager.playClick();
+
+    try {
+      const result = await window.electron.restoreData();
+      if (result.success) {
+        soundManager.playSuccess();
+        alert('Restore successful. Restarting application...');
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        if (result.error !== 'User cancelled restore') {
+          soundManager.playError();
+          alert(result.error);
+        }
+      }
+    } catch (e: any) {
+      soundManager.playError();
+      alert(e.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleRecovery = async () => {
-    if (!window.confirm("This will restore basic system configuration to allow you to log in with your existing PIN. Are you sure you want to proceed?")) {
+    if (!window.confirm("This will search existing data and restore basic system configuration to allow you to log in with your existing PIN. Are you sure you want to proceed?")) {
       return;
     }
 
@@ -166,21 +202,33 @@ export default function BusinessRegistration() {
             </div>
             <h1 className="text-4xl font-bold text-white">Hi, Thank you for choosing Whiz Pos</h1>
             <p className="text-xl text-blue-100">Let's get you started. We are so excited to help you grow your business today. 👋</p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
+            <div className="flex flex-col gap-4 mt-8 w-full max-w-md mx-auto">
+              <button
+                onClick={handleRestoreBackup}
+                disabled={isSubmitting}
+                className="w-full bg-slate-800 hover:bg-slate-700 text-white px-6 py-4 rounded-2xl font-bold text-lg transition-all hover:scale-105 active:scale-95 shadow-xl shadow-slate-900/20 flex items-center justify-center gap-3 disabled:opacity-50"
+              >
+                {isSubmitting ? <div className="w-5 h-5 border-2 border-white border-t-transparent animate-spin rounded-full"></div> : <HardDrive className="w-6 h-6" />}
+                1. Restore Backup
+              </button>
+
+              <button
+                onClick={handleRecovery}
+                disabled={isSubmitting}
+                className="w-full bg-orange-600 hover:bg-orange-500 text-white px-6 py-4 rounded-2xl font-bold text-lg transition-all hover:scale-105 active:scale-95 shadow-xl shadow-orange-900/20 flex items-center justify-center gap-3 disabled:opacity-50"
+              >
+                {isSubmitting ? <div className="w-5 h-5 border-2 border-white border-t-transparent animate-spin rounded-full"></div> : <Database className="w-6 h-6" />}
+                2. Search Detailed Data
+              </button>
+
               <button
                 onClick={handleNext}
-                className="bg-blue-600 hover:bg-blue-500 text-white px-10 py-4 rounded-2xl font-bold text-xl transition-all hover:scale-105 active:scale-95 shadow-xl shadow-blue-900/20"
+                disabled={isSubmitting}
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white px-6 py-4 rounded-2xl font-bold text-lg transition-all hover:scale-105 active:scale-95 shadow-xl shadow-blue-900/20 flex items-center justify-center gap-3 disabled:opacity-50"
               >
-                Let's Begin
+                <Navigation className="w-6 h-6" />
+                3. Begin Registration
               </button>
-              {users.length > 0 && (
-                <button
-                  onClick={handleRecovery}
-                  className="bg-orange-600 hover:bg-orange-500 text-white px-10 py-4 rounded-2xl font-bold text-xl transition-all hover:scale-105 active:scale-95 shadow-xl shadow-orange-900/20"
-                >
-                  Recover Data
-                </button>
-              )}
             </div>
           </motion.div>
         );

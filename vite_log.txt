@@ -18,3 +18,8 @@ warn - If this is content and not a class, replace it with `duration-&lsqb;10s&r
 3:03:37 PM [vite] page reload dist/__appImage-x64/LICENSES.chromium.html
 3:04:32 PM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html
 3:18:35 PM [vite] hmr update /src/components/BusinessRegistration.tsx, /src/index.css
+3:47:24 PM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html
+3:47:24 PM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html
+3:47:24 PM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html
+3:48:01 PM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html
+3:48:48 PM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html

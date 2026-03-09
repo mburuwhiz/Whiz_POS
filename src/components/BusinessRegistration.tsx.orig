@@ -8,7 +8,6 @@ import {
   Sparkles, PartyPopper, HardDrive, Database,
   Navigation
 } from 'lucide-react';
-import Swal from 'sweetalert2';
 import { soundManager } from '../lib/soundUtils';
 import setupBg from '../assets/setup_install_bg.png';
 
@@ -44,47 +43,6 @@ export default function BusinessRegistration() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
-
-
-  const handleSearchData = async () => {
-    if (window.electron && window.electron.readData) {
-      const data = await window.electron.readData('business-setup.json');
-      if (data && data.isSetup) {
-        Swal.fire({
-          title: 'Data Found!',
-          text: 'Business data has been found successfully. The application will now restart to apply it.',
-          icon: 'success',
-          confirmButtonText: 'Restart Now',
-          confirmButtonColor: '#3085d6',
-          background: '#1e293b',
-          color: '#ffffff'
-        }).then(() => {
-          window.location.reload();
-        });
-      } else {
-        Swal.fire({
-          title: 'No Data Found',
-          text: 'Sorry, no valid business data was found. Please proceed to create an account.',
-          icon: 'error',
-          confirmButtonText: 'Create Account',
-          confirmButtonColor: '#d33',
-          background: '#1e293b',
-          color: '#ffffff'
-        }).then(() => {
-          // Go to the first step (businessName) which is index 1
-          setCurrentStepIndex(1);
-        });
-      }
-    } else {
-        Swal.fire({
-          title: 'Error',
-          text: 'Unable to access local storage mechanism.',
-          icon: 'error',
-          background: '#1e293b',
-          color: '#ffffff'
-        });
-    }
-  };
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {

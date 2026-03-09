@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { usePosStore } from '../store/posStore';
 import { User } from '../types';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
@@ -15,6 +15,22 @@ export default function UsersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<Partial<User>>({});
   const [isEdit, setIsEdit] = useState(false);
+
+  const duplicatePinUsers = useMemo(() => {
+    const pinCounts = new Map<string, number>();
+    users.forEach(u => {
+      if (u.pin) {
+        pinCounts.set(String(u.pin), (pinCounts.get(String(u.pin)) || 0) + 1);
+      }
+    });
+    const dupes = new Set<string>();
+    users.forEach(u => {
+      if (u.pin && (pinCounts.get(String(u.pin)) || 0) > 1) {
+        dupes.add(u.id);
+      }
+    });
+    return dupes;
+  }, [users]);
 
   const handleOpenAdd = () => {
     setCurrentUser({

@@ -109,7 +109,7 @@ export default function UsersPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {users.map((user) => (
-                  <tr key={user.id} className="hover:bg-slate-50/50 transition-colors">
+                  <tr key={user.id} className={`hover:bg-slate-50/50 transition-colors ${duplicatePinUsers.has(user.id) ? 'bg-red-50/30' : ''}`}>
                     <td className="px-6 py-4 font-medium text-slate-900 flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600">
                         {user.name.charAt(0)}
@@ -121,7 +121,14 @@ export default function UsersPage() {
                         {user.role}
                       </Badge>
                     </td>
-                    <td className="px-6 py-4 font-mono text-slate-500">****</td>
+                    <td className="px-6 py-4 font-mono text-slate-500 flex flex-col gap-1 items-start">
+                      <span>****</span>
+                      {duplicatePinUsers.has(user.id) && (
+                        <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium border border-red-200">
+                          Duplicate PIN
+                        </span>
+                      )}
+                    </td>
                     <td className="px-6 py-4">
                       <Badge variant={user.isActive ? 'success' : 'destructive'}>
                         {user.isActive ? 'Active' : 'Disabled'}

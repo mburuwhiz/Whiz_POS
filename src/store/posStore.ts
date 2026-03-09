@@ -1269,13 +1269,27 @@ export const usePosStore = create<PosState>()(
           const currentState = get();
 
           const sanitizeAndMerge = (local: any[], server: any[], isProducts = false) => {
+             // Filter out invalid products first
+             let validLocal = local;
+             let validServer = server;
+
+             if (isProducts) {
+                 const isValidProduct = (p: any) => {
+                     if (!p.name || p.name.trim() === '') return false;
+                     const price = Number(p.price);
+                     return !isNaN(price) && price > 0;
+                 };
+                 validLocal = local.filter(isValidProduct);
+                 validServer = server.filter(isValidProduct);
+             }
+
              // Index local items by Name for smart matching (specifically for products)
              const localMapByName = isProducts
-                 ? new Map(local.map(i => [i.name?.trim().toLowerCase(), i]))
+                 ? new Map(validLocal.map(i => [i.name?.trim().toLowerCase(), i]))
                  : new Map();
 
              // 1. Sanitize Server Data
-             const sanitizedServer = server.map(item => {
+             let sanitizedServer = validServer.map(item => {
                  if (!item.id || String(item.id) === 'null' || String(item.id) === 'NaN') {
                      // Try to match with local item by name to prevent duplication
                      if (isProducts && item.name) {
@@ -1292,11 +1306,14 @@ export const usePosStore = create<PosState>()(
                          item.id = isProducts ? generateRandomId() : `FIX${Date.now()}${Math.floor(Math.random() * 1000)}`;
                      }
                  }
+                 if (isProducts && (!item.productId || String(item.productId) === 'null' || String(item.productId) === 'NaN')) {
+                     item.productId = item.id;
+                 }
                  return item;
              });
 
              // 2. Sanitize Local Data
-             const sanitizedLocal = local.map(item => {
+             let sanitizedLocal = validLocal.map(item => {
                  if (!item.id || String(item.id) === 'null' || String(item.id) === 'NaN') {
                       if (isProducts && item.name) {
                           item.id = generateStableId(item.name);
@@ -1304,8 +1321,34 @@ export const usePosStore = create<PosState>()(
                           item.id = isProducts ? generateRandomId() : `FIX${Date.now()}${Math.floor(Math.random() * 1000)}`;
                       }
                  }
+                 if (isProducts && (!item.productId || String(item.productId) === 'null' || String(item.productId) === 'NaN')) {
+                     item.productId = item.id;
+                 }
                  return item;
              });
+
+             // Deduplicate products by name and keep the one with the highest stock
+             if (isProducts) {
+                 const deduplicateByName = (items: any[]) => {
+                     const uniqueMap = new Map();
+                     items.forEach(item => {
+                         const nameKey = item.name.trim().toLowerCase();
+                         if (!uniqueMap.has(nameKey)) {
+                             uniqueMap.set(nameKey, item);
+                         } else {
+                             const existing = uniqueMap.get(nameKey);
+                             const existingStock = Number(existing.stock) || 0;
+                             const newStock = Number(item.stock) || 0;
+                             if (newStock > existingStock) {
+                                 uniqueMap.set(nameKey, item);
+                             }
+                         }
+                     });
+                     return Array.from(uniqueMap.values());
+                 };
+                 sanitizedLocal = deduplicateByName(sanitizedLocal);
+                 sanitizedServer = deduplicateByName(sanitizedServer);
+             }
 
              const serverDataById = new Map(sanitizedServer.map(item => [String(item.id), item]));
 
@@ -1826,36 +1869,77 @@ export const usePosStore = create<PosState>()(
                       return item;
                   });
 
-                  // 2. Deduplicate Products by Name (Emergency Cleanup for "1000 items")
+                  // 2. Filter out products with 0 price or empty names and Deduplicate Products by Name (Emergency Cleanup for "1000 items")
                   if (key === 'products') {
-                      const uniqueProductsByName = new Map();
                       const initialLength = sanitizedData.length;
 
+                      // Remove products with empty names or 0 price
+                      sanitizedData = sanitizedData.filter((p: any) => {
+                          if (!p.name || p.name.trim() === '') return false;
+                          const price = Number(p.price);
+                          return !isNaN(price) && price > 0;
+                      });
+
+                      const uniqueProductsByName = new Map();
+
                       sanitizedData.forEach((p: any) => {
-                          const nameKey = p.name ? p.name.trim().toLowerCase() : String(p.id);
+                          if (!p.productId || String(p.productId) === 'null' || String(p.productId) === 'NaN') {
+                              p.productId = p.id; // ensure productId exists
+                          }
+
+                          const nameKey = p.name.trim().toLowerCase();
                           if (!uniqueProductsByName.has(nameKey)) {
                               uniqueProductsByName.set(nameKey, p);
                           } else {
-                              // If duplicate exists, keep the one with the 'better' ID (e.g. numeric) if possible?
-                              // Or simply keep the last updated one?
-                              // For now, keeping the first one seen is stable.
-                              // Actually, if we have "Coffee" (ID 123) and "Coffee" (ID 456 - generated),
-                              // we prefer the one that matches our stable hash or looks like a real ID?
-                              // Simple approach: First wins.
+                              // If duplicate exists, keep the one with higher stock
+                              const existing = uniqueProductsByName.get(nameKey);
+                              const existingStock = Number(existing.stock) || 0;
+                              const newStock = Number(p.stock) || 0;
+                              if (newStock > existingStock) {
+                                  uniqueProductsByName.set(nameKey, p);
+                              }
                           }
                       });
 
                       sanitizedData = Array.from(uniqueProductsByName.values());
                       if (sanitizedData.length !== initialLength) {
                           hasChanges = true;
-                          console.log(`Deduplicated products: Reduced from ${initialLength} to ${sanitizedData.length}`);
+                          console.log(`Deduplicated/Cleaned products: Reduced from ${initialLength} to ${sanitizedData.length}`);
                       }
                   }
 
                   // 3. Deduplicate by ID
                   const uniqueMap = new Map();
                   sanitizedData.forEach((item: any) => uniqueMap.set(String(item.id), item));
-                  const finalData = Array.from(uniqueMap.values());
+                  let finalData = Array.from(uniqueMap.values());
+
+                  // 4. Extra deduplication for Credit Customers by Name and Phone
+                  if (key === 'creditCustomers') {
+                      const uniqueCustomersByName = new Map();
+                      const initialLength = finalData.length;
+
+                      finalData.forEach((c: any) => {
+                          // Try to use name, fallback to phone, then ID
+                          const nameKey = c.name ? c.name.trim().toLowerCase() : (c.phone ? c.phone.trim() : String(c.id));
+                          if (!uniqueCustomersByName.has(nameKey)) {
+                              uniqueCustomersByName.set(nameKey, c);
+                          } else {
+                              // Keep the one with highest balance, or merge details
+                              const existing = uniqueCustomersByName.get(nameKey);
+                              const existingBalance = Number(existing.balance) || 0;
+                              const newBalance = Number(c.balance) || 0;
+                              if (newBalance > existingBalance) {
+                                  uniqueCustomersByName.set(nameKey, { ...existing, ...c, balance: newBalance });
+                              }
+                          }
+                      });
+
+                      finalData = Array.from(uniqueCustomersByName.values());
+                      if (finalData.length !== initialLength) {
+                          hasChanges = true;
+                          console.log(`Deduplicated credit customers: Reduced from ${initialLength} to ${finalData.length}`);
+                      }
+                  }
 
                   if (finalData.length !== data.length) hasChanges = true;
 
@@ -1863,6 +1947,29 @@ export const usePosStore = create<PosState>()(
                   if (hasChanges) {
                       console.log(`Repaired/Deduplicated data in ${fileName}`);
                       await saveDataToFile(fileName, finalData);
+                  }
+
+                  // Update categories automatically based on unique categories from products
+                  if (key === 'products') {
+                      const state = get();
+                      const existingCategories = new Set(state.categories);
+                      let newCategoriesFound = false;
+
+                      finalData.forEach((p: any) => {
+                          if (p.category && typeof p.category === 'string') {
+                              const cat = p.category.trim();
+                              if (cat !== '' && !existingCategories.has(cat)) {
+                                  existingCategories.add(cat);
+                                  newCategoriesFound = true;
+                              }
+                          }
+                      });
+
+                      if (newCategoriesFound) {
+                          const updatedCategories = Array.from(existingCategories);
+                          set({ categories: updatedCategories });
+                          await saveDataToFile('categories.json', updatedCategories);
+                      }
                   }
 
                   set({ [key]: finalData });

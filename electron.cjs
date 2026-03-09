@@ -1455,11 +1455,35 @@ app.whenReady().then(async () => {
 
         // 1. Fetch Products
         const productsRaw = await db.collection('products').find({}).toArray();
-        const products = productsRaw.map(p => {
+        let products = productsRaw.map(p => {
              // Clean up _id and ensure desktop compatibility
              const { _id, ...rest } = p;
-             return { ...rest, id: rest.productId ? Number(rest.productId) : rest.id };
+             return { ...rest, id: rest.productId ? rest.productId : rest.id };
         });
+
+        // Filter products locally to prevent invalid data from db
+        products = products.filter(p => {
+            if (!p.name || p.name.trim() === '') return false;
+            const price = Number(p.price);
+            return !isNaN(price) && price > 0;
+        });
+
+        // Deduplicate locally
+        const uniqueProductsMap = new Map();
+        products.forEach(p => {
+            const nameKey = p.name.trim().toLowerCase();
+            if (!uniqueProductsMap.has(nameKey)) {
+                uniqueProductsMap.set(nameKey, p);
+            } else {
+                const existing = uniqueProductsMap.get(nameKey);
+                const existingStock = Number(existing.stock) || 0;
+                const newStock = Number(p.stock) || 0;
+                if (newStock > existingStock) {
+                    uniqueProductsMap.set(nameKey, p);
+                }
+            }
+        });
+        products = Array.from(uniqueProductsMap.values());
 
         // 2. Fetch Users - BLOCKED per user request ("pos not receive users from the back office")
         // const usersRaw = await db.collection('users').find({}).toArray();

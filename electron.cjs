@@ -1171,10 +1171,7 @@ app.whenReady().then(async () => {
               await fs.writeFile(path.join(userDataPath, filename), JSON.stringify(content, null, 2));
           }
 
-          // Reload window to apply changes
-          const mainWindow = BrowserWindow.getAllWindows()[0];
-          if (mainWindow) mainWindow.reload();
-
+          // Instead of reloading immediately, we return success so the frontend can clear localStorage before reloading.
           return { success: true };
       } catch (e) {
           console.error("Restore failed", e);

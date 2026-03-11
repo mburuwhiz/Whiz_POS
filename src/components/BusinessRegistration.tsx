@@ -173,6 +173,8 @@ export default function BusinessRegistration() {
       if (result.success) {
         soundManager.playSuccess();
         alert('Restore successful. Restarting application...');
+        // Clear persisted zustand state to force reload from restored files
+        localStorage.removeItem('pos-storage');
         setTimeout(() => {
           window.location.reload();
         }, 2000);

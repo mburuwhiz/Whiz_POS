@@ -42,19 +42,19 @@ export default function Dashboard() {
         prevEnd.setHours(23, 59, 59, 999);
         break;
       case 'week':
-        start.setDate(now.getDate() - 7);
-        prevStart.setDate(start.getDate() - 7);
-        prevEnd.setDate(start.getDate() - 1);
+        start.setDate(start.getDate() - 7);
+        prevStart.setDate(prevStart.getDate() - 14);
+        prevEnd.setDate(prevEnd.getDate() - 7);
         break;
       case 'month':
-        start.setMonth(now.getMonth() - 1);
-        prevStart.setMonth(start.getMonth() - 1);
-        prevEnd.setDate(start.getDate() - 1);
+        start.setMonth(start.getMonth() - 1);
+        prevStart.setMonth(prevStart.getMonth() - 2);
+        prevEnd.setMonth(prevEnd.getMonth() - 1);
         break;
       case 'year':
-        start.setFullYear(now.getFullYear() - 1);
-        prevStart.setFullYear(start.getFullYear() - 1);
-        prevEnd.setDate(start.getDate() - 1);
+        start.setFullYear(start.getFullYear() - 1);
+        prevStart.setFullYear(prevStart.getFullYear() - 2);
+        prevEnd.setFullYear(prevEnd.getFullYear() - 1);
         break;
     }
     

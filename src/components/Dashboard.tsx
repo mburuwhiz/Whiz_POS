@@ -74,7 +74,10 @@ export default function Dashboard() {
     });
 
     const calcRevenue = (txs: any[]) => txs.reduce((sum, t) =>
-      sum + (t.total || t.items.reduce((itemSum: number, item: any) => itemSum + (item.product.price * item.quantity), 0)), 0
+      sum + (t.total || (t.items || []).reduce((itemSum: number, item: any) => {
+        const price = item.product?.price || 0;
+        return itemSum + (price * (item.quantity || 1));
+      }, 0)), 0
     );
 
     const revenue = calcRevenue(filteredTx);
@@ -100,11 +103,13 @@ export default function Dashboard() {
     const productSales = new Map<string, { quantity: number; revenue: number; name: string }>();
     filteredTx.forEach(t => {
       t.items?.forEach(item => {
-        const id = String(item.product.id);
-        const existing = productSales.get(id) || { quantity: 0, revenue: 0, name: item.product.name };
+        if (!item.product) return;
+        const id = String(item.product.id || 'unknown');
+        const price = item.product.price || 0;
+        const existing = productSales.get(id) || { quantity: 0, revenue: 0, name: item.product.name || 'Unknown Item' };
         productSales.set(id, {
-          quantity: existing.quantity + item.quantity,
-          revenue: existing.revenue + (item.product.price * item.quantity),
+          quantity: existing.quantity + (item.quantity || 1),
+          revenue: existing.revenue + (price * (item.quantity || 1)),
           name: existing.name
         });
       });

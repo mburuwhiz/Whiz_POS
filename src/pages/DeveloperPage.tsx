@@ -102,18 +102,34 @@ const DeveloperPage = () => {
 
     const loadConfig = async () => {
         try {
+            // First load server-config.json
+            let serverConfig = {};
             if (window.electron && window.electron.readData) {
-                const configData = await window.electron.readData('business-setup.json');
-                const config = typeof configData === 'string' ? JSON.parse(configData || '{}') : (configData || {});
-                setBackOfficeUrl(config.backOfficeUrl || config.apiUrl || '');
-                setBackOfficeApiKey(config.backOfficeApiKey || config.apiKey || '');
-                setShowDevFooter(config.showDeveloperFooter !== false);
-                if (config.mpesaConfig) setMpesaConfig((prev) => ({ ...prev, ...config.mpesaConfig }));
-            } else {
-                setBackOfficeUrl(businessSetup?.backOfficeUrl || businessSetup?.apiUrl || '');
-                setBackOfficeApiKey(businessSetup?.backOfficeApiKey || businessSetup?.apiKey || '');
-                setShowDevFooter(businessSetup?.showDeveloperFooter !== false);
-                if (businessSetup?.mpesaConfig) setMpesaConfig((prev) => ({ ...prev, ...businessSetup.mpesaConfig }));
+                const res = await window.electron.readData('server-config.json');
+                if (res.success && res.data) {
+                    serverConfig = res.data;
+                }
+            }
+
+            // Then load business-setup.json
+            let config = businessSetup || {};
+            if (window.electron && window.electron.readData) {
+                const res = await window.electron.readData('business-setup.json');
+                if (res.success && res.data) {
+                    config = Array.isArray(res.data) ? res.data[0] || {} : res.data;
+                }
+            }
+
+            // Prioritize server config for server details, otherwise fallback to business-setup
+            setBackOfficeUrl(serverConfig.backOfficeUrl || config.backOfficeUrl || config.apiUrl || '');
+            setBackOfficeApiKey(serverConfig.backOfficeApiKey || config.backOfficeApiKey || config.apiKey || '');
+            setMongoUri(serverConfig.mongoUri || '');
+            setShowDevFooter(config.showDeveloperFooter !== false);
+
+            if (config.mpesaConfig) {
+                setMpesaConfig((prev) => ({ ...prev, ...config.mpesaConfig }));
+            } else if (serverConfig.mpesaConfig) {
+                setMpesaConfig((prev) => ({ ...prev, ...serverConfig.mpesaConfig }));
             }
         } catch (e) {
             console.error("Failed to load developer config", e);
@@ -167,8 +183,26 @@ const DeveloperPage = () => {
             mpesaConfig,
             isSetup: true
         };
+
+        const serverConfigUpdates = {
+            backOfficeUrl,
+            backOfficeApiKey,
+            mongoUri,
+            mpesaConfig
+        };
+
+        // Save to businessSetup locally
         // @ts-ignore
         saveBusinessSetup(updatedSetup);
+
+        // Also save to server-config.json for pure persistence outside the zustand store
+        if (window.electron && window.electron.saveData) {
+            let currentServerConfig = {};
+            const res = await window.electron.readData('server-config.json');
+            if (res.success && res.data) currentServerConfig = res.data;
+            await window.electron.saveData('server-config.json', { ...currentServerConfig, ...serverConfigUpdates });
+        }
+
         setSuccessMsg('Settings saved successfully');
         setTimeout(() => setSuccessMsg(''), 3000);
     };

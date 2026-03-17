@@ -1221,31 +1221,24 @@ app.whenReady().then(async () => {
 
   ipcMain.handle('get-developer-config', async () => {
       try {
-          const configPath = path.join(userDataPath, 'server-config.json');
-          const data = await fs.readFile(configPath, 'utf-8');
-          const config = JSON.parse(data);
+          const config = await readJsonFileFallback('server-config.json') || {};
           return {
               developerPin: config.developerPin || null,
               mongoUri: config.mongoUri || '',
               backOfficeUrl: config.backOfficeUrl || '',
-              backOfficeApiKey: config.backOfficeApiKey || ''
+              backOfficeApiKey: config.backOfficeApiKey || '',
+              mpesaConfig: config.mpesaConfig || null
           };
       } catch (e) {
-          return { developerPin: null, mongoUri: '', backOfficeUrl: '', backOfficeApiKey: '' };
+          return { developerPin: null, mongoUri: '', backOfficeUrl: '', backOfficeApiKey: '', mpesaConfig: null };
       }
   });
 
   ipcMain.handle('save-developer-config', async (event, newConfig) => {
       try {
-          const configPath = path.join(userDataPath, 'server-config.json');
-          let currentConfig = {};
-          try {
-              const data = await fs.readFile(configPath, 'utf-8');
-              currentConfig = JSON.parse(data);
-          } catch (e) {}
-
+          const currentConfig = await readJsonFileFallback('server-config.json') || {};
           const updatedConfig = { ...currentConfig, ...newConfig };
-          await fs.writeFile(configPath, JSON.stringify(updatedConfig, null, 2));
+          await writeJsonFileFallback('server-config.json', updatedConfig);
           return { success: true };
       } catch (e) {
           console.error("Failed to save developer config", e);

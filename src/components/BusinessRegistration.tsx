@@ -561,7 +561,7 @@ export default function BusinessRegistration() {
     <div className="min-h-screen w-full relative overflow-hidden flex items-center justify-center font-sans selection:bg-blue-500/30">
       {/* Background Image with Overlay */}
       <div
-        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-transform duration-[10s] hover:scale-110"
+        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-transform duration-[10000ms] hover:scale-110"
         style={{ backgroundImage: `url(${setupBg})` }}
       />
       <div className="absolute inset-0 z-10 bg-gradient-to-br from-black/80 via-black/40 to-blue-900/40 backdrop-blur-[2px]" />

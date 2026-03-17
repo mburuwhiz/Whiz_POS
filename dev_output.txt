@@ -1,31 +1,23 @@
 
-> whiz-pos@6.0.2 dev
+> whiz-pos@7.0.0 dev
 > concurrently "npm:dev:vite" "npm:dev:electron"
 
 [dev:vite]
-[dev:vite] > whiz-pos@6.0.2 dev:vite
+[dev:vite] > whiz-pos@7.0.0 dev:vite
 [dev:vite] > vite --port 5174
 [dev:vite]
 [dev:electron]
-[dev:electron] > whiz-pos@6.0.2 dev:electron
+[dev:electron] > whiz-pos@7.0.0 dev:electron
 [dev:electron] > electron . http://localhost:5174
 [dev:electron]
+[dev:vite] Port 5174 is in use, trying another one...
 [dev:vite]
-[dev:vite]   VITE v4.5.14  ready in 1112 ms
+[dev:vite]   VITE v4.5.14  ready in 635 ms
 [dev:vite]
-[dev:vite]   ➜  Local:   http://localhost:5174/
+[dev:vite]   ➜  Local:   http://localhost:5175/
 [dev:vite]   ➜  Network: use --host to expose
 [dev:electron] Restored 0 sessions.
-[dev:electron] [8918:0317/094912.116704:ERROR:ozone_platform_x11.cc(245)] Missing X server or $DISPLAY
-[dev:electron] [8918:0317/094912.116790:ERROR:env.cc(258)] The platform failed to initialize.  Exiting.
+[dev:electron] [18201:0317/105056.944425:ERROR:ozone_platform_x11.cc(245)] Missing X server or $DISPLAY
+[dev:electron] [18201:0317/105056.944664:ERROR:env.cc(258)] The platform failed to initialize.  Exiting.
 [dev:electron] /app/node_modules/electron/dist/electron exited with signal SIGSEGV
 [dev:electron] npm run dev:electron exited with code 1
-[dev:vite] 9:54:09 AM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html
-[dev:vite] 9:54:41 AM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html
-[dev:vite] 9:54:41 AM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html
-[dev:vite] 9:54:41 AM [vite] page reload dist/__appImage-x64/LICENSES.chromium.html
-[dev:vite] 9:55:30 AM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html
-[dev:vite] 10:03:20 AM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html
-[dev:vite] 10:03:21 AM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html
-[dev:vite] 10:03:53 AM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html
-[dev:vite] 10:04:49 AM [vite] page reload dist/linux-unpacked/LICENSES.chromium.html

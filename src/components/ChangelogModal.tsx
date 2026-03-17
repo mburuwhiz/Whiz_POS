@@ -10,23 +10,23 @@ export default function ChangelogModal({ onClose }: ChangelogModalProps) {
   const features = [
     {
       icon: <Palette className="w-6 h-6 text-pink-400" />,
-      title: "Major UI Overhaul",
-      description: "Experience our new glassmorphism design and smooth conversational setup flow."
+      title: "Database Architecture Upgrade",
+      description: "Transitioned from file-based storage to an offline-first SQLite database."
     },
     {
       icon: <Zap className="w-6 h-6 text-amber-400" />,
-      title: "Performance Boost",
-      description: "Optimized dashboard and faster data loading for a seamless experience."
-    },
-    {
-      icon: <Music className="w-6 h-6 text-cyan-400" />,
-      title: "Interactive Sounds",
-      description: "New audible feedback for data submission, checkout, and interactions."
+      title: "Enhanced Data Resilience",
+      description: "Implemented Write-Ahead Logging (WAL) to guarantee zero data corruption during sudden power loss."
     },
     {
       icon: <CheckCircle2 className="w-6 h-6 text-emerald-400" />,
-      title: "Enhanced Security",
-      description: "Improved 4-digit PIN integration for all administrative operations."
+      title: "Automated .wpos Backups",
+      description: "Introduced a background daemon to silently backup your database locally every 60 minutes."
+    },
+    {
+      icon: <Music className="w-6 h-6 text-cyan-400" />,
+      title: "Decluttered Interface",
+      description: "Cleaned up legacy 'Recover Business' features and simplified workflows for a modern aesthetic."
     }
   ];
 
@@ -41,7 +41,7 @@ export default function ChangelogModal({ onClose }: ChangelogModalProps) {
         <div className="bg-gradient-to-br from-blue-600 to-violet-700 p-10 text-white relative">
           <Sparkles className="absolute top-6 right-6 w-12 h-12 text-white/20 animate-pulse" />
           <h2 className="text-4xl font-black mb-2">Major Yearly Update!</h2>
-          <p className="text-blue-100 text-lg font-medium">Welcome to Whiz POS v2024.1</p>
+          <p className="text-blue-100 text-lg font-medium">Welcome to Whiz POS v7.0.0</p>
         </div>
 
         <div className="p-10 space-y-8">
@@ -62,11 +62,10 @@ export default function ChangelogModal({ onClose }: ChangelogModalProps) {
           <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6">
             <h4 className="font-bold text-blue-900 flex items-center space-x-2 mb-2">
               <Zap className="w-5 h-5" />
-              <span>What's New in Setup?</span>
+              <span>Seamless Migration</span>
             </h4>
             <p className="text-sm text-blue-700">
-              We've replaced the old setup screen with a conversational guide. It's now faster,
-              more intuitive, and beautifully designed with background imagery.
+              Your existing setup and data files have automatically been converted and migrated to the new SQLite storage safely.
             </p>
           </div>
 

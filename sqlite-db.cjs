@@ -88,13 +88,13 @@ async function migrateLegacyData(userDataPath) {
 
             migrationOccurred = true;
             filesToDelete.push(filePath);
-            console.log(\`[Migration] Successfully processed \${file}\`);
+            console.log(`[Migration] Successfully processed ${file}`);
         }
 
         // Only after ALL files have been successfully migrated do we delete them.
         for (const filePath of filesToDelete) {
             await fs.unlink(filePath);
-            console.log(\`[Migration] Deleted legacy file \${path.basename(filePath)}\`);
+            console.log(`[Migration] Deleted legacy file ${path.basename(filePath)}`);
         }
 
         if (migrationOccurred) {
@@ -102,9 +102,9 @@ async function migrateLegacyData(userDataPath) {
         }
 
     } catch (e) {
-        console.error(\`[Migration Error] Migration failed:\`, e);
+        console.error(`[Migration Error] Migration failed:`, e);
         // Do not delete any JSON files. The app will halt because we re-throw the error.
-        throw new Error(\`Migration failed: \` + e.message);
+        throw new Error(`Migration failed: ` + e.message);
     }
 }
 

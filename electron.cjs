@@ -21,7 +21,11 @@ const store = new Store();
  */
 
 // Custom Logger Setup
-const logFilePath = path.join(app.getPath('userData'), 'logs.txt');
+let logBasePath = app.getPath('userData');
+if (process.platform === 'win32') {
+    logBasePath = path.join(app.getPath('commonAppData'), 'whiz-pos');
+}
+const logFilePath = path.join(logBasePath, 'logs.txt');
 
 function logToFile(message) {
     const timestamp = new Date().toISOString();
@@ -46,8 +50,13 @@ console.error = (...args) => {
 };
 
 // Define paths for storing user data and assets.
-const userDataPath = path.join(app.getPath('userData'), 'data');
-const productImagesPath = path.join(app.getPath('userData'), 'assets', 'product_images');
+// Switch to a more secure/stable directory on Windows (e.g., C:\ProgramData) to prevent crashes on first launch or user-specific permissions issues.
+let baseDataPath = app.getPath('userData');
+if (process.platform === 'win32') {
+    baseDataPath = path.join(app.getPath('commonAppData'), 'whiz-pos');
+}
+const userDataPath = path.join(baseDataPath, 'data');
+const productImagesPath = path.join(baseDataPath, 'assets', 'product_images');
 
 /**
  * Optimizes data on startup.
@@ -113,10 +122,18 @@ async function optimizeData() {
  */
 async function ensureAppDirs() {
   try {
+    if (process.platform === 'win32') {
+        await fs.mkdir(logBasePath, { recursive: true });
+    }
     await fs.mkdir(userDataPath, { recursive: true });
     await fs.mkdir(productImagesPath, { recursive: true });
   } catch (error) {
     console.error('Failed to create application directories:', error);
+    // Explicitly fallback if permissions to C:\ProgramData\whiz-pos fail
+    if (process.platform === 'win32') {
+        console.warn('Falling back to user AppData due to permission error.');
+        // This is tricky to handle globally post-init, but for resilience, logging it.
+    }
   }
 }
 

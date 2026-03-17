@@ -93,6 +93,7 @@
       "assets/**/*",
       "package.json",
       "print-jobs.cjs",
+      "sqlite-db.cjs",
       "receipt-template.html",
       "closing-report-template.html",
       "startup-invoice-template.html"

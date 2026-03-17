@@ -192,44 +192,6 @@ export default function BusinessRegistration() {
     }
   };
 
-  const handleRecovery = async () => {
-    if (!window.confirm("This will search existing data and restore basic system configuration to allow you to log in with your existing PIN. Are you sure you want to proceed?")) {
-      return;
-    }
-
-    soundManager.playClick();
-    setIsSubmitting(true);
-
-    const recoveryData = {
-      businessName: 'Recovered Business',
-      address: 'Please update in settings',
-      phone: '',
-      email: '',
-      servedByLabel: 'Cashier',
-      mpesaPaybill: '',
-      mpesaTill: '',
-      mpesaAccountNumber: '',
-      tax: 0,
-      subtotal: 0,
-      isSetup: true,
-      isLoggedIn: false,
-      printerType: 'thermal' as const,
-      createdAt: new Date().toISOString(),
-    };
-
-    try {
-      await saveBusinessSetup(recoveryData);
-      soundManager.playSuccess();
-      window.location.reload();
-    } catch (error) {
-      console.error('Recovery failed:', error);
-      soundManager.playError();
-      alert("Recovery failed. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const stepVariants = {
     enter: { x: 50, opacity: 0 },
     center: { x: 0, opacity: 1 },
@@ -257,21 +219,12 @@ export default function BusinessRegistration() {
               </button>
 
               <button
-                onClick={handleRecovery}
-                disabled={isSubmitting}
-                className="w-full bg-orange-600 hover:bg-orange-500 text-white px-6 py-4 rounded-2xl font-bold text-lg transition-all hover:scale-105 active:scale-95 shadow-xl shadow-orange-900/20 flex items-center justify-center gap-3 disabled:opacity-50"
-              >
-                {isSubmitting ? <div className="w-5 h-5 border-2 border-white border-t-transparent animate-spin rounded-full"></div> : <Database className="w-6 h-6" />}
-                2. Search Detailed Data
-              </button>
-
-              <button
                 onClick={handleNext}
                 disabled={isSubmitting}
                 className="w-full bg-blue-600 hover:bg-blue-500 text-white px-6 py-4 rounded-2xl font-bold text-lg transition-all hover:scale-105 active:scale-95 shadow-xl shadow-blue-900/20 flex items-center justify-center gap-3 disabled:opacity-50"
               >
                 <Navigation className="w-6 h-6" />
-                3. Begin Registration
+                2. Begin Registration
               </button>
             </div>
           </motion.div>

@@ -20,11 +20,31 @@ const store = new Store();
  * Handles application lifecycle, window management, IPC communication, and a local API server for mobile printing.
  */
 
-// Custom Logger Setup
-let logBasePath = app.getPath('userData');
+// Define paths for storing user data and assets.
+// Switch to a more secure/stable directory on Windows (e.g., C:\ProgramData) to prevent crashes on first launch or user-specific permissions issues.
+let baseDataPath;
 if (process.platform === 'win32') {
-    logBasePath = path.join(app.getPath('commonAppData'), 'whiz-pos');
+    // Safely get commonAppData or fallback to environment variable / hardcoded C:\ProgramData
+    let commonAppData;
+    try {
+        commonAppData = app.getPath('commonAppData');
+    } catch (e) {
+        commonAppData = process.env.PROGRAMDATA || 'C:\\ProgramData';
+    }
+    baseDataPath = path.join(commonAppData, 'whiz-pos');
+
+    // Override userData globally so internal modules use this path too
+    try {
+        app.setPath('userData', baseDataPath);
+    } catch (e) {
+        // Ignore if we can't set it
+    }
+} else {
+    baseDataPath = app.getPath('userData');
 }
+
+// Custom Logger Setup
+let logBasePath = baseDataPath;
 const logFilePath = path.join(logBasePath, 'logs.txt');
 
 function logToFile(message) {
@@ -49,12 +69,6 @@ console.error = (...args) => {
     originalError.apply(console, args);
 };
 
-// Define paths for storing user data and assets.
-// Switch to a more secure/stable directory on Windows (e.g., C:\ProgramData) to prevent crashes on first launch or user-specific permissions issues.
-let baseDataPath = app.getPath('userData');
-if (process.platform === 'win32') {
-    baseDataPath = path.join(app.getPath('commonAppData'), 'whiz-pos');
-}
 const userDataPath = path.join(baseDataPath, 'data');
 const productImagesPath = path.join(baseDataPath, 'assets', 'product_images');
 

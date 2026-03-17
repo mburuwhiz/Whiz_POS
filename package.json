@@ -1,7 +1,7 @@
 {
   "name": "whiz-pos",
   "private": true,
-  "version": "6.0.2",
+  "version": "7.0.0",
   "type": "module",
   "main": "electron.cjs",
   "homepage": ".",
@@ -22,6 +22,7 @@
     "@ai-sdk/openai": "^1.3.22",
     "@headlessui/react": "^1.7.18",
     "ai": "^4.3.16",
+    "better-sqlite3": "^12.8.0",
     "cannon-es": "^0.20.0",
     "chart.js": "^4.5.1",
     "class-variance-authority": "^0.7.1",
@@ -92,6 +93,7 @@
       "assets/**/*",
       "package.json",
       "print-jobs.cjs",
+      "sqlite-db.cjs",
       "receipt-template.html",
       "closing-report-template.html",
       "startup-invoice-template.html"
@@ -102,6 +104,15 @@
     "win": {
       "icon": "assets/logo.ico"
     },
+    "fileAssociations": [
+      {
+        "ext": "wpos",
+        "name": "Whiz POS Backup",
+        "description": "Whiz POS Offline Database Backup",
+        "icon": "assets/logo.ico",
+        "role": "Editor"
+      }
+    ],
     "nsis": {
       "oneClick": false,
       "perMachine": true,

@@ -635,11 +635,11 @@ const DeveloperPage = () => {
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                                 <div className="bg-gray-50 p-4 border-b border-gray-100 flex items-center gap-3">
                                     <Database className="w-5 h-5 text-blue-600" />
-                                    <h2 className="text-lg font-bold text-gray-800">Direct MongoDB Migration</h2>
+                                    <h2 className="text-lg font-bold text-gray-800">Direct Database Migration</h2>
                                 </div>
                                 <div className="p-6">
                                     <p className="text-sm text-gray-500 mb-4">
-                                        For initial setup or catastrophic failure recovery. Pushes entire local JSON state directly to remote MongoDB, bypassing APIs.
+                                        For initial setup. Pushes entire local state directly to remote database, bypassing APIs.
                                     </p>
                                     <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
                                         <div className="relative flex-1 w-full">

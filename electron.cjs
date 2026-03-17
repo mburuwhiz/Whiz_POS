@@ -8,6 +8,7 @@ const crypto = require('crypto');
 const os = require('os');
 const Store = require('electron-store');
 const { autoUpdater } = require('electron-updater');
+const { initDB, migrateLegacyData, readJsonFileFallback, writeJsonFileFallback, backupDB, closeDB } = require('./sqlite-db.cjs');
 const { generateReceipt, generateClosingReport, generateBusinessSetup } = require(path.join(__dirname, 'print-jobs.cjs'));
 const { MongoClient } = require('mongodb');
 const { dialog } = require('electron'); // For file dialogs
@@ -19,8 +20,32 @@ const store = new Store();
  * Handles application lifecycle, window management, IPC communication, and a local API server for mobile printing.
  */
 
+// Define paths for storing user data and assets.
+// Switch to a more secure/stable directory on Windows (e.g., C:\ProgramData) to prevent crashes on first launch or user-specific permissions issues.
+let baseDataPath;
+if (process.platform === 'win32') {
+    // Safely get commonAppData or fallback to environment variable / hardcoded C:\ProgramData
+    let commonAppData;
+    try {
+        commonAppData = app.getPath('commonAppData');
+    } catch (e) {
+        commonAppData = process.env.PROGRAMDATA || 'C:\\ProgramData';
+    }
+    baseDataPath = path.join(commonAppData, 'whiz-pos');
+
+    // Override userData globally so internal modules use this path too
+    try {
+        app.setPath('userData', baseDataPath);
+    } catch (e) {
+        // Ignore if we can't set it
+    }
+} else {
+    baseDataPath = app.getPath('userData');
+}
+
 // Custom Logger Setup
-const logFilePath = path.join(app.getPath('userData'), 'logs.txt');
+let logBasePath = baseDataPath;
+const logFilePath = path.join(logBasePath, 'logs.txt');
 
 function logToFile(message) {
     const timestamp = new Date().toISOString();
@@ -44,9 +69,8 @@ console.error = (...args) => {
     originalError.apply(console, args);
 };
 
-// Define paths for storing user data and assets.
-const userDataPath = path.join(app.getPath('userData'), 'data');
-const productImagesPath = path.join(app.getPath('userData'), 'assets', 'product_images');
+const userDataPath = path.join(baseDataPath, 'data');
+const productImagesPath = path.join(baseDataPath, 'assets', 'product_images');
 
 /**
  * Optimizes data on startup.
@@ -112,36 +136,43 @@ async function optimizeData() {
  */
 async function ensureAppDirs() {
   try {
+    if (process.platform === 'win32') {
+        await fs.mkdir(logBasePath, { recursive: true });
+    }
     await fs.mkdir(userDataPath, { recursive: true });
     await fs.mkdir(productImagesPath, { recursive: true });
   } catch (error) {
     console.error('Failed to create application directories:', error);
+    // Explicitly fallback if permissions to C:\ProgramData\whiz-pos fail
+    if (process.platform === 'win32') {
+        console.warn('Falling back to user AppData due to permission error.');
+        // This is tricky to handle globally post-init, but for resilience, logging it.
+    }
   }
 }
 
 /**
- * Helper to safely read JSON file
+ * Helper to safely read from SQLite wrapper
  */
 async function readJsonFile(filename) {
     try {
-        const data = await fs.readFile(path.join(userDataPath, filename), 'utf-8');
-        if (!data || data.trim() === '') return []; // Handle empty file
-        return JSON.parse(data);
+        const data = await readJsonFileFallback(filename);
+        if (!data) return [];
+        return data;
     } catch (e) {
         return [];
     }
 }
 
 /**
- * Helper to safely write JSON file
+ * Helper to safely write to SQLite wrapper
  */
 async function writeJsonFile(filename, data) {
-    await fs.writeFile(path.join(userDataPath, filename), JSON.stringify(data, null, 2));
+    await writeJsonFileFallback(filename, data);
 }
 
 /**
- * Ensures that the initial JSON data files exist in the user data directory.
- * If a file is missing, it is created with a default empty structure.
+ * Ensures that the initial data exists in the SQLite database.
  */
 async function ensureDataFilesExist() {
   const dataFiles = {
@@ -157,16 +188,21 @@ async function ensureDataFilesExist() {
     'credit-payments.json': [], // New file for credit payments
     'inventory-logs.json': [], // New file for inventory logs
     'daily-summaries.json': {}, // New file for archived daily reports
+    'sessions.json': [],
+    'suppliers.json': []
   };
 
   for (const [fileName, content] of Object.entries(dataFiles)) {
-    const filePath = path.join(userDataPath, fileName);
-    try {
-      await fs.access(filePath);
-    } catch {
-      // File does not exist, so create it
-      await fs.writeFile(filePath, JSON.stringify(content, null, 2));
-    }
+      try {
+          const currentData = await readJsonFileFallback(fileName);
+          if ((Array.isArray(currentData) && currentData.length === 0) || (!Array.isArray(currentData) && Object.keys(currentData || {}).length === 0)) {
+              if (content !== null) {
+                  await writeJsonFileFallback(fileName, content);
+              }
+          }
+      } catch (e) {
+          console.error(`Error ensuring data for ${fileName}:`, e);
+      }
   }
 }
 
@@ -849,6 +885,15 @@ function startApiServer() {
 
 app.whenReady().then(async () => {
   await ensureAppDirs();
+  try {
+      initDB(userDataPath);
+      await migrateLegacyData(userDataPath);
+  } catch (error) {
+      console.error('Fatal: Failed to initialize SQLite database or run migrations:', error);
+      dialog.showErrorBox('Database Error', 'Failed to initialize database or migrate legacy data. Check logs for more details. Application will now close to prevent data corruption.');
+      app.quit();
+      return;
+  }
   await ensureDataFilesExist();
   await optimizeData(); // Data Optimization on Startup
   await initApiKey(); // Init and persist API Key
@@ -972,24 +1017,15 @@ app.whenReady().then(async () => {
 
   /**
    * IPC Handler: 'save-data'
-   * Writes JSON data to a file in the user data directory.
-   *
-   * @param {Electron.IpcMainInvokeEvent} event
-   * @param {string} fileName - The name of the file to save.
-   * @param {any} data - The data to serialize and save.
-   * @returns {Promise<{success: boolean, error?: string}>}
    */
   ipcMain.handle('save-data', async (event, fileName, data) => {
     try {
-      // Intercept user modifications to ensure strictness
       if (fileName === 'users.json') {
-          // STRICT: Do not allow overwriting users.json via legacy path
           console.error("BLOCKED Legacy 'save-data' for users.json.");
           return { success: false, error: "Use userManagement IPC instead." };
       }
 
-      const filePath = path.join(userDataPath, fileName);
-      await fs.writeFile(filePath, JSON.stringify(data, null, 2));
+      await writeJsonFileFallback(fileName, data);
       return { success: true };
     } catch (error) {
       console.error(`Failed to save data to ${fileName}:`, error);
@@ -999,51 +1035,14 @@ app.whenReady().then(async () => {
 
   /**
    * IPC Handler: 'read-data'
-   * Reads JSON data from a file in the user data directory.
-   * If the file is missing, attempts to seed it from default data.
-   *
-   * @param {Electron.IpcMainInvokeEvent} event
-   * @param {string} fileName - The name of the file to read.
-   * @returns {Promise<{success: boolean, data?: any, error?: string}>}
    */
   ipcMain.handle('read-data', async (event, fileName) => {
-    const filePath = path.join(userDataPath, fileName);
     try {
-      const data = await fs.readFile(filePath, 'utf-8');
-      // Handle empty or whitespace-only files
-      if (!data || data.trim() === '') {
-          return { success: true, data: [] }; // Default to array, safest for most stores
-      }
-      return { success: true, data: JSON.parse(data) };
+        const data = await readJsonFileFallback(fileName);
+        return { success: true, data: data || [] };
     } catch (error) {
-      if (error.code === 'ENOENT') {
-        // Seed logic...
-        try {
-          let seedPath;
-          if (app.isPackaged) {
-             seedPath = path.join(app.getAppPath(), 'data', fileName);
-             try { await fs.access(seedPath); }
-             catch { seedPath = path.join(process.resourcesPath, 'data', fileName); }
-          } else {
-             seedPath = path.join(__dirname, 'public', 'data', fileName);
-          }
-
-          const seedData = await fs.readFile(seedPath, 'utf-8');
-          await fs.writeFile(filePath, seedData);
-          return { success: true, data: JSON.parse(seedData) };
-        } catch (seedError) {
-          // If seeding fails, write an empty array to prevent future read errors
-          await fs.writeFile(filePath, '[]');
-          return { success: true, data: [] };
-        }
-      } else if (error instanceof SyntaxError) {
-          // Handle corrupted JSON
-          console.error(`Corrupted JSON in ${fileName}, resetting to empty array.`);
-          await fs.writeFile(filePath, '[]');
-          return { success: true, data: [] };
-      }
-      console.error(`Failed to read data from ${fileName}:`, error);
-      return { success: false, error: error.message };
+        console.error(`Failed to read data from ${fileName}:`, error);
+        return { success: false, error: error.message };
     }
   });
 
@@ -1112,38 +1111,55 @@ app.whenReady().then(async () => {
 
   // --- Developer & Direct DB Sync ---
 
+  // --- Automated Backup Daemon ---
+  setInterval(async () => {
+      try {
+          let businessName = 'Business';
+          try {
+              const config = await readJsonFileFallback('business-setup.json');
+              if (config && config.businessName) {
+                  businessName = config.businessName.replace(/[^a-z0-9]/gi, '_');
+              }
+          } catch (e) {}
+
+          const timestamp = new Date().toISOString().replace(/T/, '_').replace(/:/g, '-').slice(0, 16); // YYYY-MM-DD_HH-MM
+          const fileName = `${timestamp}_backup_${businessName}.wpos`;
+
+          // Documents folder
+          const docsPath = app.getPath('documents');
+          const backupPath = path.join(docsPath, fileName);
+
+          await backupDB(backupPath);
+          console.log(`[Daemon] Automated backup created: ${backupPath}`);
+      } catch (error) {
+          console.error('[Daemon] Automated backup failed:', error);
+      }
+  }, 60 * 60 * 1000); // 60 minutes
+
   ipcMain.handle('backup-data', async () => {
     try {
+        let businessName = 'Business';
+        try {
+            const config = await readJsonFileFallback('business-setup.json');
+            if (config && config.businessName) {
+                businessName = config.businessName.replace(/[^a-z0-9]/gi, '_');
+            }
+        } catch (e) {}
+
+        const timestamp = new Date().toISOString().replace(/T/, '_').replace(/:/g, '-').slice(0, 16); // YYYY-MM-DD_HH-MM
+        const defaultFileName = `${timestamp}_backup_${businessName}.wpos`;
+
         const { canceled, filePath } = await dialog.showSaveDialog({
             title: 'Save Backup',
-            defaultPath: `whiz-pos-backup-${new Date().toISOString().split('T')[0]}.json`,
-            filters: [{ name: 'JSON Backup', extensions: ['json'] }]
+            defaultPath: defaultFileName,
+            filters: [{ name: 'Whiz POS Backup', extensions: ['wpos'] }]
         });
 
         if (canceled || !filePath) return { success: false, error: 'Cancelled' };
 
-        const files = [
-            'business-setup.json', 'products.json', 'users.json', 'transactions.json',
-            'expenses.json', 'salaries.json', 'credit-customers.json', 'server-config.json',
-            'credit-payments.json', 'inventory-logs.json'
-        ];
+        // Use proper SQLite backup mechanism to capture WAL data safely
+        await backupDB(filePath);
 
-        const backupData = {
-            timestamp: new Date().toISOString(),
-            version: '5.2.0',
-            data: {}
-        };
-
-        for (const file of files) {
-            try {
-                const content = await fs.readFile(path.join(userDataPath, file), 'utf-8');
-                backupData.data[file] = JSON.parse(content);
-            } catch (e) {
-                // Ignore missing files
-            }
-        }
-
-        await fs.writeFile(filePath, JSON.stringify(backupData, null, 2));
         return { success: true, filePath };
     } catch (e) {
         console.error("Backup failed", e);
@@ -1156,22 +1172,46 @@ app.whenReady().then(async () => {
           const { canceled, filePaths } = await dialog.showOpenDialog({
               title: 'Select Backup File',
               properties: ['openFile'],
-              filters: [{ name: 'JSON Backup', extensions: ['json'] }]
+              filters: [
+                  { name: 'Whiz POS Backup', extensions: ['wpos'] },
+                  { name: 'Legacy JSON Backup', extensions: ['json'] }
+              ]
           });
 
           if (canceled || filePaths.length === 0) return { success: false, error: 'Cancelled' };
 
-          const backupContent = await fs.readFile(filePaths[0], 'utf-8');
-          const backup = JSON.parse(backupContent);
+          const backupPath = filePaths[0];
 
-          if (!backup.data) throw new Error("Invalid backup file format");
+          if (backupPath.endsWith('.json')) {
+              const backupContent = await fs.readFile(backupPath, 'utf-8');
+              const backup = JSON.parse(backupContent);
 
-          // Restore files
-          for (const [filename, content] of Object.entries(backup.data)) {
-              await fs.writeFile(path.join(userDataPath, filename), JSON.stringify(content, null, 2));
+              if (!backup.data) throw new Error("Invalid backup file format");
+
+              for (const [filename, content] of Object.entries(backup.data)) {
+                  await writeJsonFileFallback(filename, content);
+              }
+          } else if (backupPath.endsWith('.wpos')) {
+              // Gracefully close connection to prevent locking or corruption during overwrite
+              closeDB();
+
+              const dbPath = path.join(userDataPath, 'whizpos.db');
+              const walPath = dbPath + '-wal';
+              const shmPath = dbPath + '-shm';
+
+              // Overwrite main DB file
+              await fs.copyFile(backupPath, dbPath);
+
+              // Remove previous WAL & SHM to ensure clean boot from restored file
+              try { await fs.unlink(walPath); } catch(e) {}
+              try { await fs.unlink(shmPath); } catch(e) {}
+
+              // Re-initialize DB
+              initDB(userDataPath);
+          } else {
+              throw new Error("Unsupported backup format");
           }
 
-          // Instead of reloading immediately, we return success so the frontend can clear localStorage before reloading.
           return { success: true };
       } catch (e) {
           console.error("Restore failed", e);

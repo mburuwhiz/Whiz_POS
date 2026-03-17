@@ -142,7 +142,7 @@ export default function BarcodeScanner() {
 
   const filteredProducts = products.filter(product =>
     (product.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (product.id || '').toLowerCase().includes(searchTerm.toLowerCase())
+    String(product.id || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (

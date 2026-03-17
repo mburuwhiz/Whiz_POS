@@ -237,6 +237,7 @@ const DeveloperPage = () => {
             const result = await window.electron.restoreData();
             if (result.success) {
                 setSuccessMsg('Restore successful. Restarting application...');
+                localStorage.removeItem('pos-storage');
                 setTimeout(() => {
                     window.location.reload();
                 }, 2000);

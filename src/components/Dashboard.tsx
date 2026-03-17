@@ -42,19 +42,19 @@ export default function Dashboard() {
         prevEnd.setHours(23, 59, 59, 999);
         break;
       case 'week':
-        start.setDate(now.getDate() - 7);
-        prevStart.setDate(start.getDate() - 7);
-        prevEnd.setDate(start.getDate() - 1);
+        start.setDate(start.getDate() - 7);
+        prevStart.setDate(prevStart.getDate() - 14);
+        prevEnd.setDate(prevEnd.getDate() - 7);
         break;
       case 'month':
-        start.setMonth(now.getMonth() - 1);
-        prevStart.setMonth(start.getMonth() - 1);
-        prevEnd.setDate(start.getDate() - 1);
+        start.setMonth(start.getMonth() - 1);
+        prevStart.setMonth(prevStart.getMonth() - 2);
+        prevEnd.setMonth(prevEnd.getMonth() - 1);
         break;
       case 'year':
-        start.setFullYear(now.getFullYear() - 1);
-        prevStart.setFullYear(start.getFullYear() - 1);
-        prevEnd.setDate(start.getDate() - 1);
+        start.setFullYear(start.getFullYear() - 1);
+        prevStart.setFullYear(prevStart.getFullYear() - 2);
+        prevEnd.setFullYear(prevEnd.getFullYear() - 1);
         break;
     }
     
@@ -74,7 +74,10 @@ export default function Dashboard() {
     });
 
     const calcRevenue = (txs: any[]) => txs.reduce((sum, t) =>
-      sum + (t.total || t.items.reduce((itemSum: number, item: any) => itemSum + (item.product.price * item.quantity), 0)), 0
+      sum + (t.total || (t.items || []).reduce((itemSum: number, item: any) => {
+        const price = item.product?.price || 0;
+        return itemSum + (price * (item.quantity || 1));
+      }, 0)), 0
     );
 
     const revenue = calcRevenue(filteredTx);
@@ -100,11 +103,13 @@ export default function Dashboard() {
     const productSales = new Map<string, { quantity: number; revenue: number; name: string }>();
     filteredTx.forEach(t => {
       t.items?.forEach(item => {
-        const id = String(item.product.id);
-        const existing = productSales.get(id) || { quantity: 0, revenue: 0, name: item.product.name };
+        if (!item.product) return;
+        const id = String(item.product.id || 'unknown');
+        const price = item.product.price || 0;
+        const existing = productSales.get(id) || { quantity: 0, revenue: 0, name: item.product.name || 'Unknown Item' };
         productSales.set(id, {
-          quantity: existing.quantity + item.quantity,
-          revenue: existing.revenue + (item.product.price * item.quantity),
+          quantity: existing.quantity + (item.quantity || 1),
+          revenue: existing.revenue + (price * (item.quantity || 1)),
           name: existing.name
         });
       });

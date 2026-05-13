@@ -66,6 +66,7 @@
   "devDependencies": {
     "@electron/rebuild": "^3.7.2",
     "@playwright/test": "^1.57.0",
+    "@tailwindcss/typography": "^0.5.19",
     "@types/matter-js": "^0.20.0",
     "@types/node": "^24.0.14",
     "@types/react": "^18.3.1",

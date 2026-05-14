@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { usePosStore } from '../store/posStore';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Save, CheckCircle, AlertTriangle, Key, Globe, Copy, RefreshCw, FileText, Download, Lock, HardDrive, Database, Printer, Smartphone, Delete, X, ArrowLeft, LogOut, Settings } from 'lucide-react';
+import { Shield, Save, CheckCircle, AlertTriangle, Key, Globe, Copy, RefreshCw, FileText, Download, Lock, HardDrive, Database, Printer, Smartphone, Delete, X, ArrowLeft, LogOut, Settings, Eye, EyeOff } from 'lucide-react';
 
 const DeveloperPage = () => {
     const { businessSetup, saveBusinessSetup } = usePosStore();
@@ -38,6 +38,11 @@ const DeveloperPage = () => {
         type: 'Till' as 'Paybill' | 'Till',
         environment: 'Production' as 'Sandbox' | 'Production'
     });
+
+    const [showPasswords, setShowPasswords] = useState<{ [key: string]: boolean }>({});
+    const togglePasswordVisibility = (field: string) => {
+        setShowPasswords(prev => ({ ...prev, [field]: !prev[field] }));
+    };
 
     // Logs State
     const [logs, setLogs] = useState('');
@@ -101,18 +106,19 @@ const DeveloperPage = () => {
 
     const loadConfig = async () => {
         try {
+            let config: any = {};
             if (window.electron && window.electron.readData) {
                 const configData = await window.electron.readData('business-setup.json');
-                const config = typeof configData === 'string' ? JSON.parse(configData || '{}') : (configData || {});
-                setBackOfficeUrl(config.backOfficeUrl || config.apiUrl || '');
-                setBackOfficeApiKey(config.backOfficeApiKey || config.apiKey || '');
-                setShowDevFooter(config.showDeveloperFooter !== false);
-                if (config.mpesaConfig) setMpesaConfig((prev) => ({ ...prev, ...config.mpesaConfig }));
-            } else {
-                setBackOfficeUrl(businessSetup?.backOfficeUrl || businessSetup?.apiUrl || '');
-                setBackOfficeApiKey(businessSetup?.backOfficeApiKey || businessSetup?.apiKey || '');
-                setShowDevFooter(businessSetup?.showDeveloperFooter !== false);
-                if (businessSetup?.mpesaConfig) setMpesaConfig((prev) => ({ ...prev, ...businessSetup.mpesaConfig }));
+                config = typeof configData === 'string' ? JSON.parse(configData || '{}') : (configData || {});
+            }
+            const fallback = businessSetup || {};
+
+            setBackOfficeUrl(config.backOfficeUrl || config.apiUrl || fallback.backOfficeUrl || fallback.apiUrl || '');
+            setBackOfficeApiKey(config.backOfficeApiKey || config.apiKey || fallback.backOfficeApiKey || fallback.apiKey || '');
+            setShowDevFooter(config.showDeveloperFooter !== undefined ? config.showDeveloperFooter : (fallback.showDeveloperFooter !== false));
+
+            if (config.mpesaConfig || fallback.mpesaConfig) {
+                setMpesaConfig((prev) => ({ ...prev, ...(config.mpesaConfig || fallback.mpesaConfig) }));
             }
         } catch (e) {
             console.error("Failed to load developer config", e);
@@ -168,6 +174,16 @@ const DeveloperPage = () => {
         };
         // @ts-ignore
         saveBusinessSetup(updatedSetup);
+
+        if (window.electron && window.electron.saveDeveloperConfig) {
+            await window.electron.saveDeveloperConfig({
+                backOfficeUrl,
+                backOfficeApiKey,
+                showDeveloperFooter: showDevFooter,
+                mpesaConfig
+            });
+        }
+
         setSuccessMsg('Settings saved successfully');
         setTimeout(() => setSuccessMsg(''), 3000);
     };
@@ -428,15 +444,22 @@ const DeveloperPage = () => {
                                             className="w-full p-3 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
                                         />
                                     </div>
-                                    <div className="md:col-span-2">
+                                    <div className="md:col-span-2 relative">
                                         <label className="block text-sm font-semibold text-gray-700 mb-2">API Auth Key</label>
                                         <input
-                                            type="password"
+                                            type={showPasswords['backOfficeApiKey'] ? 'text' : 'password'}
                                             value={backOfficeApiKey}
                                             onChange={(e) => setBackOfficeApiKey(e.target.value)}
                                             placeholder="Bearer token or API Key"
                                             className="w-full p-3 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
                                         />
+                                        <button
+                                            type="button"
+                                            onClick={() => togglePasswordVisibility('backOfficeApiKey')}
+                                            className="absolute right-3 top-10 text-gray-400 hover:text-gray-600"
+                                        >
+                                            {showPasswords['backOfficeApiKey'] ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -498,15 +521,22 @@ const DeveloperPage = () => {
                                     />
                                 </div>
 
-                                <div className="md:col-span-2">
+                                <div className="md:col-span-2 relative">
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">Frontend API Key (For Backend Auth)</label>
                                     <input
-                                        type="password"
+                                        type={showPasswords['apiKey'] ? 'text' : 'password'}
                                         value={mpesaConfig.apiKey}
                                         onChange={(e) => setMpesaConfig({...mpesaConfig, apiKey: e.target.value})}
                                         placeholder="API_KEY from backend .env"
                                         className="w-full p-3 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => togglePasswordVisibility('apiKey')}
+                                        className="absolute right-3 top-10 text-gray-400 hover:text-gray-600"
+                                    >
+                                        {showPasswords['apiKey'] ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    </button>
                                 </div>
 
                                 <div className="md:col-span-2 border-t pt-4">
@@ -555,15 +585,22 @@ const DeveloperPage = () => {
                                         className="w-full p-3 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
                                     />
                                 </div>
-                                <div>
+                                <div className="relative">
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">Passkey</label>
                                     <input
-                                        type="password"
+                                        type={showPasswords['passkey'] ? 'text' : 'password'}
                                         value={mpesaConfig.passkey}
                                         onChange={(e) => setMpesaConfig({...mpesaConfig, passkey: e.target.value})}
                                         placeholder="bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
-                                        className="w-full p-3 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                                        className="w-full p-3 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none pr-10"
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => togglePasswordVisibility('passkey')}
+                                        className="absolute right-3 top-10 text-gray-400 hover:text-gray-600"
+                                    >
+                                        {showPasswords['passkey'] ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    </button>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">Callback URL</label>
@@ -575,25 +612,39 @@ const DeveloperPage = () => {
                                         className="w-full p-3 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
                                     />
                                 </div>
-                                <div className="md:col-span-2">
+                                <div className="md:col-span-2 relative">
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">Consumer Key</label>
                                     <input
-                                        type="password"
+                                        type={showPasswords['consumerKey'] ? 'text' : 'password'}
                                         value={mpesaConfig.consumerKey}
                                         onChange={(e) => setMpesaConfig({...mpesaConfig, consumerKey: e.target.value})}
                                         placeholder="Daraja App Consumer Key"
                                         className="w-full p-3 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => togglePasswordVisibility('consumerKey')}
+                                        className="absolute right-3 top-10 text-gray-400 hover:text-gray-600"
+                                    >
+                                        {showPasswords['consumerKey'] ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    </button>
                                 </div>
-                                <div className="md:col-span-2">
+                                <div className="md:col-span-2 relative">
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">Consumer Secret</label>
                                     <input
-                                        type="password"
+                                        type={showPasswords['consumerSecret'] ? 'text' : 'password'}
                                         value={mpesaConfig.consumerSecret}
                                         onChange={(e) => setMpesaConfig({...mpesaConfig, consumerSecret: e.target.value})}
                                         placeholder="Daraja App Consumer Secret"
                                         className="w-full p-3 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => togglePasswordVisibility('consumerSecret')}
+                                        className="absolute right-3 top-10 text-gray-400 hover:text-gray-600"
+                                    >
+                                        {showPasswords['consumerSecret'] ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    </button>
                                 </div>
                             </div>
                         </div>

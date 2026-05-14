@@ -1293,17 +1293,6 @@ app.whenReady().then(async () => {
       }
   });
 
-            }
-        };
-
-    } catch (e) {
-        console.error("Direct DB Pull Failed", e);
-        return { success: false, error: e.message };
-    } finally {
-        if (client) await client.close();
-    }
-  });
-
   // --- Printing Logic ---
   /**
    * Creates a hidden BrowserWindow to render HTML content and triggers the print dialog.

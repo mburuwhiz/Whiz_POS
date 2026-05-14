@@ -77,18 +77,81 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
         }
 
+        const client = getTursoClient();
+
+        // Helper to map sync operation types to database tables
+        const getTableFromType = (type: string) => {
+            if (type.includes('transaction')) return 'transactions';
+            if (type.includes('product')) return 'products';
+            if (type.includes('customer')) return 'credit_customers';
+            if (type.includes('expense')) return 'expenses';
+            if (type.includes('salary')) return 'salaries';
+            if (type.includes('user')) return 'users';
+            if (type.includes('supplier')) return 'suppliers';
+            return null;
+        };
+
         // Process queue
         for (const item of queue as any[]) {
-            // we will store the raw json payload in a 'data' column for simplicity, and id in 'id' column.
             const type = item.type;
-            const payload = item.payload;
-            if (!payload || !payload.id) continue;
+            const payload = item.data || item.payload; // Desktop app uses `data`
 
-            // Mapping POS sync queue types to table names might be complex, so let's use the full sync for main logic
-            // or just generic table.
+            if (!type || !payload) continue;
 
-            // For now, to fulfill the prompt exactly, the sync/full endpoint handles the full push.
-            // A granular POST sync isn't fully detailed in the POS store (POS uses full sync predominantly for db push).
+            const tableName = getTableFromType(type);
+            if (!tableName) continue;
+
+            try {
+                // Ensure table exists
+                await client.execute(`CREATE TABLE IF NOT EXISTS ${tableName} (
+                    id TEXT PRIMARY KEY,
+                    data TEXT
+                )`);
+
+                if (type.startsWith('delete-')) {
+                    const id = payload.id;
+                    if (id) {
+                        await client.execute({
+                            sql: `DELETE FROM ${tableName} WHERE id = ?`,
+                            args: [String(id)]
+                        });
+                    }
+                } else if (type.startsWith('update-')) {
+                    const id = payload.id;
+                    const updates = payload.updates;
+                    if (id && updates) {
+                        // For updates, we first fetch the existing row, merge the JSON, and upsert
+                        const existing = await client.execute({
+                            sql: `SELECT data FROM ${tableName} WHERE id = ?`,
+                            args: [String(id)]
+                        });
+
+                        let currentData = {};
+                        if (existing.rows.length > 0 && existing.rows[0].data) {
+                            try {
+                                currentData = JSON.parse(existing.rows[0].data as string);
+                            } catch (e) {}
+                        }
+
+                        const mergedData = { ...currentData, ...updates };
+                        await client.execute({
+                            sql: `INSERT INTO ${tableName} (id, data) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data`,
+                            args: [String(id), JSON.stringify(mergedData)]
+                        });
+                    }
+                } else {
+                    // add- or new- operations
+                    const id = payload.id || payload.productId || payload.transactionId;
+                    if (id) {
+                        await client.execute({
+                            sql: `INSERT INTO ${tableName} (id, data) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data`,
+                            args: [String(id), JSON.stringify(payload)]
+                        });
+                    }
+                }
+            } catch (err) {
+                console.error(`Failed to process sync item type: ${type}`, err);
+            }
         }
 
         return NextResponse.json({ success: true });

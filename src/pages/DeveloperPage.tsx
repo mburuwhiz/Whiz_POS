@@ -18,7 +18,6 @@ const DeveloperPage = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [backOfficeUrl, setBackOfficeUrl] = useState('');
     const [backOfficeApiKey, setBackOfficeApiKey] = useState('');
-    const [mongoUri, setMongoUri] = useState('');
     const [successMsg, setSuccessMsg] = useState('');
     const [error, setError] = useState('');
     const [showDevFooter, setShowDevFooter] = useState(true);
@@ -171,34 +170,6 @@ const DeveloperPage = () => {
         saveBusinessSetup(updatedSetup);
         setSuccessMsg('Settings saved successfully');
         setTimeout(() => setSuccessMsg(''), 3000);
-    };
-
-    const handleDirectPush = async () => {
-        if (!mongoUri) {
-            setError('MongoDB URI is required for direct push');
-            return;
-        }
-
-        setIsPushing(true);
-        setError('');
-        setSuccessMsg('');
-
-        try {
-            if (window.electron && window.electron.directDbPush) {
-                const result = await window.electron.directDbPush(mongoUri);
-                if (result.success) {
-                    setSuccessMsg('Direct DB push completed successfully');
-                } else {
-                    setError(`Push failed: ${result.error}`);
-                }
-            } else {
-                setError('Direct push is only available in the Desktop App');
-            }
-        } catch (e: any) {
-            setError(`Failed to execute direct push: ${e.message}`);
-        } finally {
-            setIsPushing(false);
-        }
     };
 
     const handleBackup = async () => {
@@ -631,39 +602,6 @@ const DeveloperPage = () => {
                     {/* Menu Content: Database & Sync */}
                     {activeMenu === 'database' && (
                         <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
-                            {/* Direct DB Sync */}
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                                <div className="bg-gray-50 p-4 border-b border-gray-100 flex items-center gap-3">
-                                    <Database className="w-5 h-5 text-blue-600" />
-                                    <h2 className="text-lg font-bold text-gray-800">Direct Database Migration</h2>
-                                </div>
-                                <div className="p-6">
-                                    <p className="text-sm text-gray-500 mb-4">
-                                        For initial setup. Pushes entire local state directly to remote database, bypassing APIs.
-                                    </p>
-                                    <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
-                                        <div className="relative flex-1 w-full">
-                                            <Key className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
-                                            <input
-                                                type="password"
-                                                value={mongoUri}
-                                                onChange={(e) => setMongoUri(e.target.value)}
-                                                placeholder="mongodb+srv://user:pass@cluster.mongodb.net/dbname"
-                                                className="w-full pl-10 p-3 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                            />
-                                        </div>
-                                        <button
-                                            onClick={handleDirectPush}
-                                            disabled={isPushing || !mongoUri}
-                                            className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold transition-colors disabled:opacity-50 whitespace-nowrap flex items-center gap-2 w-full md:w-auto justify-center"
-                                        >
-                                            {isPushing ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Database className="w-5 h-5" />}
-                                            {isPushing ? 'Pushing Data...' : 'Force Push'}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
                             {/* Backup & Restore */}
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                                 <div className="bg-gray-50 p-4 border-b border-gray-100 flex items-center gap-3">

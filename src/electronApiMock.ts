@@ -95,10 +95,6 @@ export const setupElectronMock = () => {
       saveDeveloperConfig: async (config) => {
           console.log('[Mock] saveDeveloperConfig:', config);
           return { success: true };
-      },
-      directDbPush: async (mongoUri) => {
-          console.log('[Mock] directDbPush:', mongoUri);
-          return { success: true };
       }
     };
   }

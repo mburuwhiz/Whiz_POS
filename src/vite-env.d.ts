@@ -27,8 +27,6 @@ declare global {
       onUpdateDownloaded: (callback: (event: any, info: any) => void) => void;
       getDeveloperConfig: () => Promise<{ developerPin: string | null; mongoUri: string; backOfficeUrl: string; backOfficeApiKey: string }>;
       saveDeveloperConfig: (config: any) => Promise<{ success: boolean; error?: string }>;
-      directDbPush: (mongoUri: string) => Promise<{ success: boolean; error?: string }>;
-      directDbPull: (mongoUri: string) => Promise<{ success: boolean; data?: any; error?: string }>;
       backupData: () => Promise<{ success: boolean; filePath?: string; error?: string }>;
       restoreData: () => Promise<{ success: boolean; error?: string }>;
       getLogs: () => Promise<string>;

@@ -1147,33 +1147,6 @@ export const usePosStore = create<PosState>()(
 
         if (!state.isOnline || state.syncQueue.length === 0) return;
 
-        // Use Direct DB Push if available (Preferred for robustness)
-        if (mongoDbUri && window.electron && window.electron.directDbPush) {
-             console.log("Auto-Sync: Triggering Direct DB Push...");
-             // Note: directDbPush sends the ENTIRE state from JSON files, not just the queue.
-             // This is safer and ensures consistency.
-             // We can clear the queue optimistically since the DB push covers these changes.
-             const queue = [...state.syncQueue];
-             set({ syncQueue: [] });
-
-             try {
-                 const result = await window.electron.directDbPush(mongoDbUri);
-                 if (result.success) {
-                     console.log("Auto-Sync: Direct DB Push Successful");
-                     set({ lastSyncTime: new Date().toISOString() });
-                     get().syncFromServer(); // Pull updates
-                     return;
-                 } else {
-                     console.error("Auto-Sync: Direct DB Push Failed, falling back to API...", result.error);
-                     // Put items back in queue to try API or retry later
-                     set((state) => ({ syncQueue: [...queue, ...state.syncQueue] }));
-                 }
-             } catch (e) {
-                 console.error("Auto-Sync: Direct DB Push Exception", e);
-                 set((state) => ({ syncQueue: [...queue, ...state.syncQueue] }));
-             }
-        }
-
         // Fallback to Legacy HTTP API Sync
         if (!apiUrl || !apiKey) return;
 
@@ -1218,23 +1191,6 @@ export const usePosStore = create<PosState>()(
         if (!configState.isOnline) { console.debug("Sync skipped: Offline"); return; }
 
         let serverData: any = null;
-
-        // Direct MongoDB Pull (Preferred)
-        if (mongoDbUri && window.electron && window.electron.directDbPull) {
-            console.log("Initiating Direct MongoDB Pull...");
-            try {
-                // This await can take time. During this time, the local state might change (e.g. user adds expense).
-                const result = await window.electron.directDbPull(mongoDbUri);
-                if (result.success && result.data) {
-                    console.log("Direct MongoDB Pull Successful");
-                    serverData = result.data;
-                } else {
-                    console.error("Direct MongoDB Pull Failed:", result.error);
-                }
-            } catch (e) {
-                console.error("Direct MongoDB Pull Exception:", e);
-            }
-        }
 
         // Fallback to HTTP Sync
         if (!serverData) {
@@ -2085,25 +2041,6 @@ export const usePosStore = create<PosState>()(
         if (!state.isOnline) {
             console.error("Cannot push data: App is offline");
             return;
-        }
-
-        // Direct MongoDB Push (Preferred)
-        if (mongoDbUri && window.electron && window.electron.directDbPush) {
-            console.log("Initiating Direct MongoDB Sync...");
-            try {
-                const result = await window.electron.directDbPush(mongoDbUri);
-                if (result.success) {
-                    console.log("Direct MongoDB Sync Successful");
-                    set({ lastSyncTime: new Date().toISOString() });
-                    return;
-                } else {
-                    console.error("Direct MongoDB Sync Failed:", result.error);
-                    // Fallback to HTTP if failed? Or just stop. User says "this method will work 100%".
-                    // We can try fallback.
-                }
-            } catch (e) {
-                console.error("Direct MongoDB Sync Exception:", e);
-            }
         }
 
         const apiUrl = rawUrl?.replace(/\/$/, '');

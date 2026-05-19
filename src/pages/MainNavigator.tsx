@@ -15,7 +15,7 @@ import LoyaltyProgram from '../components/LoyaltyProgram';
 import BarcodeScanner from '../components/BarcodeScanner';
 import OfflineSyncStatus from '../components/OfflineSyncStatus';
 import BusinessRegistrationPage from './BusinessRegistrationPage';
-import BackOfficePage from './BackOfficePage';
+
 import LoginScreen from '../components/LoginScreen';
 import AppLayout from '../components/AppLayout';
 import PreviousReceiptsPage from '../components/PreviousReceiptsPage';
@@ -90,7 +90,6 @@ const MainNavigator = () => {
         <Route path="/sync" element={<OfflineSyncStatus />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/register" element={<BusinessRegistrationPage />} />
-        <Route path="/backoffice" element={<BackOfficePage />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/inventory" element={<InventoryManagement />} />
         <Route path="/loyalty" element={<LoyaltyProgram />} />

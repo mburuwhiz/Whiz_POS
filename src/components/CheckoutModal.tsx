@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { usePosStore } from '../store/posStore';
-import { X, CreditCard, Smartphone, Wallet, CheckCircle, Loader2 } from 'lucide-react';
+import { X, CreditCard, Smartphone, Wallet, CheckCircle, Loader2, CheckCircle2 } from 'lucide-react';
 import CreditCustomerModal from './CreditCustomerModal';
 import { soundManager } from '../lib/soundUtils';
 import { useToast } from './ui/use-toast';
+import { Modal } from './ui/modal';
+import { Button } from './ui/button';
 
 /**
  * Modal component for handling the checkout process.
  * Allows selecting payment method (Cash, M-Pesa, Credit) and completing the transaction.
  */
 export default function CheckoutModal() {
-  const { isCheckoutOpen, closeCheckout, cart, completeTransaction, businessSetup } = usePosStore();
+  const { isCheckoutOpen, closeCheckout, cart, completeTransaction, businessSetup, isTransactionSuccessPopupOpen, lastCompletedTransaction, closeTransactionSuccessPopup } = usePosStore();
 
   // Flow state: 'select' -> 'details'
   const [checkoutStep, setCheckoutStep] = useState<'select' | 'details'>('select');

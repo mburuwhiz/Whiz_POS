@@ -48,7 +48,7 @@ export default function SettingsPage() {
     deleteCategory
   } = usePosStore();
 
-  const [activeTab, setActiveTab] = useState<'business' | 'categories' | 'security' | 'sync' | 'devices' | 'printers' | 'updates' | 'data'>('business');
+  const [activeTab, setActiveTab] = useState<'business' | 'categories' | 'security' | 'devices' | 'printers' | 'updates' | 'data'>('business');
   const [editingBusiness, setEditingBusiness] = useState(false);
   const [pruneDays, setPruneDays] = useState(30);
   const [deleteDateRange, setDeleteDateRange] = useState({
@@ -88,6 +88,7 @@ export default function SettingsPage() {
     autoLogoffEnabled: false,
     autoLogoffMinutes: 5,
     printerPaperWidth: 80,
+    disableReceiptPrinting: false,
   });
 
   const [userData, setUserData] = useState({
@@ -121,6 +122,7 @@ export default function SettingsPage() {
         autoLogoffEnabled: businessSetup.autoLogoffEnabled || false,
         autoLogoffMinutes: businessSetup.autoLogoffMinutes || 5,
         printerPaperWidth: businessSetup.printerPaperWidth || 80,
+        disableReceiptPrinting: (businessSetup as any).disableReceiptPrinting || false,
       });
     }
   }, [businessSetup]);
@@ -276,17 +278,7 @@ export default function SettingsPage() {
               Connected Devices
             </button>
 
-            <button
-              onClick={() => setActiveTab('sync')}
-              className={`flex items-center px-6 py-4 font-medium border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === 'sync'
-                  ? 'border-blue-500 text-blue-600' 
-                  : 'border-transparent text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              <Database className="w-5 h-5 mr-2" />
-              Cloud Back Office
-            </button>
+
 
             <button
               onClick={() => setActiveTab('printers')}
@@ -689,73 +681,7 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* Cloud Sync Settings (Back Office) */}
-        {activeTab === 'sync' && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center gap-3 mb-4">
-                <Monitor className="w-6 h-6 text-purple-600" />
-                <h2 className="text-xl font-semibold text-gray-800">Cloud Back Office</h2>
-            </div>
-            <p className="text-sm text-gray-600 mb-6">
-                Check the status of your connection to the central web dashboard.
-            </p>
 
-            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
-                <div className="flex">
-                    <div className="flex-shrink-0">
-                        <Monitor className="h-5 w-5 text-blue-400" aria-hidden="true" />
-                    </div>
-                    <div className="ml-3">
-                        <p className="text-sm text-blue-700">
-                            Configure the direct connection to the Cloud Database.
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            <div className="space-y-4 max-w-2xl">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">MongoDB URI</label>
-                  <div className="flex gap-2">
-                    <input
-                        type="password"
-                        name="mongoDbUri"
-                        value={businessData.mongoDbUri}
-                        onChange={(e) => {
-                            handleBusinessDataChange(e);
-                        }}
-                        className="flex-1 p-3 border rounded-lg bg-white"
-                        placeholder="mongodb+srv://..."
-                    />
-                    <button
-                        onClick={() => saveBusinessSetup({ ...businessSetup, ...businessData, isSetup: true } as any)}
-                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
-                    >
-                        Save
-                    </button>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">Direct connection string for 100% reliable sync.</p>
-                </div>
-
-              <div className="flex items-center gap-4 mt-6">
-                <button onClick={() => showConfirm("Full Cloud Sync", "This will overwrite the server data with desktop data. Continue?", pushDataToServer, "warning")} className="flex items-center bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg shadow-sm transition-colors">
-                  <RefreshCw className="w-5 h-5 mr-2" />
-                  Full Cloud Synchronization (Overwrite Server)
-                </button>
-              </div>
-
-              <div className="mt-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-gray-700">Connection Status</span>
-                    <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${isOnline ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        {isOnline ? 'Online' : 'Offline'}
-                    </span>
-                </div>
-                <p className="text-xs text-gray-500">Last successful sync: {lastSyncTime ? new Date(lastSyncTime).toLocaleString() : 'Never'}</p>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Printer Settings */}
         {activeTab === 'printers' && (
@@ -765,53 +691,80 @@ export default function SettingsPage() {
                     <h2 className="text-xl font-semibold text-gray-800">Printer Configuration</h2>
                 </div>
                 <p className="text-sm text-gray-600 mb-6">
-                    Select a default printer to skip the print dialog.
+                    Configure your receipt printer settings.
                 </p>
 
                 <div className="max-w-xl space-y-6">
-                    <div>
-                         <label className="block text-sm font-medium text-gray-700 mb-2">Paper Width (mm)</label>
-                         <input
-                            type="number"
-                            min="40"
-                            max="120"
-                            value={businessData.printerPaperWidth || 80}
-                            onChange={(e) => {
-                                const val = parseInt(e.target.value) || 80;
-                                setBusinessData(prev => ({ ...prev, printerPaperWidth: val }));
-                                saveBusinessSetup({ ...businessSetup, ...businessData, printerPaperWidth: val, isSetup: true } as any);
-                            }}
-                            className="w-full p-3 border rounded-lg bg-white"
-                         />
-                         <p className="text-xs text-gray-500 mt-2">
-                             Set the width of your thermal paper (e.g., 80mm or 58mm). This ensures the receipt content scales correctly.
-                         </p>
+                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <div className='flex items-center'>
+                            <Printer className="w-5 h-5 mr-2 text-gray-600" />
+                            <div>
+                                <label htmlFor="disableReceiptPrinting" className="block text-sm font-medium text-gray-700">Disable Receipt Printing</label>
+                                <p className="text-xs text-gray-500">Show a success popup instead of printing receipts</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center space-x-4">
+                            <span className="text-sm text-gray-600">{businessData.disableReceiptPrinting ? 'Disabled' : 'Enabled'}</span>
+                            <button
+                                onClick={() => {
+                                    const newVal = !businessData.disableReceiptPrinting;
+                                    setBusinessData(prev => ({ ...prev, disableReceiptPrinting: newVal }));
+                                    saveBusinessSetup({ ...businessSetup, ...businessData, disableReceiptPrinting: newVal, isSetup: true } as any);
+                                }}
+                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${businessData.disableReceiptPrinting ? 'bg-red-600' : 'bg-blue-600'}`}
+                            >
+                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${businessData.disableReceiptPrinting ? 'translate-x-6' : 'translate-x-1'}`} />
+                            </button>
+                        </div>
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Default Printer</label>
-                        <select
-                            value={selectedPrinter}
-                            onChange={(e) => setSelectedPrinter(e.target.value)}
-                            className="w-full p-3 border rounded-lg bg-white"
-                        >
-                            <option value="">-- Always Ask (Show Print Dialog) --</option>
-                            {printers.map((p, idx) => (
-                                <option key={idx} value={p.name}>{p.name} {p.isDefault ? '(System Default)' : ''}</option>
-                            ))}
-                        </select>
-                        <p className="text-xs text-gray-500 mt-2">
-                            If a printer is selected, receipts will print automatically to it without showing a dialog.
-                        </p>
-                    </div>
+                    {!businessData.disableReceiptPrinting && (
+                        <>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Paper Width (mm)</label>
+                                <input
+                                    type="number"
+                                    min="40"
+                                    max="120"
+                                    value={businessData.printerPaperWidth || 80}
+                                    onChange={(e) => {
+                                        const val = parseInt(e.target.value) || 80;
+                                        setBusinessData(prev => ({ ...prev, printerPaperWidth: val }));
+                                        saveBusinessSetup({ ...businessSetup, ...businessData, printerPaperWidth: val, isSetup: true } as any);
+                                    }}
+                                    className="w-full p-3 border rounded-lg bg-white"
+                                />
+                                <p className="text-xs text-gray-500 mt-2">
+                                    Set the width of your thermal paper (e.g., 80mm or 58mm). This ensures the receipt content scales correctly.
+                                </p>
+                            </div>
 
-                    <button
-                        onClick={handleSavePrinter}
-                        className="flex items-center bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg shadow-sm transition-colors"
-                    >
-                        <Save className="w-5 h-5 mr-2" />
-                        Save Printer Settings
-                    </button>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Default Printer</label>
+                                <select
+                                    value={selectedPrinter}
+                                    onChange={(e) => setSelectedPrinter(e.target.value)}
+                                    className="w-full p-3 border rounded-lg bg-white"
+                                >
+                                    <option value="">-- Always Ask (Show Print Dialog) --</option>
+                                    {printers.map((p, idx) => (
+                                        <option key={idx} value={p.name}>{p.name} {p.isDefault ? '(System Default)' : ''}</option>
+                                    ))}
+                                </select>
+                                <p className="text-xs text-gray-500 mt-2">
+                                    If a printer is selected, receipts will print automatically to it without showing a dialog.
+                                </p>
+                            </div>
+
+                            <button
+                                onClick={handleSavePrinter}
+                                className="flex items-center bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg shadow-sm transition-colors"
+                            >
+                                <Save className="w-5 h-5 mr-2" />
+                                Save Printer Settings
+                            </button>
+                        </>
+                    )}
                 </div>
             </div>
         )}

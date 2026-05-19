@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { usePosStore } from '../store/posStore';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Save, CheckCircle, AlertTriangle, Key, Globe, Copy, RefreshCw, FileText, Download, Lock, HardDrive, Database, Printer, Smartphone, Delete, X, ArrowLeft, LogOut, Settings } from 'lucide-react';
+import { Shield, Save, CheckCircle, AlertTriangle, Key, Globe, Copy, RefreshCw, FileText, Download, Lock, HardDrive, Database, Printer, Smartphone, Delete, X, ArrowLeft, LogOut, Settings, Eye, EyeOff } from 'lucide-react';
 
 const DeveloperPage = () => {
     const { businessSetup, saveBusinessSetup } = usePosStore();
@@ -18,7 +18,6 @@ const DeveloperPage = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [backOfficeUrl, setBackOfficeUrl] = useState('');
     const [backOfficeApiKey, setBackOfficeApiKey] = useState('');
-    const [mongoUri, setMongoUri] = useState('');
     const [successMsg, setSuccessMsg] = useState('');
     const [error, setError] = useState('');
     const [showDevFooter, setShowDevFooter] = useState(true);
@@ -39,6 +38,11 @@ const DeveloperPage = () => {
         type: 'Till' as 'Paybill' | 'Till',
         environment: 'Production' as 'Sandbox' | 'Production'
     });
+
+    const [showPasswords, setShowPasswords] = useState<{ [key: string]: boolean }>({});
+    const togglePasswordVisibility = (field: string) => {
+        setShowPasswords(prev => ({ ...prev, [field]: !prev[field] }));
+    };
 
     // Logs State
     const [logs, setLogs] = useState('');
@@ -102,18 +106,19 @@ const DeveloperPage = () => {
 
     const loadConfig = async () => {
         try {
+            let config: any = {};
             if (window.electron && window.electron.readData) {
                 const configData = await window.electron.readData('business-setup.json');
-                const config = typeof configData === 'string' ? JSON.parse(configData || '{}') : (configData || {});
-                setBackOfficeUrl(config.backOfficeUrl || config.apiUrl || '');
-                setBackOfficeApiKey(config.backOfficeApiKey || config.apiKey || '');
-                setShowDevFooter(config.showDeveloperFooter !== false);
-                if (config.mpesaConfig) setMpesaConfig((prev) => ({ ...prev, ...config.mpesaConfig }));
-            } else {
-                setBackOfficeUrl(businessSetup?.backOfficeUrl || businessSetup?.apiUrl || '');
-                setBackOfficeApiKey(businessSetup?.backOfficeApiKey || businessSetup?.apiKey || '');
-                setShowDevFooter(businessSetup?.showDeveloperFooter !== false);
-                if (businessSetup?.mpesaConfig) setMpesaConfig((prev) => ({ ...prev, ...businessSetup.mpesaConfig }));
+                config = typeof configData === 'string' ? JSON.parse(configData || '{}') : (configData || {});
+            }
+            const fallback = businessSetup || {};
+
+            setBackOfficeUrl(config.backOfficeUrl || config.apiUrl || fallback.backOfficeUrl || fallback.apiUrl || '');
+            setBackOfficeApiKey(config.backOfficeApiKey || config.apiKey || fallback.backOfficeApiKey || fallback.apiKey || '');
+            setShowDevFooter(config.showDeveloperFooter !== undefined ? config.showDeveloperFooter : (fallback.showDeveloperFooter !== false));
+
+            if (config.mpesaConfig || fallback.mpesaConfig) {
+                setMpesaConfig((prev) => ({ ...prev, ...(config.mpesaConfig || fallback.mpesaConfig) }));
             }
         } catch (e) {
             console.error("Failed to load developer config", e);
@@ -169,36 +174,18 @@ const DeveloperPage = () => {
         };
         // @ts-ignore
         saveBusinessSetup(updatedSetup);
+
+        if (window.electron && window.electron.saveDeveloperConfig) {
+            await window.electron.saveDeveloperConfig({
+                backOfficeUrl,
+                backOfficeApiKey,
+                showDeveloperFooter: showDevFooter,
+                mpesaConfig
+            });
+        }
+
         setSuccessMsg('Settings saved successfully');
         setTimeout(() => setSuccessMsg(''), 3000);
-    };
-
-    const handleDirectPush = async () => {
-        if (!mongoUri) {
-            setError('MongoDB URI is required for direct push');
-            return;
-        }
-
-        setIsPushing(true);
-        setError('');
-        setSuccessMsg('');
-
-        try {
-            if (window.electron && window.electron.directDbPush) {
-                const result = await window.electron.directDbPush(mongoUri);
-                if (result.success) {
-                    setSuccessMsg('Direct DB push completed successfully');
-                } else {
-                    setError(`Push failed: ${result.error}`);
-                }
-            } else {
-                setError('Direct push is only available in the Desktop App');
-            }
-        } catch (e: any) {
-            setError(`Failed to execute direct push: ${e.message}`);
-        } finally {
-            setIsPushing(false);
-        }
     };
 
     const handleBackup = async () => {
@@ -457,15 +444,22 @@ const DeveloperPage = () => {
                                             className="w-full p-3 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
                                         />
                                     </div>
-                                    <div className="md:col-span-2">
+                                    <div className="md:col-span-2 relative">
                                         <label className="block text-sm font-semibold text-gray-700 mb-2">API Auth Key</label>
                                         <input
-                                            type="password"
+                                            type={showPasswords['backOfficeApiKey'] ? 'text' : 'password'}
                                             value={backOfficeApiKey}
                                             onChange={(e) => setBackOfficeApiKey(e.target.value)}
                                             placeholder="Bearer token or API Key"
                                             className="w-full p-3 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
                                         />
+                                        <button
+                                            type="button"
+                                            onClick={() => togglePasswordVisibility('backOfficeApiKey')}
+                                            className="absolute right-3 top-10 text-gray-400 hover:text-gray-600"
+                                        >
+                                            {showPasswords['backOfficeApiKey'] ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -527,15 +521,22 @@ const DeveloperPage = () => {
                                     />
                                 </div>
 
-                                <div className="md:col-span-2">
+                                <div className="md:col-span-2 relative">
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">Frontend API Key (For Backend Auth)</label>
                                     <input
-                                        type="password"
+                                        type={showPasswords['apiKey'] ? 'text' : 'password'}
                                         value={mpesaConfig.apiKey}
                                         onChange={(e) => setMpesaConfig({...mpesaConfig, apiKey: e.target.value})}
                                         placeholder="API_KEY from backend .env"
                                         className="w-full p-3 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => togglePasswordVisibility('apiKey')}
+                                        className="absolute right-3 top-10 text-gray-400 hover:text-gray-600"
+                                    >
+                                        {showPasswords['apiKey'] ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    </button>
                                 </div>
 
                                 <div className="md:col-span-2 border-t pt-4">
@@ -584,15 +585,22 @@ const DeveloperPage = () => {
                                         className="w-full p-3 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
                                     />
                                 </div>
-                                <div>
+                                <div className="relative">
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">Passkey</label>
                                     <input
-                                        type="password"
+                                        type={showPasswords['passkey'] ? 'text' : 'password'}
                                         value={mpesaConfig.passkey}
                                         onChange={(e) => setMpesaConfig({...mpesaConfig, passkey: e.target.value})}
                                         placeholder="bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
-                                        className="w-full p-3 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                                        className="w-full p-3 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none pr-10"
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => togglePasswordVisibility('passkey')}
+                                        className="absolute right-3 top-10 text-gray-400 hover:text-gray-600"
+                                    >
+                                        {showPasswords['passkey'] ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    </button>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">Callback URL</label>
@@ -604,25 +612,39 @@ const DeveloperPage = () => {
                                         className="w-full p-3 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
                                     />
                                 </div>
-                                <div className="md:col-span-2">
+                                <div className="md:col-span-2 relative">
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">Consumer Key</label>
                                     <input
-                                        type="password"
+                                        type={showPasswords['consumerKey'] ? 'text' : 'password'}
                                         value={mpesaConfig.consumerKey}
                                         onChange={(e) => setMpesaConfig({...mpesaConfig, consumerKey: e.target.value})}
                                         placeholder="Daraja App Consumer Key"
                                         className="w-full p-3 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => togglePasswordVisibility('consumerKey')}
+                                        className="absolute right-3 top-10 text-gray-400 hover:text-gray-600"
+                                    >
+                                        {showPasswords['consumerKey'] ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    </button>
                                 </div>
-                                <div className="md:col-span-2">
+                                <div className="md:col-span-2 relative">
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">Consumer Secret</label>
                                     <input
-                                        type="password"
+                                        type={showPasswords['consumerSecret'] ? 'text' : 'password'}
                                         value={mpesaConfig.consumerSecret}
                                         onChange={(e) => setMpesaConfig({...mpesaConfig, consumerSecret: e.target.value})}
                                         placeholder="Daraja App Consumer Secret"
                                         className="w-full p-3 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => togglePasswordVisibility('consumerSecret')}
+                                        className="absolute right-3 top-10 text-gray-400 hover:text-gray-600"
+                                    >
+                                        {showPasswords['consumerSecret'] ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -631,39 +653,6 @@ const DeveloperPage = () => {
                     {/* Menu Content: Database & Sync */}
                     {activeMenu === 'database' && (
                         <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
-                            {/* Direct DB Sync */}
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                                <div className="bg-gray-50 p-4 border-b border-gray-100 flex items-center gap-3">
-                                    <Database className="w-5 h-5 text-blue-600" />
-                                    <h2 className="text-lg font-bold text-gray-800">Direct Database Migration</h2>
-                                </div>
-                                <div className="p-6">
-                                    <p className="text-sm text-gray-500 mb-4">
-                                        For initial setup. Pushes entire local state directly to remote database, bypassing APIs.
-                                    </p>
-                                    <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
-                                        <div className="relative flex-1 w-full">
-                                            <Key className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
-                                            <input
-                                                type="password"
-                                                value={mongoUri}
-                                                onChange={(e) => setMongoUri(e.target.value)}
-                                                placeholder="mongodb+srv://user:pass@cluster.mongodb.net/dbname"
-                                                className="w-full pl-10 p-3 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                            />
-                                        </div>
-                                        <button
-                                            onClick={handleDirectPush}
-                                            disabled={isPushing || !mongoUri}
-                                            className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold transition-colors disabled:opacity-50 whitespace-nowrap flex items-center gap-2 w-full md:w-auto justify-center"
-                                        >
-                                            {isPushing ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Database className="w-5 h-5" />}
-                                            {isPushing ? 'Pushing Data...' : 'Force Push'}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
                             {/* Backup & Restore */}
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                                 <div className="bg-gray-50 p-4 border-b border-gray-100 flex items-center gap-3">

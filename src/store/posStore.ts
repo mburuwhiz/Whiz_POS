@@ -400,6 +400,9 @@ interface PosState {
   syncQueue: any[];
   lastSyncTime: string | null;
   isSidebarCollapsed: boolean;
+  // Transaction Success Popup
+  isTransactionSuccessPopupOpen: boolean;
+  lastCompletedTransaction: Transaction | null;
   
   // Enhanced features state
   inventoryProducts: Product[];
@@ -531,6 +534,8 @@ export const usePosStore = create<PosState>()(
       sessionToken: null,
       isSidebarCollapsed: false,
       categories: ['Coffee', 'Tea', 'Pastries', 'Sandwiches', 'Cold Drinks', 'Others'],
+      isTransactionSuccessPopupOpen: false,
+      lastCompletedTransaction: null,
 
       /**
        * Logs in a user and updates the session state.
@@ -707,6 +712,12 @@ export const usePosStore = create<PosState>()(
       /**
        * Completes a transaction, saves it, updates credit if needed, and prints receipt.
        */
+      openTransactionSuccessPopup: (transaction: Transaction) => {
+        set({ isTransactionSuccessPopupOpen: true, lastCompletedTransaction: transaction });
+      },
+      closeTransactionSuccessPopup: () => {
+        set({ isTransactionSuccessPopupOpen: false, lastCompletedTransaction: null });
+      },
       completeTransaction: (paymentMethod, creditCustomerName, additionalData) => {
         const state = get();
         if (!state.currentCashier) return;
@@ -729,13 +740,22 @@ export const usePosStore = create<PosState>()(
           ...additionalData
         };
 
+        // --- ABSOLUTELY FIRST: SHOW SUCCESS POPUP ---
+        if ((state.businessSetup as any)?.disableReceiptPrinting) {
+            state.openTransactionSuccessPopup(transaction);
+        }
+
+        // --- THEN CLEAR CART AND CLOSE CHECKOUT ---
+        state.clearCart();
+        state.closeCheckout();
+
+        // --- THEN DO EVERYTHING ELSE ---
         state.saveTransaction(transaction);
         state.addToSyncQueue({ type: 'new-transaction', data: transaction });
 
         // Update Stock
         transaction.items.forEach(item => {
            if (item.product.id) {
-               // Decrease local stock if managed
                const product = state.products.find(p => p.id === item.product.id);
                if (product && typeof product.stock === 'number') {
                    state.updateProduct(product.id, { stock: Math.max(0, product.stock - item.quantity) });
@@ -756,13 +776,10 @@ export const usePosStore = create<PosState>()(
                 };
                 state.updateCreditCustomer(existingCustomer.id, updatedCustomer);
             } else {
-                // If the customer does not exist, this function should ideally not be called.
-                // A new customer should be created through a separate UI flow first.
-                // However, to prevent data loss, we can create a new one.
                 const newCustomer: CreditCustomer = {
                     id: `CUST${Date.now()}`,
                     name: creditCustomerName,
-                    phone: '', // Phone should be added via an "Add Customer" form
+                    phone: '',
                     totalCredit: total,
                     paidAmount: 0,
                     balance: total,
@@ -774,7 +791,7 @@ export const usePosStore = create<PosState>()(
             }
         }
 
-        // Handle Loyalty Points (if customer is identified)
+        // Handle Loyalty Points
         if (creditCustomerName) {
             const loyaltyCustomer = state.loyaltyCustomers.find(c => c.name === creditCustomerName);
             if (loyaltyCustomer) {
@@ -796,11 +813,9 @@ export const usePosStore = create<PosState>()(
             }
         }
 
-        state.clearCart();
-        state.closeCheckout();
-
-        if (window.electron && state.businessSetup) {
-          window.electron.printReceipt(transaction, state.businessSetup, false);
+        // Print receipt if enabled
+        if (!((state.businessSetup as any)?.disableReceiptPrinting) && window.electron && state.businessSetup) {
+            window.electron.printReceipt(transaction, state.businessSetup, false);
         }
       },
 
@@ -1135,44 +1150,19 @@ export const usePosStore = create<PosState>()(
         set((state) => ({
           syncQueue: [...state.syncQueue, operation]
         }));
-        // Trigger sync immediately for real-time updates
-        get().processSyncQueue();
+        // Trigger sync in background without blocking UI
+        setTimeout(() => get().processSyncQueue(), 0);
       },
 
       processSyncQueue: async () => {
         const state = get();
-        const apiUrl = (state.businessSetup?.apiUrl || state.businessSetup?.backOfficeUrl)?.replace(/\/$/, '');
+        let apiUrl = (state.businessSetup?.apiUrl || state.businessSetup?.backOfficeUrl)?.replace(/\/$/, '');
+        // Remove trailing /api to prevent double /api
+        apiUrl = apiUrl?.replace(/\/api$/, '') || '';
         const apiKey = state.businessSetup?.apiKey || state.businessSetup?.backOfficeApiKey;
         const mongoDbUri = state.businessSetup?.mongoDbUri;
 
         if (!state.isOnline || state.syncQueue.length === 0) return;
-
-        // Use Direct DB Push if available (Preferred for robustness)
-        if (mongoDbUri && window.electron && window.electron.directDbPush) {
-             console.log("Auto-Sync: Triggering Direct DB Push...");
-             // Note: directDbPush sends the ENTIRE state from JSON files, not just the queue.
-             // This is safer and ensures consistency.
-             // We can clear the queue optimistically since the DB push covers these changes.
-             const queue = [...state.syncQueue];
-             set({ syncQueue: [] });
-
-             try {
-                 const result = await window.electron.directDbPush(mongoDbUri);
-                 if (result.success) {
-                     console.log("Auto-Sync: Direct DB Push Successful");
-                     set({ lastSyncTime: new Date().toISOString() });
-                     get().syncFromServer(); // Pull updates
-                     return;
-                 } else {
-                     console.error("Auto-Sync: Direct DB Push Failed, falling back to API...", result.error);
-                     // Put items back in queue to try API or retry later
-                     set((state) => ({ syncQueue: [...queue, ...state.syncQueue] }));
-                 }
-             } catch (e) {
-                 console.error("Auto-Sync: Direct DB Push Exception", e);
-                 set((state) => ({ syncQueue: [...queue, ...state.syncQueue] }));
-             }
-        }
 
         // Fallback to Legacy HTTP API Sync
         if (!apiUrl || !apiKey) return;
@@ -1210,7 +1200,9 @@ export const usePosStore = create<PosState>()(
       syncFromServer: async () => {
         // Fetch config from initial state, but DO NOT use data state here to avoid stale closures
         const configState = get();
-        const apiUrl = (configState.businessSetup?.apiUrl || configState.businessSetup?.backOfficeUrl)?.replace(/\/$/, '');
+        let apiUrl = (configState.businessSetup?.apiUrl || configState.businessSetup?.backOfficeUrl)?.replace(/\/$/, '');
+        // Remove trailing /api to prevent double /api
+        apiUrl = apiUrl?.replace(/\/api$/, '') || '';
         const apiKey = configState.businessSetup?.apiKey || configState.businessSetup?.backOfficeApiKey;
         const mongoDbUri = configState.businessSetup?.mongoDbUri;
 
@@ -1218,23 +1210,6 @@ export const usePosStore = create<PosState>()(
         if (!configState.isOnline) { console.debug("Sync skipped: Offline"); return; }
 
         let serverData: any = null;
-
-        // Direct MongoDB Pull (Preferred)
-        if (mongoDbUri && window.electron && window.electron.directDbPull) {
-            console.log("Initiating Direct MongoDB Pull...");
-            try {
-                // This await can take time. During this time, the local state might change (e.g. user adds expense).
-                const result = await window.electron.directDbPull(mongoDbUri);
-                if (result.success && result.data) {
-                    console.log("Direct MongoDB Pull Successful");
-                    serverData = result.data;
-                } else {
-                    console.error("Direct MongoDB Pull Failed:", result.error);
-                }
-            } catch (e) {
-                console.error("Direct MongoDB Pull Exception:", e);
-            }
-        }
 
         // Fallback to HTTP Sync
         if (!serverData) {
@@ -1381,13 +1356,20 @@ export const usePosStore = create<PosState>()(
           };
 
           const newProducts = sanitizeAndMerge(currentState.products, serverData.products || [], true);
-          // Users NOT merged from server to prevent overwriting local deletions/renames
-          // const newUsers = sanitizeAndMerge(currentState.users, serverData.users || []);
+          const newUsers = sanitizeAndMerge(currentState.users, serverData.users || []);
           const newExpenses = sanitizeAndMerge(currentState.expenses, serverData.expenses || []);
           const newSalaries = sanitizeAndMerge(currentState.salaries, serverData.salaries || []);
           const newCreditCustomers = sanitizeAndMerge(currentState.creditCustomers, serverData.creditCustomers || []);
           const newLoyaltyCustomers = sanitizeAndMerge(currentState.loyaltyCustomers, serverData.loyaltyCustomers || []);
           const newSuppliers = sanitizeAndMerge(currentState.suppliers, serverData.suppliers || []);
+          
+          let newCategories = currentState.categories;
+          if (serverData.categories && Array.isArray(serverData.categories)) {
+            const serverCategoryNames = serverData.categories.map((c: any) => 
+              typeof c === 'string' ? c : c.name
+            );
+            newCategories = [...new Set([...currentState.categories, ...serverCategoryNames])];
+          }
 
           let newBusinessSetup = currentState.businessSetup;
           if (serverData.businessSetup) {
@@ -1400,17 +1382,18 @@ export const usePosStore = create<PosState>()(
 
           set({
             products: newProducts as Product[],
-            // users: newUsers as User[], // Keep local users
+            users: newUsers as User[],
             expenses: newExpenses as Expense[],
             salaries: newSalaries as Salary[],
             creditCustomers: newCreditCustomers as CreditCustomer[],
             loyaltyCustomers: newLoyaltyCustomers as LoyaltyCustomer[],
             businessSetup: newBusinessSetup as BusinessSetup,
             suppliers: newSuppliers as Supplier[],
+            categories: newCategories,
           });
 
           saveDataToFile('products.json', newProducts);
-          // saveDataToFile('users.json', newUsers); // Don't touch users.json
+          saveDataToFile('users.json', newUsers);
           saveDataToFile('expenses.json', newExpenses);
           saveDataToFile('salaries.json', newSalaries);
           saveDataToFile('credit-customers.json', newCreditCustomers);
@@ -2078,7 +2061,7 @@ export const usePosStore = create<PosState>()(
       pushDataToServer: async () => {
         const state = get();
         // Use backOfficeUrl if available, fallback to apiUrl (legacy)
-        const rawUrl = state.businessSetup?.backOfficeUrl || state.businessSetup?.apiUrl;
+        let rawUrl = state.businessSetup?.backOfficeUrl || state.businessSetup?.apiUrl;
         const apiKey = state.businessSetup?.backOfficeApiKey || state.businessSetup?.apiKey;
         const mongoDbUri = state.businessSetup?.mongoDbUri;
 
@@ -2087,26 +2070,9 @@ export const usePosStore = create<PosState>()(
             return;
         }
 
-        // Direct MongoDB Push (Preferred)
-        if (mongoDbUri && window.electron && window.electron.directDbPush) {
-            console.log("Initiating Direct MongoDB Sync...");
-            try {
-                const result = await window.electron.directDbPush(mongoDbUri);
-                if (result.success) {
-                    console.log("Direct MongoDB Sync Successful");
-                    set({ lastSyncTime: new Date().toISOString() });
-                    return;
-                } else {
-                    console.error("Direct MongoDB Sync Failed:", result.error);
-                    // Fallback to HTTP if failed? Or just stop. User says "this method will work 100%".
-                    // We can try fallback.
-                }
-            } catch (e) {
-                console.error("Direct MongoDB Sync Exception:", e);
-            }
-        }
-
-        const apiUrl = rawUrl?.replace(/\/$/, '');
+        let apiUrl = rawUrl?.replace(/\/$/, '');
+        // Remove trailing /api to prevent double /api
+        apiUrl = apiUrl?.replace(/\/api$/, '') || '';
 
         if (!apiUrl) {
             console.error("Cannot push data: No Back Office URL configured");

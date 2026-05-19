@@ -12,14 +12,22 @@ import ErrorBoundary from './components/ErrorBoundary';
 import AutoLogoutModal from './components/AutoLogoutModal';
 import { useEffect, useRef, useState } from 'react';
 import { useAutoLogout } from './hooks/useAutoLogout';
+import { CheckCircle2 } from 'lucide-react';
+import { Modal } from './components/ui/modal';
+import { Button } from './components/ui/button';
 
 function App() {
-  const { businessSetup, loadInitialData, isDataLoaded, logout, currentCashier } = usePosStore(state => ({
+  const { businessSetup, loadInitialData, isDataLoaded, logout, currentCashier, 
+    isTransactionSuccessPopupOpen, lastCompletedTransaction, closeTransactionSuccessPopup 
+  } = usePosStore(state => ({
     businessSetup: state.businessSetup,
     loadInitialData: state.loadInitialData,
     isDataLoaded: state.isDataLoaded,
     logout: state.logout,
-    currentCashier: state.currentCashier
+    currentCashier: state.currentCashier,
+    isTransactionSuccessPopupOpen: state.isTransactionSuccessPopupOpen,
+    lastCompletedTransaction: state.lastCompletedTransaction,
+    closeTransactionSuccessPopup: state.closeTransactionSuccessPopup
   }));
 
   const [showChangelog, setShowChangelog] = useState(false);
@@ -162,6 +170,42 @@ function App() {
 
           {/* Changelog Modal */}
           {showChangelog && <ChangelogModal onClose={handleCloseChangelog} />}
+          
+          {/* Transaction Success Popup */}
+          <Modal
+            isOpen={isTransactionSuccessPopupOpen}
+            onClose={closeTransactionSuccessPopup}
+            title="Transaction Successful!"
+            description="Your order has been completed successfully."
+          >
+            <div className="text-center py-8">
+              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <CheckCircle2 className="w-12 h-12 text-green-600" />
+              </div>
+              {lastCompletedTransaction && (
+                <div className="space-y-3 mb-8">
+                  <p className="text-sm text-slate-500">Transaction ID</p>
+                  <p className="text-xl font-bold text-slate-900 font-mono">{lastCompletedTransaction.id}</p>
+                  <div className="bg-slate-50 rounded-lg p-4">
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-slate-600">Total Amount</span>
+                      <span className="font-bold text-slate-900">KES {lastCompletedTransaction.total.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-600">Payment Method</span>
+                      <span className="font-semibold text-slate-700 capitalize">{lastCompletedTransaction.paymentMethod}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <Button 
+                onClick={closeTransactionSuccessPopup}
+                className="w-full bg-green-600 hover:bg-green-700 text-white py-6 text-lg font-semibold"
+              >
+                Done
+              </Button>
+            </div>
+          </Modal>
         </div>
       </Router>
     </ErrorBoundary>

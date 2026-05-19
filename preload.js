@@ -146,9 +146,7 @@ contextBridge.exposeInMainWorld('electron', {
 
   saveDeveloperConfig: (config) => ipcRenderer.invoke('save-developer-config', config),
 
-  directDbPush: (mongoUri) => ipcRenderer.invoke('direct-db-push', mongoUri),
 
-  directDbPull: (mongoUri) => ipcRenderer.invoke('direct-db-pull', mongoUri),
 
   backupData: () => ipcRenderer.invoke('backup-data'),
 

@@ -27,6 +27,8 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { ConfirmDialog } from './ConfirmDialog';
+import Swal from 'sweetalert2';
+import { DownloadCloud, UploadCloud } from 'lucide-react';
 
 export default function SettingsPage() {
   const { 
@@ -45,7 +47,9 @@ export default function SettingsPage() {
     transactions,
     categories,
     addCategory,
-    deleteCategory
+    deleteCategory,
+    backupData,
+    restoreData
   } = usePosStore();
 
   const [activeTab, setActiveTab] = useState<'business' | 'categories' | 'security' | 'devices' | 'printers' | 'updates' | 'data'>('business');
@@ -167,6 +171,32 @@ export default function SettingsPage() {
           onConfirm,
           variant
       });
+  };
+
+  const handleBackup = async () => {
+    try {
+      const res = await backupData();
+      if (res.success) {
+        Swal.fire('Success', 'Backup created successfully at ' + res.filePath, 'success');
+      } else {
+        Swal.fire('Failed', res.error || 'Failed to create backup.', 'error');
+      }
+    } catch (e) {
+      Swal.fire('Error', 'An error occurred during backup.', 'error');
+    }
+  };
+
+  const handleRestore = async () => {
+    try {
+      const res = await restoreData();
+      if (res.success) {
+        Swal.fire('Success', 'Data restored successfully. Please restart the application.', 'success');
+      } else if (res.error) {
+        Swal.fire('Failed', res.error || 'Failed to restore data.', 'error');
+      }
+    } catch (e) {
+      Swal.fire('Error', 'An error occurred during restore.', 'error');
+    }
   };
 
   const handleArchive = async () => {
@@ -555,8 +585,44 @@ export default function SettingsPage() {
                     <h2 className="text-xl font-semibold text-gray-800">Data Management</h2>
                 </div>
                 <p className="text-sm text-gray-600 mb-6">
-                    Manage storage and optimize performance by archiving old data.
+                    Manage storage, create local backups, and optimize performance.
                 </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                        <div className="flex items-center gap-3 mb-2">
+                            <DownloadCloud className="w-6 h-6 text-blue-600" />
+                            <h3 className="font-bold text-blue-800">Local Backup</h3>
+                        </div>
+                        <p className="text-sm text-blue-700 mb-4">Create a complete offline copy of your database file to prevent data loss.</p>
+                        <button
+                            onClick={handleBackup}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors w-full"
+                        >
+                            Create Backup
+                        </button>
+                    </div>
+
+                    <div className="bg-purple-50 border border-purple-200 rounded-xl p-6">
+                        <div className="flex items-center gap-3 mb-2">
+                            <UploadCloud className="w-6 h-6 text-purple-600" />
+                            <h3 className="font-bold text-purple-800">Restore Data</h3>
+                        </div>
+                        <p className="text-sm text-purple-700 mb-4">Restore your entire database from a previously created `.wpos` backup file.</p>
+                        <button
+                            onClick={() => {
+                                showConfirm(
+                                    "Restore Data",
+                                    "Are you sure you want to restore from a backup? This will overwrite current offline data.",
+                                    handleRestore
+                                );
+                            }}
+                            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors w-full"
+                        >
+                            Restore from File
+                        </button>
+                    </div>
+                </div>
 
                 <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-xl mb-6">
                     <h3 className="font-bold text-red-800 mb-2">Archive Old Receipts (Preserve Stats)</h3>

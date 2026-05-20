@@ -30,6 +30,7 @@ export interface Transaction {
   change?: number;
   mpesaCode?: string;
   phoneNumber?: string;
+  outletId?: string; // Multi-outlet tracking
 }
 
 export interface CreditCustomer {
@@ -42,6 +43,7 @@ export interface CreditCustomer {
   transactions: string[];
   createdAt: string;
   lastUpdated: string;
+  outletId?: string; // Multi-outlet tracking
 }
 
 export interface User {
@@ -51,6 +53,7 @@ export interface User {
   role: 'admin' | 'manager' | 'cashier';
   isActive: boolean;
   createdAt: string;
+  outletId?: string; // Multi-outlet tracking
 }
 
 export interface Expense {
@@ -61,6 +64,7 @@ export interface Expense {
   timestamp: string;
   cashier: string;
   receipt?: string;
+  outletId?: string; // Multi-outlet tracking
 }
 
 export interface BusinessSetup {

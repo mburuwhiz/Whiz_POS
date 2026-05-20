@@ -100,6 +100,7 @@ export default function BusinessRegistration() {
     try {
       const businessData = {
         appMode: formData.appMode,
+        outletId: formData.appMode === 'OUTLET' ? crypto.randomUUID() : 'SERVER',
         outletName: formData.appMode === 'OUTLET' ? formData.outletName : 'Server Hub',
         serverIp: formData.serverIp,
         businessName: formData.businessName,

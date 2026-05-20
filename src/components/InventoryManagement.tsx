@@ -14,12 +14,20 @@ export default function InventoryManagement() {
   const [formData, setFormData] = useState({
     name: '',
     price: '',
-    category: storeCategories[0] || 'Others',
+    category: '',
     image: '',
     stock: '',
     minStock: '10',
     available: true
   });
+
+  // Effect to sync formData category with storeCategories if not set or invalid
+  useEffect(() => {
+    if (!isFormOpen) return;
+    if (!formData.category || !storeCategories.includes(formData.category)) {
+        setFormData(prev => ({ ...prev, category: storeCategories[0] || 'Others' }));
+    }
+  }, [storeCategories, isFormOpen, formData.category]);
 
   // State for Reconciliation
   const [reconciliationData, setReconciliationData] = useState<{ [id: number]: number }>({});
@@ -71,7 +79,7 @@ export default function InventoryManagement() {
     setFormData({
       name: '',
       price: '',
-      category: 'Coffee',
+      category: storeCategories[0] || 'Others',
       image: '',
       stock: '',
       minStock: '10',
@@ -319,7 +327,7 @@ export default function InventoryManagement() {
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-800">Products</h2>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto overflow-y-visible pb-16">
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>

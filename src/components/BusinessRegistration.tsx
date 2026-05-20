@@ -50,8 +50,7 @@ export default function BusinessRegistration() {
   });
 
   useEffect(() => {
-    soundManager.init();
-    soundManager.preload('scan');
+    // SoundManager is initialized automatically when a sound is played
   }, []);
 
   const steps = [
@@ -74,7 +73,7 @@ export default function BusinessRegistration() {
   ];
 
   const handleNext = () => {
-    soundManager.play('scan');
+    soundManager.playClick();
     if (currentStep < steps.length - 1) setCurrentStep((prev) => prev + 1);
   };
 

@@ -242,14 +242,28 @@ const loadUrlWithRetries = (win, url) => {
  * Configures size, preferences, and loads the application content.
  */
 function createWindow() {
+  let winTitle = 'Whiz Pos';
+  if (process.env.APP_INSTANCE && process.env.APP_INSTANCE === 'server') {
+      winTitle = 'Whiz Pos | Server';
+  } else if (process.env.APP_INSTANCE && process.env.APP_INSTANCE === 'outlet') {
+      winTitle = 'Whiz Pos | Outlet';
+  }
+
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     show: false, // Don't show until maximized
+    title: winTitle,
+    icon: path.join(__dirname, 'assets', 'logo.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       // contextIsolation is true by default and is a security best practice.
     },
+  });
+
+  // Prevent title from changing when navigation occurs
+  mainWindow.on('page-title-updated', (evt) => {
+    evt.preventDefault();
   });
 
   // Remove the default menu bar

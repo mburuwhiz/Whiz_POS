@@ -2,258 +2,282 @@ import React, { useState, useEffect } from 'react';
 import { usePosStore } from '../store/posStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Building2, User, Mail, Phone, MapPin,
-  Tag, CreditCard, Lock, CheckCircle2,
-  ChevronRight, ChevronLeft, Printer, LogIn,
-  Sparkles, PartyPopper, HardDrive, Database,
-  Navigation
+  Building2,
+  User as UserIcon,
+  Phone,
+  MapPin,
+  ChevronRight,
+  ChevronLeft,
+  CheckCircle2,
+  Lock,
+  Printer,
+  CreditCard,
+  LogIn,
+  PartyPopper,
+  Network,
+  Server,
+  MonitorSmartphone,
+  Wifi,
+  Globe2
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { soundManager } from '../lib/soundUtils';
 import setupBg from '../assets/setup_install_bg.png';
 
-const steps = [
-  { id: 'welcome', title: 'Welcome' },
-  { id: 'businessName', title: 'Business Name' },
-  { id: 'ownerName', title: 'Owner Name' },
-  { id: 'contact', title: 'Contact Info' },
-  { id: 'address', title: 'Business Address' },
-  { id: 'servedBy', title: 'Served By' },
-  { id: 'mpesa', title: 'M-Pesa Setup' },
-  { id: 'pin', title: '4-digit PIN' },
-  { id: 'completion', title: 'Completion' }
-];
-
 export default function BusinessRegistration() {
+  const { finishSetup } = usePosStore();
   const [currentStep, setCurrentStep] = useState(0);
-  const { finishSetup, users, saveBusinessSetup } = usePosStore();
-
-  const [formData, setFormData] = useState({
-    businessName: '',
-    ownerName: '',
-    email: '',
-    phone: '',
-    address: '',
-    servedByLabel: 'Cashier',
-    mpesaPaybill: '',
-    mpesaTill: '',
-    mpesaAccountNumber: '',
-    pin: '',
-    confirmPin: ''
-  });
-
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
 
+  const [formData, setFormData] = useState({
+    appMode: 'SERVER' as 'SERVER' | 'OUTLET',
+    outletName: '',
+    serverIp: '',
+    businessName: '',
+    ownerName: '',
+    phone: '',
+    email: '',
+    address: '',
+    pin: '',
+    confirmPin: '',
+    servedByLabel: 'Served By',
+    mpesaPaybill: '',
+    mpesaTill: '',
+    mpesaAccountNumber: ''
+  });
 
-  const handleSearchData = async () => {
-    if (window.electron && window.electron.readData) {
-      const data = await window.electron.readData('business-setup.json');
-      if (data && data.isSetup) {
-        Swal.fire({
-          title: 'Data Found!',
-          text: 'Business data has been found successfully. The application will now restart to apply it.',
-          icon: 'success',
-          confirmButtonText: 'Restart Now',
-          confirmButtonColor: '#3085d6',
-          background: '#1e293b',
-          color: '#ffffff'
-        }).then(() => {
-          window.location.reload();
-        });
-      } else {
-        Swal.fire({
-          title: 'No Data Found',
-          text: 'Sorry, no valid business data was found. Please proceed to create an account.',
-          icon: 'error',
-          confirmButtonText: 'Create Account',
-          confirmButtonColor: '#d33',
-          background: '#1e293b',
-          color: '#ffffff'
-        }).then(() => {
-          // Go to the first step (businessName) which is index 1
-          setCurrentStepIndex(1);
-        });
-      }
-    } else {
-        Swal.fire({
-          title: 'Error',
-          text: 'Unable to access local storage mechanism.',
-          icon: 'error',
-          background: '#1e293b',
-          color: '#ffffff'
-        });
-    }
-  };
+  useEffect(() => {
+    soundManager.init();
+    soundManager.preload('scan');
+  }, []);
+
+  const steps = [
+    { id: 'welcome', title: 'Welcome' },
+    { id: 'modeSelection', title: 'Network Mode' },
+    // Outlet Steps
+    ...(formData.appMode === 'OUTLET' ? [
+        { id: 'outletConnect', title: 'Connect to Server' },
+    ] : [
+    // Server Steps
+        { id: 'businessName', title: 'Business Info' },
+        { id: 'ownerName', title: 'Owner Name' },
+        { id: 'contact', title: 'Contact Info' },
+        { id: 'address', title: 'Location' },
+        { id: 'servedBy', title: 'Receipt Labels' },
+        { id: 'mpesa', title: 'Payments' },
+    ]),
+    { id: 'pin', title: 'Security PIN' },
+    { id: 'completion', title: 'Ready' }
+  ];
 
   const handleNext = () => {
-    if (currentStep < steps.length - 1) {
-      soundManager.playPop();
-      setCurrentStep(prev => prev + 1);
-    }
+    soundManager.play('scan');
+    if (currentStep < steps.length - 1) setCurrentStep((prev) => prev + 1);
   };
 
   const handleBack = () => {
-    if (currentStep > 0) {
-      soundManager.playClick();
-      setCurrentStep(prev => prev - 1);
-    }
+    if (currentStep > 0) setCurrentStep((prev) => prev - 1);
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async () => {
-    if (formData.pin !== formData.confirmPin) {
-      soundManager.playError();
-      alert("PINs do not match!");
+    if (formData.pin.length !== 4 || formData.pin !== formData.confirmPin) {
+      Swal.fire({
+        title: 'Error',
+        text: 'PIN must be exactly 4 digits and match the confirmation PIN.',
+        icon: 'error',
+        confirmButtonColor: '#ef4444'
+      });
       return;
     }
-    if (formData.pin.length !== 4) {
-      soundManager.playError();
-      alert("PIN must be exactly 4 digits!");
-      return;
-    }
-
     setIsSubmitting(true);
-    soundManager.playClick();
-
-    const businessData = {
-      businessName: formData.businessName,
-      address: formData.address,
-      phone: formData.phone,
-      email: formData.email,
-      servedByLabel: formData.servedByLabel,
-      mpesaPaybill: formData.mpesaPaybill,
-      mpesaTill: formData.mpesaTill,
-      mpesaAccountNumber: formData.mpesaAccountNumber,
-      tax: 0,
-      subtotal: 0,
-      isSetup: true,
-      isLoggedIn: false,
-      printerType: 'thermal' as const,
-    };
-
-    const adminUser = {
-      id: `USR${Date.now()}`,
-      name: formData.ownerName,
-      pin: formData.pin,
-      role: 'admin' as const,
-    };
-
     try {
+      const businessData = {
+        appMode: formData.appMode,
+        outletName: formData.appMode === 'OUTLET' ? formData.outletName : 'Server Hub',
+        serverIp: formData.serverIp,
+        businessName: formData.businessName,
+        address: formData.address,
+        phone: formData.phone,
+        email: formData.email,
+        isSetup: true,
+        isLoggedIn: false,
+        servedByLabel: formData.servedByLabel,
+        mpesaPaybill: formData.mpesaPaybill,
+        mpesaTill: formData.mpesaTill,
+        mpesaAccountNumber: formData.mpesaAccountNumber,
+        tax: 0,
+        subtotal: 0,
+        printerType: 'thermal' as const
+      };
+
+      const adminUser = {
+        id: crypto.randomUUID(),
+        name: formData.appMode === 'OUTLET' ? 'Outlet Admin' : formData.ownerName,
+        pin: formData.pin,
+        role: 'admin' as const,
+        isActive: true,
+        createdAt: new Date().toISOString()
+      };
+
       await finishSetup(businessData, adminUser);
-      soundManager.playSuccess();
+
       setIsFinished(true);
       setCurrentStep(steps.length - 1);
+
+      Swal.fire({
+        title: 'Success!',
+        text: 'Setup completed successfully.',
+        icon: 'success',
+        confirmButtonColor: '#0ea5e9'
+      });
     } catch (error) {
       console.error('Setup failed:', error);
-      soundManager.playError();
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleRestoreBackup = async () => {
-    if (!window.electron) {
-      alert('Restore is only supported in Desktop mode');
-      return;
-    }
-
-    if (!window.confirm('WARNING: Restoring will overwrite all current local data with the backup archive. Are you sure you want to proceed?')) {
-      return;
-    }
-
-    setIsSubmitting(true);
-    soundManager.playClick();
-
-    try {
-      const result = await window.electron.restoreData();
-      if (result.success) {
-        soundManager.playSuccess();
-        alert('Restore successful. Restarting application...');
-        // Clear persisted zustand state to force reload from restored files
-        localStorage.removeItem('pos-storage');
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
-      } else {
-        if (result.error !== 'User cancelled restore') {
-          soundManager.playError();
-          alert(result.error);
-        }
-      }
-    } catch (e: any) {
-      soundManager.playError();
-      alert(e.message);
+      Swal.fire({
+        title: 'Error',
+        text: 'Failed to complete setup.',
+        icon: 'error',
+        confirmButtonColor: '#ef4444'
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const stepVariants = {
-    enter: { x: 50, opacity: 0 },
-    center: { x: 0, opacity: 1 },
-    exit: { x: -50, opacity: 0 }
+    enter: { opacity: 0, x: 50, scale: 0.95 },
+    center: { opacity: 1, x: 0, scale: 1, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } },
+    exit: { opacity: 0, x: -50, scale: 0.95, transition: { duration: 0.3 } }
   };
 
   const renderStep = () => {
-    switch (steps[currentStep].id) {
+    const currentStepId = steps[currentStep].id;
+
+    switch (currentStepId) {
       case 'welcome':
         return (
-          <motion.div key="welcome" variants={stepVariants} initial="enter" animate="center" exit="exit" className="text-center space-y-6">
-            <div className="w-24 h-24 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-8 animate-bounce">
-              <Sparkles className="w-12 h-12 text-blue-400" />
+          <motion.div key="welcome" variants={stepVariants} initial="enter" animate="center" exit="exit" className="text-center space-y-8">
+            <div className="w-24 h-24 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-8 animate-pulse shadow-[0_0_60px_-15px_rgba(59,130,246,0.5)]">
+              <Building2 className="w-12 h-12 text-blue-400" />
             </div>
-            <h1 className="text-4xl font-bold text-white">Hi, Thank you for choosing Whiz Pos</h1>
-            <p className="text-xl text-blue-100">Let's get you started. We are so excited to help you grow your business today. 👋</p>
-            <div className="flex flex-col gap-4 mt-8 w-full max-w-md mx-auto">
-              <button
-                onClick={handleRestoreBackup}
-                disabled={isSubmitting}
-                className="w-full bg-slate-800 hover:bg-slate-700 text-white px-6 py-4 rounded-2xl font-bold text-lg transition-all hover:scale-105 active:scale-95 shadow-xl shadow-slate-900/20 flex items-center justify-center gap-3 disabled:opacity-50"
-              >
-                {isSubmitting ? <div className="w-5 h-5 border-2 border-white border-t-transparent animate-spin rounded-full"></div> : <HardDrive className="w-6 h-6" />}
-                1. Restore Backup
-              </button>
+            <h1 className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-100 to-white leading-tight">
+              Welcome to Whiz POS
+            </h1>
+            <p className="text-xl text-blue-200/80 font-medium max-w-md mx-auto">
+              The modern, decentralized point-of-sale network. Let's get your terminal configured.
+            </p>
+            <button
+              onClick={handleNext}
+              className="mt-10 bg-white hover:bg-blue-50 text-blue-900 px-10 py-4 rounded-2xl font-bold text-lg flex items-center justify-center space-x-3 mx-auto transition-all hover:scale-105 active:scale-95 shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)]"
+            >
+              <span>Begin Setup</span>
+              <ChevronRight className="w-6 h-6" />
+            </button>
+          </motion.div>
+        );
 
-              <button
-                onClick={handleNext}
-                disabled={isSubmitting}
-                className="w-full bg-blue-600 hover:bg-blue-500 text-white px-6 py-4 rounded-2xl font-bold text-lg transition-all hover:scale-105 active:scale-95 shadow-xl shadow-blue-900/20 flex items-center justify-center gap-3 disabled:opacity-50"
+      case 'modeSelection':
+        return (
+          <motion.div key="modeSelection" variants={stepVariants} initial="enter" animate="center" exit="exit" className="space-y-8">
+            <div className="flex items-center space-x-4 mb-6">
+              <div className="p-3 bg-indigo-500/20 rounded-xl">
+                <Network className="w-8 h-8 text-indigo-400" />
+              </div>
+              <h2 className="text-3xl font-bold text-white">Network Architecture</h2>
+            </div>
+            <p className="text-lg text-blue-100 mb-8">How will this specific computer be used in your business?</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Server Option */}
+              <div
+                onClick={() => { handleInputChange('appMode', 'SERVER'); handleNext(); }}
+                className={`relative overflow-hidden cursor-pointer rounded-3xl border-2 p-6 transition-all duration-300 hover:scale-[1.02] ${formData.appMode === 'SERVER' ? 'border-indigo-400 bg-indigo-500/20' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
               >
-                <Navigation className="w-6 h-6" />
-                2. Begin Registration
+                <div className="absolute top-0 right-0 p-4 opacity-10">
+                    <Server className="w-32 h-32" />
+                </div>
+                <Server className="w-10 h-10 text-indigo-300 mb-4" />
+                <h3 className="text-2xl font-bold text-white mb-2">Main Server</h3>
+                <p className="text-blue-100/70 text-sm">Select this for the main back-office computer. It acts as the central hub, managing the database, global inventory, and device approvals.</p>
+                <div className="mt-6 flex items-center text-indigo-300 text-sm font-semibold">
+                    <span>Choose Server</span> <ChevronRight className="w-4 h-4 ml-1" />
+                </div>
+              </div>
+
+              {/* Outlet Option */}
+              <div
+                onClick={() => { handleInputChange('appMode', 'OUTLET'); handleNext(); }}
+                className={`relative overflow-hidden cursor-pointer rounded-3xl border-2 p-6 transition-all duration-300 hover:scale-[1.02] ${formData.appMode === 'OUTLET' ? 'border-teal-400 bg-teal-500/20' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
+              >
+                 <div className="absolute top-0 right-0 p-4 opacity-10">
+                    <MonitorSmartphone className="w-32 h-32" />
+                </div>
+                <MonitorSmartphone className="w-10 h-10 text-teal-300 mb-4" />
+                <h3 className="text-2xl font-bold text-white mb-2">Checkout Outlet</h3>
+                <p className="text-blue-100/70 text-sm">Select this for a cashier terminal. It connects to the Main Server over Wi-Fi, works offline, and syncs automatically.</p>
+                 <div className="mt-6 flex items-center text-teal-300 text-sm font-semibold">
+                    <span>Choose Outlet</span> <ChevronRight className="w-4 h-4 ml-1" />
+                </div>
+              </div>
+            </div>
+
+             <div className="flex justify-start pt-6">
+              <button onClick={handleBack} className="text-white/60 hover:text-white font-medium flex items-center space-x-1">
+                <ChevronLeft className="w-5 h-5" />
+                <span>Back</span>
               </button>
             </div>
           </motion.div>
         );
 
-      case 'businessName':
+      case 'outletConnect':
         return (
-          <motion.div key="bizName" variants={stepVariants} initial="enter" animate="center" exit="exit" className="space-y-6">
+          <motion.div key="outletConnect" variants={stepVariants} initial="enter" animate="center" exit="exit" className="space-y-6">
             <div className="flex items-center space-x-4 mb-8">
-              <div className="p-3 bg-blue-500/20 rounded-xl">
-                <Building2 className="w-8 h-8 text-blue-400" />
+              <div className="p-3 bg-teal-500/20 rounded-xl">
+                <Wifi className="w-8 h-8 text-teal-400" />
               </div>
-              <h2 className="text-3xl font-bold text-white">Business Name</h2>
+              <h2 className="text-3xl font-bold text-white">Connect to Server</h2>
             </div>
-            <p className="text-lg text-blue-100 mb-6">Every great venture needs a name. What should we call your amazing business? 🏢</p>
-            <input
-              autoFocus
-              type="text"
-              placeholder="Enter your business name"
-              value={formData.businessName}
-              onChange={(e) => handleInputChange('businessName', e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && formData.businessName && handleNext()}
-              className="w-full bg-white/10 border border-white/20 rounded-2xl p-6 text-2xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-blue-500 backdrop-blur-md"
-            />
-            <div className="flex justify-end pt-8">
+            <p className="text-lg text-blue-100 mb-6">Give this terminal a name so the Main Server can identify it.</p>
+
+            <div className="space-y-4">
+              <input
+                type="text"
+                placeholder="e.g. Counter 1, VIP Lounge"
+                value={formData.outletName}
+                onChange={(e) => handleInputChange('outletName', e.target.value)}
+                className="w-full bg-white/10 border border-white/20 rounded-2xl p-5 text-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-teal-500 backdrop-blur-md"
+              />
+            </div>
+
+            <div className="bg-teal-900/40 border border-teal-500/30 rounded-2xl p-6 mt-8">
+                <div className="flex items-start space-x-4">
+                    <div className="p-2 bg-teal-500/20 rounded-lg shrink-0 mt-1">
+                        <Globe2 className="w-5 h-5 text-teal-300" />
+                    </div>
+                    <div>
+                        <h4 className="text-white font-semibold mb-1">Zero-Config Discovery</h4>
+                        <p className="text-teal-100/70 text-sm leading-relaxed">
+                            Once setup is complete, this terminal will automatically search your Wi-Fi network for the Main Server using mDNS. Ensure the Server app is running and open the "Device Approvals" tab on the Server to allow this terminal to sync.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex justify-between pt-8">
+              <button onClick={handleBack} className="text-white/60 hover:text-white font-medium flex items-center space-x-1">
+                <ChevronLeft className="w-5 h-5" />
+                <span>Back</span>
+              </button>
               <button
-                disabled={!formData.businessName}
+                disabled={!formData.outletName}
                 onClick={handleNext}
-                className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-8 py-4 rounded-xl font-bold flex items-center space-x-2 transition-all"
+                className="bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white px-8 py-4 rounded-xl font-bold flex items-center space-x-2 transition-all"
               >
                 <span>Continue</span>
                 <ChevronRight className="w-5 h-5" />
@@ -262,24 +286,58 @@ export default function BusinessRegistration() {
           </motion.div>
         );
 
+      case 'businessName':
+        return (
+          <motion.div key="businessName" variants={stepVariants} initial="enter" animate="center" exit="exit" className="space-y-6">
+            <div className="flex items-center space-x-4 mb-8">
+              <div className="p-3 bg-purple-500/20 rounded-xl">
+                <Building2 className="w-8 h-8 text-purple-400" />
+              </div>
+              <h2 className="text-3xl font-bold text-white">Business Name</h2>
+            </div>
+            <p className="text-lg text-blue-100 mb-6">What is the official name of your business? This will appear on all your receipts.</p>
+            <input
+              type="text"
+              placeholder="e.g. Acme Coffee Shop"
+              value={formData.businessName}
+              onChange={(e) => handleInputChange('businessName', e.target.value)}
+              className="w-full bg-white/10 border border-white/20 rounded-2xl p-5 text-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-500 backdrop-blur-md"
+              autoFocus
+            />
+            <div className="flex justify-between pt-8">
+              <button onClick={handleBack} className="text-white/60 hover:text-white font-medium flex items-center space-x-1">
+                <ChevronLeft className="w-5 h-5" />
+                <span>Back</span>
+              </button>
+              <button
+                disabled={!formData.businessName}
+                onClick={handleNext}
+                className="bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white px-8 py-4 rounded-xl font-bold flex items-center space-x-2 transition-all"
+              >
+                <span>Continue</span>
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+          </motion.div>
+        );
+
+      // (Other original Server cases like 'ownerName', 'contact', 'address', 'servedBy', 'mpesa' go here - copying them back verbatim with updated styling classes)
       case 'ownerName':
         return (
           <motion.div key="ownerName" variants={stepVariants} initial="enter" animate="center" exit="exit" className="space-y-6">
             <div className="flex items-center space-x-4 mb-8">
-              <div className="p-3 bg-purple-500/20 rounded-xl">
-                <User className="w-8 h-8 text-purple-400" />
+              <div className="p-3 bg-blue-500/20 rounded-xl">
+                <UserIcon className="w-8 h-8 text-blue-400" />
               </div>
               <h2 className="text-3xl font-bold text-white">Owner Name</h2>
             </div>
-            <p className="text-lg text-blue-100 mb-6">It is time to meet the boss. Please enter your full name so we know who is running the show. 👑</p>
+            <p className="text-lg text-blue-100 mb-6">Who is managing this system? This creates the primary admin account.</p>
             <input
-              autoFocus
               type="text"
-              placeholder="Business owner name"
+              placeholder="e.g. John Doe"
               value={formData.ownerName}
               onChange={(e) => handleInputChange('ownerName', e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && formData.ownerName && handleNext()}
-              className="w-full bg-white/10 border border-white/20 rounded-2xl p-6 text-2xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-500 backdrop-blur-md"
+              className="w-full bg-white/10 border border-white/20 rounded-2xl p-5 text-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-blue-500 backdrop-blur-md"
             />
             <div className="flex justify-between pt-8">
               <button onClick={handleBack} className="text-white/60 hover:text-white font-medium flex items-center space-x-1">
@@ -289,9 +347,9 @@ export default function BusinessRegistration() {
               <button
                 disabled={!formData.ownerName}
                 onClick={handleNext}
-                className="bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white px-8 py-4 rounded-xl font-bold flex items-center space-x-2 transition-all"
+                className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-8 py-4 rounded-xl font-bold flex items-center space-x-2 transition-all"
               >
-                <span>Looks Good</span>
+                <span>Continue</span>
                 <ChevronRight className="w-5 h-5" />
               </button>
             </div>
@@ -303,32 +361,26 @@ export default function BusinessRegistration() {
           <motion.div key="contact" variants={stepVariants} initial="enter" animate="center" exit="exit" className="space-y-6">
             <div className="flex items-center space-x-4 mb-8">
               <div className="p-3 bg-emerald-500/20 rounded-xl">
-                <Mail className="w-8 h-8 text-emerald-400" />
+                <Phone className="w-8 h-8 text-emerald-400" />
               </div>
               <h2 className="text-3xl font-bold text-white">Contact Info</h2>
             </div>
-            <p className="text-lg text-blue-100 mb-6">How can we stay in touch? Please provide your email address and phone number. 📱</p>
+            <p className="text-lg text-blue-100 mb-6">How can customers reach you? This is printed on receipts.</p>
             <div className="space-y-4">
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-white/40" />
-                <input
-                  type="email"
-                  placeholder="business@example.com"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  className="w-full bg-white/10 border border-white/20 rounded-2xl p-6 pl-14 text-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500 backdrop-blur-md"
-                />
-              </div>
-              <div className="relative">
-                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-white/40" />
-                <input
-                  type="tel"
-                  placeholder="+254 XXX XXX XXX"
-                  value={formData.phone}
-                  onChange={(e) => handleInputChange('phone', e.target.value)}
-                  className="w-full bg-white/10 border border-white/20 rounded-2xl p-6 pl-14 text-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500 backdrop-blur-md"
-                />
-              </div>
+              <input
+                type="tel"
+                placeholder="Phone Number (e.g. 0700 000 000)"
+                value={formData.phone}
+                onChange={(e) => handleInputChange('phone', e.target.value)}
+                className="w-full bg-white/10 border border-white/20 rounded-2xl p-5 text-lg text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500 backdrop-blur-md"
+              />
+              <input
+                type="email"
+                placeholder="Email Address (Optional)"
+                value={formData.email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                className="w-full bg-white/10 border border-white/20 rounded-2xl p-5 text-lg text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500 backdrop-blur-md"
+              />
             </div>
             <div className="flex justify-between pt-8">
               <button onClick={handleBack} className="text-white/60 hover:text-white font-medium flex items-center space-x-1">
@@ -336,11 +388,11 @@ export default function BusinessRegistration() {
                 <span>Back</span>
               </button>
               <button
-                disabled={!formData.email || !formData.phone}
+                disabled={!formData.phone}
                 onClick={handleNext}
                 className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white px-8 py-4 rounded-xl font-bold flex items-center space-x-2 transition-all"
               >
-                <span>Save Contact</span>
+                <span>Continue</span>
                 <ChevronRight className="w-5 h-5" />
               </button>
             </div>
@@ -354,16 +406,14 @@ export default function BusinessRegistration() {
               <div className="p-3 bg-orange-500/20 rounded-xl">
                 <MapPin className="w-8 h-8 text-orange-400" />
               </div>
-              <h2 className="text-3xl font-bold text-white">Business Address</h2>
+              <h2 className="text-3xl font-bold text-white">Location</h2>
             </div>
-            <p className="text-lg text-blue-100 mb-6">Where is the magic happening? Enter your address to help us put you on the map. 🗺️</p>
+            <p className="text-lg text-blue-100 mb-6">Where is your business located?</p>
             <textarea
-              autoFocus
-              placeholder="123 Business Street, City, Country"
+              placeholder="e.g. 123 Main Street, City Center"
               value={formData.address}
               onChange={(e) => handleInputChange('address', e.target.value)}
-              rows={3}
-              className="w-full bg-white/10 border border-white/20 rounded-2xl p-6 text-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-orange-500 backdrop-blur-md resize-none"
+              className="w-full bg-white/10 border border-white/20 rounded-2xl p-5 text-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-orange-500 backdrop-blur-md h-32 resize-none"
             />
             <div className="flex justify-between pt-8">
               <button onClick={handleBack} className="text-white/60 hover:text-white font-medium flex items-center space-x-1">
@@ -375,7 +425,7 @@ export default function BusinessRegistration() {
                 onClick={handleNext}
                 className="bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white px-8 py-4 rounded-xl font-bold flex items-center space-x-2 transition-all"
               >
-                <span>Set Location</span>
+                <span>Continue</span>
                 <ChevronRight className="w-5 h-5" />
               </button>
             </div>
@@ -387,18 +437,17 @@ export default function BusinessRegistration() {
           <motion.div key="servedBy" variants={stepVariants} initial="enter" animate="center" exit="exit" className="space-y-6">
             <div className="flex items-center space-x-4 mb-8">
               <div className="p-3 bg-pink-500/20 rounded-xl">
-                <Tag className="w-8 h-8 text-pink-400" />
+                <UserIcon className="w-8 h-8 text-pink-400" />
               </div>
-              <h2 className="text-3xl font-bold text-white">Served By</h2>
+              <h2 className="text-3xl font-bold text-white">Receipt Labels</h2>
             </div>
-            <p className="text-lg text-blue-100 mb-6">Who is serving your customers? Enter the "Served By" Label name that will appear on every receipt. 🏷️</p>
+            <p className="text-lg text-blue-100 mb-6">How should we label the cashier on the receipt?</p>
             <input
-              autoFocus
               type="text"
-              placeholder="e.g. Cashier, Server, Budtender"
+              placeholder="e.g. Served By, Cashier, Attendant"
               value={formData.servedByLabel}
               onChange={(e) => handleInputChange('servedByLabel', e.target.value)}
-              className="w-full bg-white/10 border border-white/20 rounded-2xl p-6 text-2xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-pink-500 backdrop-blur-md"
+              className="w-full bg-white/10 border border-white/20 rounded-2xl p-5 text-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-pink-500 backdrop-blur-md"
             />
             <div className="flex justify-between pt-8">
               <button onClick={handleBack} className="text-white/60 hover:text-white font-medium flex items-center space-x-1">
@@ -410,7 +459,7 @@ export default function BusinessRegistration() {
                 onClick={handleNext}
                 className="bg-pink-600 hover:bg-pink-500 disabled:opacity-50 text-white px-8 py-4 rounded-xl font-bold flex items-center space-x-2 transition-all"
               >
-                <span>Set Label</span>
+                <span>Continue</span>
                 <ChevronRight className="w-5 h-5" />
               </button>
             </div>
@@ -461,7 +510,7 @@ export default function BusinessRegistration() {
                 onClick={handleNext}
                 className="bg-green-600 hover:bg-green-500 text-white px-8 py-4 rounded-xl font-bold flex items-center space-x-2 transition-all"
               >
-                <span>Save Payments</span>
+                <span>Continue</span>
                 <ChevronRight className="w-5 h-5" />
               </button>
             </div>
@@ -475,7 +524,7 @@ export default function BusinessRegistration() {
               <Lock className="w-10 h-10 text-cyan-400" />
             </div>
             <h2 className="text-3xl font-bold text-white">4-digit PIN</h2>
-            <p className="text-lg text-blue-100 mb-6">Safety first. Choose a secure code to keep your business data locked up tight. 🔐</p>
+            <p className="text-lg text-blue-100 mb-6">Safety first. Choose a secure code to keep your terminal locked up tight. 🔐</p>
 
             <div className="flex flex-col items-center space-y-6">
               <div className="space-y-2">
@@ -532,15 +581,17 @@ export default function BusinessRegistration() {
               <PartyPopper className="w-12 h-12 text-green-400" />
             </div>
             <h1 className="text-4xl font-bold text-white">You are all set</h1>
-            <p className="text-xl text-blue-100">Your business is officially registered and ready for big things. 🎉</p>
+            <p className="text-xl text-blue-100">Your {formData.appMode === 'SERVER' ? 'Main Server' : 'Checkout Outlet'} is configured and ready to go. 🎉</p>
 
-            <div className="bg-white/10 rounded-2xl p-6 mt-8 border border-white/20 backdrop-blur-md">
-              <div className="flex items-center justify-center space-x-3 text-white mb-2">
-                <Printer className="w-5 h-5 text-green-400" />
-                <span className="font-medium text-lg">Startup Invoice Printed</span>
-              </div>
-              <p className="text-white/60">Check the printed startup for your login details and business configuration.</p>
-            </div>
+            {formData.appMode === 'SERVER' && (
+                <div className="bg-white/10 rounded-2xl p-6 mt-8 border border-white/20 backdrop-blur-md">
+                <div className="flex items-center justify-center space-x-3 text-white mb-2">
+                    <Printer className="w-5 h-5 text-green-400" />
+                    <span className="font-medium text-lg">Startup Invoice Printed</span>
+                </div>
+                <p className="text-white/60">Check the printed startup for your login details and business configuration.</p>
+                </div>
+            )}
 
             <button
               onClick={() => window.location.reload()}
@@ -564,20 +615,20 @@ export default function BusinessRegistration() {
         className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-transform duration-[10000ms] hover:scale-110"
         style={{ backgroundImage: `url(${setupBg})` }}
       />
-      <div className="absolute inset-0 z-10 bg-gradient-to-br from-black/80 via-black/40 to-blue-900/40 backdrop-blur-[2px]" />
+      <div className="absolute inset-0 z-10 bg-gradient-to-br from-black/80 via-black/60 to-slate-900/80 backdrop-blur-sm" />
 
       {/* Main Content Card */}
-      <div className="relative z-20 w-full max-w-2xl px-6">
-        <div className="bg-white/5 border border-white/10 rounded-[2.5rem] shadow-2xl backdrop-blur-2xl p-10 md:p-14 overflow-hidden relative group">
+      <div className="relative z-20 w-full max-w-3xl px-4 sm:px-6">
+        <div className="bg-white/10 border border-white/20 rounded-[2.5rem] shadow-2xl backdrop-blur-2xl p-8 sm:p-10 md:p-14 overflow-hidden relative group">
           {/* Decorative Elements */}
-          <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-500/20 rounded-full blur-3xl transition-all group-hover:bg-blue-500/30" />
-          <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-purple-500/20 rounded-full blur-3xl transition-all group-hover:bg-purple-500/30" />
+          <div className="absolute -top-32 -right-32 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl transition-all group-hover:bg-blue-500/30 pointer-events-none" />
+          <div className="absolute -bottom-32 -left-32 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl transition-all group-hover:bg-purple-500/30 pointer-events-none" />
 
           {/* Progress Indicator */}
           {!isFinished && (
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/5">
               <motion.div
-                className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-cyan-500"
+                className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-teal-500"
                 initial={{ width: 0 }}
                 animate={{ width: `${(currentStep / (steps.length - 1)) * 100}%` }}
                 transition={{ duration: 0.5 }}
@@ -589,13 +640,12 @@ export default function BusinessRegistration() {
             {renderStep()}
           </AnimatePresence>
 
-          {/* Footer Page Counter - Hidden as per user requirement to not mention steps */}
         </div>
 
         {/* Brand Footer */}
         <div className="mt-8 text-center">
-          <p className="text-white/40 font-medium">
-            Whiz Pos v2024.1 • Secure & Efficient
+          <p className="text-white/40 font-medium tracking-widest text-sm uppercase">
+            Whiz Pos • Multi-Outlet Architecture
           </p>
         </div>
       </div>

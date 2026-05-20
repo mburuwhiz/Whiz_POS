@@ -33,6 +33,10 @@ if (process.platform === 'win32') {
     }
     baseDataPath = path.join(commonAppData, 'whiz-pos');
 
+    if (process.env.APP_INSTANCE) {
+        baseDataPath = path.join(baseDataPath, `instance-${process.env.APP_INSTANCE}`);
+    }
+
     // Override userData globally so internal modules use this path too
     try {
         app.setPath('userData', baseDataPath);
@@ -41,6 +45,14 @@ if (process.platform === 'win32') {
     }
 } else {
     baseDataPath = app.getPath('userData');
+    if (process.env.APP_INSTANCE) {
+        baseDataPath = path.join(baseDataPath, `instance-${process.env.APP_INSTANCE}`);
+        try {
+            app.setPath('userData', baseDataPath);
+        } catch (e) {
+            // Ignore if we can't set it
+        }
+    }
 }
 
 // Custom Logger Setup

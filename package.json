@@ -10,6 +10,8 @@
   },
   "scripts": {
     "dev": "concurrently \"npm:dev:vite\" \"npm:dev:electron\"",
+    "dev:server": "APP_INSTANCE=server concurrently \"npm:dev:vite\" \"npm:dev:electron\"",
+    "dev:outlet": "APP_INSTANCE=outlet concurrently \"npm:dev:vite\" \"npm:dev:electron\"",
     "dev:vite": "vite --port 5174",
     "dev:electron": "electron . http://localhost:5174",
     "build": "npm run build:exe",

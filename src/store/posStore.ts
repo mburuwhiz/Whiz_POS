@@ -29,6 +29,8 @@ declare global {
        */
       saveImage: (tempPath: string) => Promise<{ success: boolean; path?: string; fileName?: string; error?: any }>;
 
+      userManagement: any;
+
       /**
        * Prints the daily closing report.
        */
@@ -488,7 +490,7 @@ interface PosState {
   updateLoyaltyCustomer: (id: string, updates: any) => void;
   addSyncHistoryItem: (item: any) => void;
   loadInitialData: () => void;
-  finishSetup: (businessData: Omit<BusinessSetup, 'createdAt'>, adminUser: Omit<User, 'createdAt' | 'isActive'>) => Promise<void>;
+  finishSetup: (businessData: any, adminUser: any) => Promise<void>;
   pushDataToServer: () => Promise<void>;
   addCreditPayment: (customerId: string, amount: number, transactionId?: string) => void;
   addInventoryLog: (log: InventoryLog) => void;
@@ -1374,7 +1376,8 @@ export const usePosStore = create<PosState>()(
           let newBusinessSetup = currentState.businessSetup;
           if (serverData.businessSetup) {
             const serverTimestamp = new Date(serverData.businessSetup.updatedAt || serverData.businessSetup.createdAt || 0);
-            const localTimestamp = currentState.businessSetup ? new Date(currentState.businessSetup.updatedAt || currentState.businessSetup.createdAt || 0) : new Date(0);
+            // Ignore type error on updatedAt since it's being added in migration, BusinessSetup typing hasn't caught up everywhere
+            const localTimestamp = currentState.businessSetup ? new Date((currentState.businessSetup as any).updatedAt || currentState.businessSetup.createdAt || 0) : new Date(0);
             if (serverTimestamp > localTimestamp) {
               newBusinessSetup = { ...currentState.businessSetup, ...serverData.businessSetup };
             }
@@ -1977,13 +1980,17 @@ export const usePosStore = create<PosState>()(
           receiptFooter: 'Developed and Managed by Whizpoint Solutions\nContact: 0740-841-168',
           printerType: businessData.printerType || 'thermal', // Default to thermal
           createdAt: new Date().toISOString(),
-        };
+          appMode: (businessData as any).appMode || 'SERVER'
+        } as BusinessSetup;
 
         const fullAdminUser: User = {
           ...adminUser,
           isActive: true,
           createdAt: new Date().toISOString(),
         };
+
+        // Also update the store state immediately so that the UI can react if needed
+        set({ businessSetup: fullBusinessData });
 
         // 1. Save the business setup to file.
         await saveDataToFile('business-setup.json', fullBusinessData);

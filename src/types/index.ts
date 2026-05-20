@@ -66,6 +66,12 @@ export interface Expense {
 export interface BusinessSetup {
   businessName: string;
   businessId?: string;
+  appMode?: 'SERVER' | 'OUTLET';
+  outletName?: string;
+  outletId?: string;
+  serverIp?: string;
+  serverPort?: number;
+  printMode?: 'single' | 'double';
   apiUrl?: string;
   apiKey?: string;
   backOfficeUrl?: string;
@@ -95,4 +101,13 @@ export interface BusinessSetup {
   locationName?: string;
   autoLogoffEnabled?: boolean;
   autoLogoffMinutes?: number;
+}
+
+export interface SyncQueueItem {
+  id: string;
+  action: 'insert' | 'update' | 'delete';
+  table: string;
+  data: any;
+  timestamp: string;
+  synced: boolean;
 }

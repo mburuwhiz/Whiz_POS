@@ -77,6 +77,7 @@ declare global {
       checkForUpdate: () => void;
       toggleFullscreen: () => void;
       getConnectedDevices: () => Promise<{ ip: string; name: string; lastSeen: string }[]>;
+      scanMdnsServers: () => Promise<{ name: string; ip: string; port: number; url: string }[]>;
       backupData: () => Promise<{ success: boolean; filePath?: string; error?: string }>;
       restoreData: () => Promise<{ success: boolean; error?: string }>;
 

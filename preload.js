@@ -154,6 +154,8 @@ contextBridge.exposeInMainWorld('electron', {
 
   getConnectedDevices: () => ipcRenderer.invoke('get-connected-devices'),
 
+  scanMdnsServers: () => ipcRenderer.invoke('scan-mdns-servers'),
+
   getLogs: () => ipcRenderer.invoke('get-logs'),
 
   // --- Auth & User Management ---

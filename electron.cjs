@@ -12,8 +12,11 @@ const { initDB, migrateLegacyData, readJsonFileFallback, writeJsonFileFallback, 
 const { generateReceipt, generateClosingReport, generateBusinessSetup } = require(path.join(__dirname, 'print-jobs.cjs'));
 const { MongoClient } = require('mongodb');
 const { dialog } = require('electron'); // For file dialogs
+const { Bonjour } = require('bonjour-service');
 
 const store = new Store();
+const bonjour = new Bonjour();
+let mDnsService = null;
 
 /**
  * Main Electron Process Script.
@@ -880,8 +883,33 @@ function startApiServer() {
         }
     });
 
-    server = apiApp.listen(3000, '0.0.0.0', () => {
-        console.log('API server started on port 3000');
+    // Use dynamic port allocation if 3000 is taken, or respect APP_INSTANCE for local testing
+    let targetPort = 3000;
+    if (process.env.APP_INSTANCE && process.env.APP_INSTANCE === 'outlet') {
+        targetPort = 3001;
+    }
+
+    server = apiApp.listen(targetPort, '0.0.0.0', async () => {
+        console.log(`API server started on port ${targetPort}`);
+
+        // Check if we are in SERVER mode by reading businessSetup
+        try {
+            const data = await fs.readFile(path.join(userDataPath, 'business-setup.json'), 'utf-8');
+            const setup = JSON.parse(data);
+            if (setup && (!setup.appMode || setup.appMode === 'SERVER')) {
+                const businessName = setup.businessName || 'Whiz POS Server';
+                mDnsService = bonjour.publish({
+                    name: businessName,
+                    type: 'whizpos',
+                    port: targetPort,
+                    txt: { appVersion: '7.0.0' }
+                });
+                console.log(`[mDNS] Publishing Server: ${businessName} on port ${targetPort}`);
+            }
+        } catch (e) {
+            // No setup yet, maybe first run
+            console.log('[mDNS] No business setup found, skipping mDNS publish');
+        }
     });
 
     server.on('error', (err) => {
@@ -1082,6 +1110,35 @@ app.whenReady().then(async () => {
     if (mainWindow) {
         mainWindow.setFullScreen(!mainWindow.isFullScreen());
     }
+  });
+
+  ipcMain.handle('scan-mdns-servers', async () => {
+      return new Promise((resolve) => {
+          console.log('[mDNS] Scanning for servers...');
+          const foundServers = [];
+
+          // Use bonjour.find to scan for 'whizpos' services
+          const browser = bonjour.find({ type: 'whizpos' });
+
+          browser.on('up', (service) => {
+              console.log('[mDNS] Found service:', service.name);
+              // Filter out IPv6 addresses to ensure compatibility
+              const ipv4 = service.addresses?.find(ip => ip.includes('.')) || service.host;
+              foundServers.push({
+                  name: service.name,
+                  ip: ipv4,
+                  port: service.port,
+                  url: `http://${ipv4}:${service.port}`
+              });
+          });
+
+          // Wait 3 seconds to collect responses
+          setTimeout(() => {
+              browser.stop();
+              console.log('[mDNS] Scan complete. Found:', foundServers);
+              resolve(foundServers);
+          }, 3000);
+      });
   });
 
   ipcMain.handle('get-connected-devices', () => {

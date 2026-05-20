@@ -29,6 +29,8 @@ export default function BusinessRegistration() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const [foundServers, setFoundServers] = useState<any[]>([]);
 
   const [formData, setFormData] = useState({
     appMode: 'SERVER' as 'SERVER' | 'OUTLET',
@@ -237,45 +239,77 @@ export default function BusinessRegistration() {
       case 'outletConnect':
         return (
           <motion.div key="outletConnect" variants={stepVariants} initial="enter" animate="center" exit="exit" className="space-y-6">
-            <div className="flex items-center space-x-4 mb-8">
+            <div className="flex items-center space-x-4 mb-6">
               <div className="p-3 bg-teal-500/20 rounded-xl">
                 <Wifi className="w-8 h-8 text-teal-400" />
               </div>
               <h2 className="text-3xl font-bold text-white">Connect to Server</h2>
             </div>
-            <p className="text-lg text-blue-100 mb-6">Give this terminal a name so the Main Server can identify it.</p>
 
             <div className="space-y-4">
+              <label className="block text-blue-100 font-medium">Terminal Name</label>
               <input
                 type="text"
                 placeholder="e.g. Counter 1, VIP Lounge"
                 value={formData.outletName}
                 onChange={(e) => handleInputChange('outletName', e.target.value)}
-                className="w-full bg-white/10 border border-white/20 rounded-2xl p-5 text-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-teal-500 backdrop-blur-md"
+                className="w-full bg-white/10 border border-white/20 rounded-xl p-4 text-lg text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-teal-500 backdrop-blur-md"
               />
             </div>
 
-            <div className="bg-teal-900/40 border border-teal-500/30 rounded-2xl p-6 mt-8">
-                <div className="flex items-start space-x-4">
-                    <div className="p-2 bg-teal-500/20 rounded-lg shrink-0 mt-1">
-                        <Globe2 className="w-5 h-5 text-teal-300" />
-                    </div>
-                    <div>
-                        <h4 className="text-white font-semibold mb-1">Zero-Config Discovery</h4>
-                        <p className="text-teal-100/70 text-sm leading-relaxed">
-                            Once setup is complete, this terminal will automatically search your Wi-Fi network for the Main Server using mDNS. Ensure the Server app is running and open the "Device Approvals" tab on the Server to allow this terminal to sync.
-                        </p>
-                    </div>
-                </div>
+            <div className="space-y-4 pt-4 border-t border-white/10">
+               <div className="flex items-center justify-between">
+                   <label className="block text-blue-100 font-medium">Select Master Server</label>
+                   <button
+                      onClick={async () => {
+                          setIsScanning(true);
+                          if (window.electron && window.electron.scanMdnsServers) {
+                              const servers = await window.electron.scanMdnsServers();
+                              setFoundServers(servers);
+                          }
+                          setIsScanning(false);
+                      }}
+                      className="text-teal-300 text-sm hover:text-teal-200 flex items-center"
+                   >
+                       {isScanning ? 'Scanning...' : 'Scan Network'}
+                   </button>
+               </div>
+
+               {foundServers.length > 0 ? (
+                   <div className="space-y-2 max-h-48 overflow-y-auto">
+                       {foundServers.map((server, idx) => (
+                           <div
+                              key={idx}
+                              onClick={() => handleInputChange('serverIp', server.url)}
+                              className={`p-4 rounded-xl border cursor-pointer transition-all ${formData.serverIp === server.url ? 'bg-teal-500/30 border-teal-400' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
+                           >
+                               <div className="font-semibold text-white">{server.name}</div>
+                               <div className="text-sm text-teal-200">{server.url}</div>
+                           </div>
+                       ))}
+                   </div>
+               ) : (
+                   <div className="bg-black/20 rounded-xl p-4 text-center border border-white/5">
+                       <p className="text-white/50 text-sm">No servers discovered automatically.</p>
+                   </div>
+               )}
+
+              <input
+                type="text"
+                placeholder="Or enter manually (e.g. http://192.168.1.5:3000)"
+                value={formData.serverIp}
+                onChange={(e) => handleInputChange('serverIp', e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-teal-500 mt-2"
+              />
             </div>
 
-            <div className="flex justify-between pt-8">
+            <div className="flex justify-between pt-8 border-t border-white/10">
               <button onClick={handleBack} className="text-white/60 hover:text-white font-medium flex items-center space-x-1">
                 <ChevronLeft className="w-5 h-5" />
                 <span>Back</span>
               </button>
               <button
-                disabled={!formData.outletName}
+                disabled={!formData.outletName || !formData.serverIp}
                 onClick={handleNext}
                 className="bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white px-8 py-4 rounded-xl font-bold flex items-center space-x-2 transition-all"
               >

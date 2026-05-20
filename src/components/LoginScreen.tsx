@@ -82,10 +82,18 @@ const LoginScreen = () => {
     setError('');
 
     try {
-      // Find user by PIN
-      const userToLogin = users.find(u => u.pin === loginPin && u.isActive);
+      // Find user by PIN locally first to get the ID
+      const userToLogin = users.find(u => String(u.pin).trim() === String(loginPin).trim() && u.isActive);
 
       if (!userToLogin) {
+        // If not found by PIN, we might still want to try authenticating via electron if we had a username field
+        // but since we only have PIN, if it's not in the local 'users' list, it will fail.
+        // Let's check if there are ANY users. If not, maybe something is wrong with data loading.
+        if (users.length === 0) {
+            console.warn("No users loaded in store. Attempting to reload initial data...");
+            await usePosStore.getState().loadInitialData();
+        }
+
         soundManager.playError();
         setError('Invalid PIN or account disabled');
         setPin('');
@@ -94,7 +102,7 @@ const LoginScreen = () => {
       }
 
       if (window.electron && window.electron.auth) {
-        const result = await window.electron.auth.login(userToLogin.id, loginPin, 'desktop-main');
+        const result = await window.electron.auth.login(userToLogin.id, String(loginPin).trim(), 'desktop-main');
         if (result.success && result.token && result.user) {
           soundManager.playSuccess();
           toast("Login Successful", "success");

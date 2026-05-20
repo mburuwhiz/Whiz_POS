@@ -18,7 +18,8 @@ import {
   Server,
   MonitorSmartphone,
   Wifi,
-  Globe2
+  Globe2,
+  Shield
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { soundManager } from '../lib/soundUtils';
@@ -54,22 +55,22 @@ export default function BusinessRegistration() {
   }, []);
 
   const steps = [
-    { id: 'welcome', title: 'Welcome' },
-    { id: 'modeSelection', title: 'Network Mode' },
+    { id: 'welcome', title: 'Welcome', description: 'Initialize your Whiz POS system' },
+    { id: 'modeSelection', title: 'Network Mode', description: 'Choose your terminal role' },
     // Outlet Steps
     ...(formData.appMode === 'OUTLET' ? [
-        { id: 'outletConnect', title: 'Connect to Server' },
+        { id: 'outletConnect', title: 'Connect to Server', description: 'Link to your Main Server' },
     ] : [
     // Server Steps
-        { id: 'businessName', title: 'Business Info' },
-        { id: 'ownerName', title: 'Owner Name' },
-        { id: 'contact', title: 'Contact Info' },
-        { id: 'address', title: 'Location' },
-        { id: 'servedBy', title: 'Receipt Labels' },
-        { id: 'mpesa', title: 'Payments' },
+        { id: 'businessName', title: 'Business Info', description: 'Your business identity' },
+        { id: 'ownerName', title: 'Owner Name', description: 'Primary administrator' },
+        { id: 'contact', title: 'Contact Info', description: 'Customer touchpoints' },
+        { id: 'address', title: 'Location', description: 'Physical presence' },
+        { id: 'servedBy', title: 'Receipt Labels', description: 'Customize your receipts' },
+        { id: 'mpesa', title: 'Payments', description: 'Mobile money integration' },
     ]),
-    { id: 'pin', title: 'Security PIN' },
-    { id: 'completion', title: 'Ready' }
+    { id: 'pin', title: 'Security PIN', description: 'Protect your terminal' },
+    { id: 'completion', title: 'Ready', description: 'Setup finished' }
   ];
 
   const handleNext = () => {
@@ -172,13 +173,42 @@ export default function BusinessRegistration() {
             <p className="text-xl text-blue-200/80 font-medium max-w-md mx-auto">
               The modern, decentralized point-of-sale network. Let's get your terminal configured.
             </p>
-            <button
-              onClick={handleNext}
-              className="mt-10 bg-white hover:bg-blue-50 text-blue-900 px-10 py-4 rounded-2xl font-bold text-lg flex items-center justify-center space-x-3 mx-auto transition-all hover:scale-105 active:scale-95 shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)]"
-            >
-              <span>Begin Setup</span>
-              <ChevronRight className="w-6 h-6" />
-            </button>
+            <div className="flex flex-col items-center space-y-4 mt-10">
+                <button
+                onClick={handleNext}
+                className="bg-white hover:bg-blue-50 text-blue-900 px-10 py-4 rounded-2xl font-bold text-lg flex items-center justify-center space-x-3 mx-auto transition-all hover:scale-105 active:scale-95 shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] w-full max-w-xs"
+                >
+                <span>Begin Setup</span>
+                <ChevronRight className="w-6 h-6" />
+                </button>
+                <div className="flex items-center space-x-2 text-blue-200/50">
+                    <div className="h-px w-12 bg-white/10" />
+                    <span className="text-xs uppercase tracking-widest font-bold">OR</span>
+                    <div className="h-px w-12 bg-white/10" />
+                </div>
+                <button
+                    onClick={async () => {
+                        if (window.electron && window.electron.restoreData) {
+                            const result = await window.electron.restoreData();
+                            if (result.success) {
+                                Swal.fire({
+                                    title: 'Restore Successful',
+                                    text: 'System will now restart to apply changes.',
+                                    icon: 'success'
+                                }).then(() => {
+                                    window.location.reload();
+                                });
+                            } else if (result.error !== 'Cancelled') {
+                                Swal.fire('Restore Failed', result.error, 'error');
+                            }
+                        }
+                    }}
+                    className="text-blue-100 hover:text-white flex items-center space-x-2 text-sm font-semibold transition-all border border-white/10 hover:border-white/30 px-6 py-2 rounded-xl"
+                >
+                    <PartyPopper className="w-4 h-4 text-blue-400" />
+                    <span>Restore from Backup (.wpos)</span>
+                </button>
+            </div>
           </motion.div>
         );
 
@@ -614,24 +644,43 @@ export default function BusinessRegistration() {
             <div className="w-24 h-24 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-8 animate-pulse">
               <PartyPopper className="w-12 h-12 text-green-400" />
             </div>
-            <h1 className="text-4xl font-bold text-white">You are all set</h1>
-            <p className="text-xl text-blue-100">Your {formData.appMode === 'SERVER' ? 'Main Server' : 'Checkout Outlet'} is configured and ready to go. 🎉</p>
+            <h1 className="text-4xl font-bold text-white">Setup Complete!</h1>
+            <p className="text-xl text-blue-100/90">Your {formData.appMode === 'SERVER' ? 'Main Server' : 'Checkout Outlet'} has been configured successfully.</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-5 text-left">
+                    <h4 className="text-blue-300 font-bold mb-2 flex items-center gap-2">
+                        <Shield className="w-4 h-4" /> Admin Account
+                    </h4>
+                    <p className="text-white/80 text-sm">User: <span className="text-white font-semibold">{formData.appMode === 'OUTLET' ? 'Outlet Admin' : formData.ownerName}</span></p>
+                    <p className="text-white/80 text-sm">PIN: <span className="text-white font-semibold">{formData.pin}</span></p>
+                </div>
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-5 text-left">
+                    <h4 className="text-teal-300 font-bold mb-2 flex items-center gap-2">
+                        <Network className="w-4 h-4" /> Network Info
+                    </h4>
+                    <p className="text-white/80 text-sm">Mode: <span className="text-white font-semibold">{formData.appMode}</span></p>
+                    {formData.appMode === 'OUTLET' && (
+                        <p className="text-white/80 text-sm truncate">Server: <span className="text-white font-semibold">{formData.serverIp}</span></p>
+                    )}
+                </div>
+            </div>
 
             {formData.appMode === 'SERVER' && (
-                <div className="bg-white/10 rounded-2xl p-6 mt-8 border border-white/20 backdrop-blur-md">
-                <div className="flex items-center justify-center space-x-3 text-white mb-2">
-                    <Printer className="w-5 h-5 text-green-400" />
-                    <span className="font-medium text-lg">Startup Invoice Printed</span>
-                </div>
-                <p className="text-white/60">Check the printed startup for your login details and business configuration.</p>
+                <div className="bg-blue-500/10 rounded-2xl p-6 mt-6 border border-blue-500/20 backdrop-blur-md">
+                    <div className="flex items-center justify-center space-x-3 text-white mb-2">
+                        <Printer className="w-5 h-5 text-blue-400" />
+                        <span className="font-bold text-lg text-blue-100">Startup Invoice Printed</span>
+                    </div>
+                    <p className="text-blue-200/60 text-sm">We've printed a startup sheet with your admin credentials and system configuration. Please keep it in a safe place.</p>
                 </div>
             )}
 
             <button
               onClick={() => window.location.reload()}
-              className="mt-12 bg-white text-blue-900 px-12 py-5 rounded-2xl font-black text-xl transition-all hover:scale-105 active:scale-95 shadow-2xl flex items-center justify-center space-x-3 mx-auto"
+              className="mt-10 bg-white text-blue-900 px-12 py-5 rounded-2xl font-black text-xl transition-all hover:scale-105 active:scale-95 shadow-2xl flex items-center justify-center space-x-3 mx-auto"
             >
-              <span>Go to Login Screen</span>
+              <span>Launch Application</span>
               <LogIn className="w-6 h-6" />
             </button>
           </motion.div>
@@ -660,13 +709,25 @@ export default function BusinessRegistration() {
 
           {/* Progress Indicator */}
           {!isFinished && (
-            <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/5">
-              <motion.div
-                className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-teal-500"
-                initial={{ width: 0 }}
-                animate={{ width: `${(currentStep / (steps.length - 1)) * 100}%` }}
-                transition={{ duration: 0.5 }}
-              />
+            <div className="absolute top-0 left-0 right-0 h-2 bg-white/5 flex">
+               {steps.map((step, idx) => (
+                   <div key={step.id} className="h-full flex-1 relative border-r border-black/20 last:border-0">
+                        <motion.div
+                            className="absolute inset-0 bg-gradient-to-r from-blue-500 to-indigo-500"
+                            initial={{ scaleX: 0 }}
+                            animate={{ scaleX: currentStep >= idx ? 1 : 0 }}
+                            transition={{ duration: 0.3 }}
+                            style={{ originX: 0 }}
+                        />
+                   </div>
+               ))}
+            </div>
+          )}
+
+          {/* Step Counter */}
+          {!isFinished && (
+            <div className="absolute top-6 right-8 text-white/20 font-black text-4xl">
+                {String(currentStep + 1).padStart(2, '0')}
             </div>
           )}
 

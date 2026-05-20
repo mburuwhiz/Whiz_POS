@@ -373,12 +373,17 @@ const UserManager = {
         const users = await readJsonFile('users.json');
         const user = users.find(u => (u.id === userId || u.userId === userId));
 
-        if (!user) return { success: false, error: 'User not found' };
-        if (!user.isActive) return { success: false, error: 'User is disabled' };
+        if (!user) {
+            console.log(`[UserManager] Auth failed: User ${userId} not found`);
+            return { success: false, error: 'User not found' };
+        }
+        if (!user.isActive) {
+            console.log(`[UserManager] Auth failed: User ${userId} is disabled`);
+            return { success: false, error: 'User is disabled' };
+        }
 
         // Strict PIN check
-        if (String(user.pin) === String(pin)) {
-            // Success
+        if (String(user.pin).trim() === String(pin).trim()) {
             return { success: true, user };
         }
         return { success: false, error: 'Invalid PIN' };
@@ -391,6 +396,7 @@ const UserManager = {
 
             // Check for duplicates
             if (users.some(u => u.name.toLowerCase() === userData.name.toLowerCase())) {
+                console.log(`[UserManager] Add failed: User ${userData.name} already exists`);
                 throw new Error('User with this name already exists');
             }
 
@@ -405,7 +411,7 @@ const UserManager = {
 
             users.push(newUser);
             await writeJsonFile('users.json', users);
-            console.log(`[UserManager] User added successfully: ${newUser.id}`);
+            console.log(`[UserManager] User added successfully: ${newUser.id} (${newUser.name})`);
             return newUser;
         } catch (e) {
             console.error(`[UserManager] Add failed: ${e.message}`);
@@ -908,10 +914,11 @@ function startApiServer() {
 
         // Check if we are in SERVER mode by reading businessSetup
         try {
-            const data = await fs.readFile(path.join(userDataPath, 'business-setup.json'), 'utf-8');
-            const setup = JSON.parse(data);
-            if (setup && (!setup.appMode || setup.appMode === 'SERVER')) {
-                const businessName = setup.businessName || 'Whiz POS Server';
+            const setup = await readJsonFileFallback('business-setup.json');
+            const isServerMode = (setup && (!setup.appMode || setup.appMode === 'SERVER')) || (process.env.APP_INSTANCE === 'server');
+
+            if (isServerMode) {
+                const businessName = (setup && setup.businessName) ? setup.businessName : `Whiz POS Server ${process.env.APP_INSTANCE ? '(' + process.env.APP_INSTANCE + ')' : ''}`;
                 mDnsService = bonjour.publish({
                     name: businessName,
                     type: 'whizpos',
@@ -921,8 +928,7 @@ function startApiServer() {
                 console.log(`[mDNS] Publishing Server: ${businessName} on port ${targetPort}`);
             }
         } catch (e) {
-            // No setup yet, maybe first run
-            console.log('[mDNS] No business setup found, skipping mDNS publish');
+            console.log('[mDNS] Error determining server mode, skipping mDNS publish:', e);
         }
     });
 

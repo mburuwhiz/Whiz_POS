@@ -14,6 +14,7 @@ import setupBg from '../assets/setup_install_bg.png';
 
 const steps = [
   { id: 'welcome', title: 'Welcome' },
+  { id: 'appMode', title: 'System Mode' },
   { id: 'businessName', title: 'Business Name' },
   { id: 'ownerName', title: 'Owner Name' },
   { id: 'contact', title: 'Contact Info' },
@@ -200,6 +201,45 @@ export default function BusinessRegistration() {
 
   const renderStep = () => {
     switch (steps[currentStep].id) {
+      case 'appMode':
+        return (
+          <motion.div key="appMode" variants={stepVariants} initial="enter" animate="center" exit="exit" className="space-y-6">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold text-white mb-2">Select Operating Mode</h2>
+              <p className="text-blue-100">Choose how this device will function on your network.</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
+              <button
+                onClick={() => {
+                  usePosStore.getState().setAppMode('server');
+                  handleNext();
+                }}
+                className="bg-slate-800 hover:bg-blue-600/20 border-2 border-slate-700 hover:border-blue-500 rounded-xl p-6 text-left transition-all group"
+              >
+                <Database className="w-10 h-10 text-blue-400 mb-4 group-hover:scale-110 transition-transform" />
+                <h3 className="text-xl font-bold text-white mb-2">Server Mode</h3>
+                <p className="text-slate-400 text-sm">
+                  Acts as the main hub. Manages global inventory, approves connections, and tracks overall analytics.
+                </p>
+              </button>
+
+              <button
+                onClick={() => {
+                  usePosStore.getState().setAppMode('outlet');
+                  handleNext();
+                }}
+                className="bg-slate-800 hover:bg-emerald-600/20 border-2 border-slate-700 hover:border-emerald-500 rounded-xl p-6 text-left transition-all group"
+              >
+                <Navigation className="w-10 h-10 text-emerald-400 mb-4 group-hover:scale-110 transition-transform" />
+                <h3 className="text-xl font-bold text-white mb-2">Outlet Mode</h3>
+                <p className="text-slate-400 text-sm">
+                  Acts as an autonomous terminal. Syncs with the server when online but functions fully offline.
+                </p>
+              </button>
+            </div>
+          </motion.div>
+        );
+
       case 'welcome':
         return (
           <motion.div key="welcome" variants={stepVariants} initial="enter" animate="center" exit="exit" className="text-center space-y-6">

@@ -12,8 +12,11 @@ const { initDB, migrateLegacyData, readJsonFileFallback, writeJsonFileFallback, 
 const { generateReceipt, generateClosingReport, generateBusinessSetup } = require(path.join(__dirname, 'print-jobs.cjs'));
 const { MongoClient } = require('mongodb');
 const { dialog } = require('electron'); // For file dialogs
+const { Bonjour } = require('bonjour-service');
 
 const store = new Store();
+const bonjour = new Bonjour();
+let mDnsService = null;
 
 /**
  * Main Electron Process Script.
@@ -23,7 +26,14 @@ const store = new Store();
 // Define paths for storing user data and assets.
 // Switch to a more secure/stable directory on Windows (e.g., C:\ProgramData) to prevent crashes on first launch or user-specific permissions issues.
 let baseDataPath;
-if (process.platform === 'win32') {
+
+if (process.env.APP_DATA_DIR) {
+    // For local dev multi-outlet testing
+    baseDataPath = path.resolve(process.env.APP_DATA_DIR);
+    try {
+        app.setPath('userData', baseDataPath);
+    } catch (e) {}
+} else if (process.platform === 'win32') {
     // Safely get commonAppData or fallback to environment variable / hardcoded C:\ProgramData
     let commonAppData;
     try {
@@ -868,13 +878,25 @@ function startApiServer() {
         }
     });
 
-    server = apiApp.listen(3000, '0.0.0.0', () => {
-        console.log('API server started on port 3000');
+    const apiPort = process.env.APP_PORT ? parseInt(process.env.APP_PORT) : 3000;
+    server = apiApp.listen(apiPort, '0.0.0.0', () => {
+        console.log(`API server started on port ${apiPort}`);
+
+        // Publish mDNS service for zero-config discovery
+        if (process.env.APP_MODE === 'server' || store.get('appMode') === 'server') {
+            mDnsService = bonjour.publish({
+                name: `WhizPOS_Server_${os.hostname()}`,
+                type: 'whizpos',
+                port: apiPort,
+                txt: { deviceId: os.hostname(), version: app.getVersion() }
+            });
+            console.log(`Published mDNS Bonjour service: WhizPOS_Server_${os.hostname()}`);
+        }
     });
 
     server.on('error', (err) => {
         if (err.code === 'EADDRINUSE') {
-            console.error('CRITICAL: Port 3000 is already in use. The API server could not start. Please close other instances of Whiz POS.');
+            console.error(`CRITICAL: Port ${apiPort} is already in use. The API server could not start. Please close other instances of Whiz POS.`);
             // We can't exit the whole app as the user might want to use it offline, but we should alert
             // For now, logging to console which might be seen in DevTools
         } else {
@@ -1063,6 +1085,16 @@ app.whenReady().then(async () => {
 
   ipcMain.handle('get-printer-settings', async () => {
     return store.get('printerSettings', { defaultPrinter: '' });
+  });
+
+  ipcMain.handle('get-app-mode', () => {
+      if (process.env.APP_MODE) return process.env.APP_MODE;
+      return store.get('appMode', null);
+  });
+
+  ipcMain.handle('set-app-mode', (event, mode) => {
+      store.set('appMode', mode);
+      return true;
   });
 
   ipcMain.handle('toggle-fullscreen', () => {

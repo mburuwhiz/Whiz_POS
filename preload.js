@@ -168,5 +168,8 @@ contextBridge.exposeInMainWorld('electron', {
       addUser: (userData) => ipcRenderer.invoke('user-add', userData),
       updateUser: (userId, updates) => ipcRenderer.invoke('user-update', userId, updates),
       deleteUser: (userId) => ipcRenderer.invoke('user-delete', userId)
-  }
+  },
+
+  getAppMode: () => ipcRenderer.invoke('get-app-mode'),
+  setAppMode: (mode) => ipcRenderer.invoke('set-app-mode', mode)
 });

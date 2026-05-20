@@ -66,6 +66,9 @@ function App() {
   useEffect(() => {
     const init = async () => {
       await loadInitialData();
+      if (usePosStore.getState().loadAppMode) {
+          await usePosStore.getState().loadAppMode();
+      }
     };
     init();
   }, [loadInitialData]);

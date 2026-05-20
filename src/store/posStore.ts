@@ -409,8 +409,11 @@ interface PosState {
   loyaltyCustomers: any[];
   syncHistory: any[];
   categories: string[];
+  appMode: 'server' | 'outlet' | null;
 
   // Actions
+  setAppMode: (mode: 'server' | 'outlet') => Promise<void>;
+  loadAppMode: () => Promise<void>;
   login: (user: User) => void;
   logout: () => void;
   setProducts: (products: Product[]) => void;
@@ -536,6 +539,14 @@ export const usePosStore = create<PosState>()(
       categories: ['Coffee', 'Tea', 'Pastries', 'Sandwiches', 'Cold Drinks', 'Others'],
       isTransactionSuccessPopupOpen: false,
       lastCompletedTransaction: null,
+      appMode: null,
+
+      setAppMode: async (mode) => {
+          set({ appMode: mode });
+          if (window.electron && window.electron.setAppMode) {
+              await window.electron.setAppMode(mode);
+          }
+      },
 
       /**
        * Logs in a user and updates the session state.
@@ -1613,6 +1624,13 @@ export const usePosStore = create<PosState>()(
           totalMpesa,
           totalCredit,
         };
+      },
+
+      loadAppMode: async () => {
+          if (window.electron && window.electron.getAppMode) {
+              const mode = await window.electron.getAppMode();
+              if (mode) set({ appMode: mode });
+          }
       },
 
       getTransactionsByDateRange: (startDate, endDate) => {

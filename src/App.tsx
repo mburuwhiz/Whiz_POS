@@ -10,6 +10,7 @@ import OnScreenKeyboard from './components/OnScreenKeyboard';
 import ChangelogModal from './components/ChangelogModal';
 import ErrorBoundary from './components/ErrorBoundary';
 import AutoLogoutModal from './components/AutoLogoutModal';
+import SyncEngine from './components/SyncEngine';
 import { useEffect, useRef, useState } from 'react';
 import { useAutoLogout } from './hooks/useAutoLogout';
 import { CheckCircle2 } from 'lucide-react';
@@ -167,6 +168,9 @@ function App() {
           {isAutoLogoffEnabled && isIdle && (
             <AutoLogoutModal onLogout={logout} userName={currentCashier?.name} />
           )}
+
+          {/* Global Sync Engine */}
+          <SyncEngine />
 
           {/* Changelog Modal */}
           {showChangelog && <ChangelogModal onClose={handleCloseChangelog} />}

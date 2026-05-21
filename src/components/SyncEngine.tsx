@@ -28,7 +28,9 @@ export default function SyncEngine() {
     transactions,
     creditCustomers,
     expenses,
-    users
+    users,
+    businessSetup,
+    getPendingSalesCount
   } = usePosStore();
 
   const [syncHistory, setSyncHistory] = useState<SyncOperation[]>([]);
@@ -87,9 +89,16 @@ export default function SyncEngine() {
   useEffect(() => {
     if (!isOnline) return;
 
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       handleAutoSync();
-    }, 15 * 60 * 1000); // 15 minutes
+
+      // Heartbeat for server metrics
+      if (businessSetup?.appMode === 'OUTLET' && businessSetup.serverIp) {
+          try {
+              await fetch(`${businessSetup.serverIp}/api/handshake/status/${businessSetup.outletId}?pendingSales=${getPendingSalesCount()}`);
+          } catch (e) {}
+      }
+    }, 30000); // 30 seconds
 
     return () => clearInterval(interval);
   }, [isOnline]);

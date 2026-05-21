@@ -242,7 +242,9 @@ const LoginScreen = () => {
               <span className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
               SYSTEM DEVELOPED AND MAINTAINED BY <span className="text-cyan-400">WHIZPOINT SOLUTIONS</span>
               <span className="text-white/40">|</span>
-              TELL/WHATSAPP <span className="text-cyan-400">0740 841 168</span> TO GET STARTED
+              SUPPORT <span className="text-cyan-400">support@whizpoint.app</span>
+              <span className="text-white/40">|</span>
+              WEBSITE <span className="text-cyan-400">pos.whizpoint.app</span>
             </span>
           ))}
         </div>

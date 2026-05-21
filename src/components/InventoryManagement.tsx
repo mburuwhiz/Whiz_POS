@@ -5,11 +5,12 @@ import { Package, AlertTriangle, TrendingUp, TrendingDown, Plus, Edit2, Trash2, 
 import cartPlaceholder from '../assets/cart.png';
 
 export default function InventoryManagement() {
-  const { products, updateProduct, addProduct, deleteProduct, categories: storeCategories } = usePosStore();
+  const { products, updateProduct, addProduct, deleteProduct, categories: storeCategories, businessSetup } = usePosStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isReconcileMode, setIsReconcileMode] = useState(false);
+  const isServer = businessSetup?.appMode === 'SERVER';
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -154,28 +155,30 @@ export default function InventoryManagement() {
                 <p className="text-gray-600">Manage products and stock levels</p>
               </div>
             </div>
-            <div className="flex space-x-3">
-                <button
-                    onClick={() => setIsReconcileMode(!isReconcileMode)}
-                    className={`px-6 py-3 rounded-lg flex items-center space-x-2 transition-colors ${
-                        isReconcileMode
-                        ? 'bg-purple-100 text-purple-800 hover:bg-purple-200'
-                        : 'bg-purple-600 text-white hover:bg-purple-700'
-                    }`}
-                >
-                    <ClipboardCheck className="w-5 h-5" />
-                    <span>{isReconcileMode ? 'Exit Reconciliation' : 'Stock Reconciliation'}</span>
-                </button>
-                {!isReconcileMode && (
+            {isServer && (
+                <div className="flex space-x-3">
                     <button
-                    onClick={() => setIsFormOpen(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 transition-colors"
+                        onClick={() => setIsReconcileMode(!isReconcileMode)}
+                        className={`px-6 py-3 rounded-lg flex items-center space-x-2 transition-colors ${
+                            isReconcileMode
+                            ? 'bg-purple-100 text-purple-800 hover:bg-purple-200'
+                            : 'bg-purple-600 text-white hover:bg-purple-700'
+                        }`}
                     >
-                    <Plus className="w-5 h-5" />
-                    <span>Add Product</span>
+                        <ClipboardCheck className="w-5 h-5" />
+                        <span>{isReconcileMode ? 'Exit Reconciliation' : 'Stock Reconciliation'}</span>
                     </button>
-                )}
-            </div>
+                    {!isReconcileMode && (
+                        <button
+                        onClick={() => setIsFormOpen(true)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 transition-colors"
+                        >
+                        <Plus className="w-5 h-5" />
+                        <span>Add Product</span>
+                        </button>
+                    )}
+                </div>
+            )}
           </div>
         </div>
 
@@ -426,20 +429,24 @@ export default function InventoryManagement() {
                             </button>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            <div className="flex items-center space-x-2">
-                                <button
-                                onClick={() => handleEdit(product)}
-                                className="text-blue-600 hover:text-blue-800"
-                                >
-                                <Edit2 className="w-4 h-4" />
-                                </button>
-                                <button
-                                onClick={() => handleDelete(product.id)}
-                                className="text-red-600 hover:text-red-800"
-                                >
-                                <Trash2 className="w-4 h-4" />
-                                </button>
-                            </div>
+                            {isServer ? (
+                                <div className="flex items-center space-x-2">
+                                    <button
+                                    onClick={() => handleEdit(product)}
+                                    className="text-blue-600 hover:text-blue-800"
+                                    >
+                                    <Edit2 className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                    onClick={() => handleDelete(product.id)}
+                                    className="text-red-600 hover:text-red-800"
+                                    >
+                                    <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            ) : (
+                                <span className="text-gray-400 italic text-xs">Read Only</span>
+                            )}
                             </td>
                         </>
                     )}

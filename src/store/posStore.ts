@@ -81,6 +81,10 @@ declare global {
       backupData: () => Promise<{ success: boolean; filePath?: string; error?: string }>;
       restoreData: () => Promise<{ success: boolean; error?: string }>;
 
+  approveOutlet: (outletId: string) => Promise<{ success: boolean; error?: string }>;
+  getPendingOutlets: () => Promise<any[]>;
+  getApprovedOutlets: () => Promise<any[]>;
+
       auth: {
         login: (userId: string, pin: string, deviceId?: string) => Promise<{ success: boolean; token?: string; user?: any; error?: string }>;
         logout: (token: string) => Promise<{ success: boolean }>;
@@ -451,6 +455,7 @@ interface PosState {
   addSalary: (salary: Salary) => void;
   deleteSalary: (id: string) => void;
   saveBusinessSetup: (setup: BusinessSetup) => void;
+  lastSyncId: number;
   addUser: (user: User) => void;
   updateUser: (id: string, updates: Partial<User>) => void;
   deleteUser: (id: string) => void;
@@ -467,6 +472,7 @@ interface PosState {
   syncFromServer: () => void;
   setOnlineStatus: (isOnline: boolean) => void;
   handleMobileDataSync: (payload: any) => void;
+  getPendingSalesCount: () => number;
 
   // Mobile Receipts
   loadMobileReceipts: () => Promise<void>;
@@ -496,6 +502,12 @@ interface PosState {
   addCreditPayment: (customerId: string, amount: number, transactionId?: string) => void;
   addInventoryLog: (log: InventoryLog) => void;
   archiveTransactions: (daysToKeep: number) => Promise<void>;
+
+  // Outlet Management
+  pendingOutlets: any[];
+  approvedOutlets: any[];
+  loadOutlets: () => Promise<void>;
+  approveOutlet: (outletId: string) => Promise<void>;
 }
 
 /**
@@ -534,7 +546,10 @@ export const usePosStore = create<PosState>()(
       syncQueue: [],
       lastSyncTime: null,
       mobileReceipts: [],
+      pendingOutlets: [],
+      approvedOutlets: [],
       sessionToken: null,
+      lastSyncId: 0,
       isSidebarCollapsed: false,
       categories: ['Coffee', 'Tea', 'Pastries', 'Sandwiches', 'Cold Drinks', 'Others'],
       isTransactionSuccessPopupOpen: false,
@@ -744,9 +759,7 @@ export const usePosStore = create<PosState>()(
         };
 
         // --- ABSOLUTELY FIRST: SHOW SUCCESS POPUP ---
-        if ((state.businessSetup as any)?.disableReceiptPrinting) {
-            state.openTransactionSuccessPopup(transaction);
-        }
+        state.openTransactionSuccessPopup(transaction);
 
         // --- THEN CLEAR CART AND CLOSE CHECKOUT ---
         state.clearCart();
@@ -1159,26 +1172,28 @@ export const usePosStore = create<PosState>()(
 
       processSyncQueue: async () => {
         const state = get();
-        let apiUrl = (state.businessSetup?.apiUrl || state.businessSetup?.backOfficeUrl)?.replace(/\/$/, '');
+        const isOutlet = state.businessSetup?.appMode === 'OUTLET';
+
+        let apiUrl = (state.businessSetup?.apiUrl || state.businessSetup?.backOfficeUrl || (isOutlet ? state.businessSetup?.serverIp : null))?.replace(/\/$/, '');
         // Remove trailing /api to prevent double /api
         apiUrl = apiUrl?.replace(/\/api$/, '') || '';
         const apiKey = state.businessSetup?.apiKey || state.businessSetup?.backOfficeApiKey;
-        const mongoDbUri = state.businessSetup?.mongoDbUri;
 
         if (!state.isOnline || state.syncQueue.length === 0) return;
 
-        // Fallback to Legacy HTTP API Sync
         if (!apiUrl || !apiKey) return;
 
         const queue = [...state.syncQueue];
         set({ syncQueue: [] }); // Optimistically clear queue
 
         try {
-          const response = await fetch(`${apiUrl}/api/sync`, {
+          const targetUrl = apiUrl.includes('/api/sync') ? apiUrl : `${apiUrl}/api/sync`;
+          const response = await fetch(targetUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${apiKey}`
+              'Authorization': `Bearer ${apiKey}`,
+              'X-OUTLET-ID': state.businessSetup?.outletId || 'unknown'
             },
             body: JSON.stringify(queue)
           });
@@ -1201,9 +1216,11 @@ export const usePosStore = create<PosState>()(
       },
 
       syncFromServer: async () => {
-        // Fetch config from initial state, but DO NOT use data state here to avoid stale closures
         const configState = get();
-        let apiUrl = (configState.businessSetup?.apiUrl || configState.businessSetup?.backOfficeUrl)?.replace(/\/$/, '');
+        const isServer = configState.businessSetup?.appMode === 'SERVER';
+        const isOutlet = configState.businessSetup?.appMode === 'OUTLET';
+
+        let apiUrl = (configState.businessSetup?.apiUrl || configState.businessSetup?.backOfficeUrl || configState.businessSetup?.serverIp)?.replace(/\/$/, '');
         // Remove trailing /api to prevent double /api
         apiUrl = apiUrl?.replace(/\/api$/, '') || '';
         const apiKey = configState.businessSetup?.apiKey || configState.businessSetup?.backOfficeApiKey;
@@ -1214,14 +1231,65 @@ export const usePosStore = create<PosState>()(
 
         let serverData: any = null;
 
-        // Fallback to HTTP Sync
+        // --- OUTLET SYNC LOGIC (PULL FROM SERVER) ---
+        if (isOutlet && configState.businessSetup?.serverIp) {
+            try {
+                const pullUrl = `${configState.businessSetup.serverIp}/api/sync/pull?lastId=${configState.lastSyncId}`;
+                const response = await fetch(pullUrl, {
+                    headers: { 'Authorization': `Bearer ${configState.businessSetup.apiKey}` }
+                });
+
+                if (response.ok) {
+                    const syncData = await response.json();
+                    if (syncData.success) {
+                        let maxId = configState.lastSyncId;
+
+                        // Handle Base State (Initial Sync)
+                        if (syncData.baseState) {
+                            set({
+                                products: syncData.baseState.products,
+                                users: syncData.baseState.users,
+                                businessSetup: { ...get().businessSetup, ...syncData.baseState.businessSetup }
+                            });
+                        }
+
+                        // Apply Operations
+                        for (const op of syncData.operations) {
+                            maxId = Math.max(maxId, op.id);
+                            const { operation, payload } = op;
+
+                            if (operation === 'add-user') {
+                                set(s => ({ users: [...s.users.filter(u => u.id !== payload.id), payload] }));
+                            } else if (operation === 'update-user') {
+                                set(s => ({ users: s.users.map(u => u.id === payload.id ? { ...u, ...payload.updates } : u) }));
+                            } else if (operation === 'delete-user') {
+                                set(s => ({ users: s.users.filter(u => u.id !== payload.id) }));
+                            } else if (operation === 'update-all-products') {
+                                set({ products: payload });
+                            } else if (operation === 'update-business-setup') {
+                                set(s => ({ businessSetup: { ...s.businessSetup, ...payload } }));
+                            }
+                        }
+
+                        set({ lastSyncId: maxId });
+                        return; // Done for outlet pull
+                    }
+                }
+            } catch (e) {
+                console.error("Outlet pull failed", e);
+            }
+        }
+
+        // --- BACK OFFICE SYNC LOGIC (LEGACY) ---
         if (!serverData) {
             if (!apiUrl) { console.debug("Sync skipped: No API URL"); return; }
             if (!apiKey) { console.debug("Sync skipped: No API Key"); return; }
 
             try {
-              console.debug(`Syncing from server: ${apiUrl}/api/sync`);
-              const response = await fetch(`${apiUrl}/api/sync`, {
+              // Ensure we use /api/sync
+              const targetUrl = apiUrl.includes('/api/sync') ? apiUrl : `${apiUrl}/api/sync`;
+              console.debug(`Syncing from server: ${targetUrl}`);
+              const response = await fetch(targetUrl, {
                 headers: {
                   'Authorization': `Bearer ${apiKey}`
                 }
@@ -1419,6 +1487,11 @@ export const usePosStore = create<PosState>()(
       },
 
       // Handle data synced from mobile (bridge)
+      getPendingSalesCount: () => {
+          const state = get();
+          return state.syncQueue.filter(op => op.type === 'new-transaction').length;
+      },
+
       handleMobileDataSync: (payload: any) => {
         if (!Array.isArray(payload)) payload = [payload];
 
@@ -1978,7 +2051,7 @@ export const usePosStore = create<PosState>()(
       finishSetup: async (businessData, adminUser) => {
         const fullBusinessData: BusinessSetup = {
           ...businessData,
-          receiptFooter: 'Developed and Managed by Whizpoint Solutions\nContact: 0740-841-168',
+          receiptFooter: 'Developed and Managed by Whizpoint Solutions\nsupport@whizpoint.app | pos.whizpoint.app',
           printerType: businessData.printerType || 'thermal', // Default to thermal
           createdAt: new Date().toISOString(),
           appMode: (businessData as any).appMode || 'SERVER'
@@ -2124,6 +2197,23 @@ export const usePosStore = create<PosState>()(
       },
 
       toggleSidebar: () => set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
+
+      loadOutlets: async () => {
+          if (window.electron) {
+              const pending = await window.electron.getPendingOutlets();
+              const approved = await window.electron.getApprovedOutlets();
+              set({ pendingOutlets: pending, approvedOutlets: approved });
+          }
+      },
+
+      approveOutlet: async (outletId: string) => {
+          if (window.electron) {
+              const result = await window.electron.approveOutlet(outletId);
+              if (result.success) {
+                  await get().loadOutlets();
+              }
+          }
+      },
     }),
     {
       name: 'pos-storage',

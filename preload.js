@@ -152,6 +152,12 @@ contextBridge.exposeInMainWorld('electron', {
 
   restoreData: () => ipcRenderer.invoke('restore-data'),
 
+  approveOutlet: (outletId) => ipcRenderer.invoke('approve-outlet', outletId),
+
+  getPendingOutlets: () => ipcRenderer.invoke('get-pending-outlets'),
+
+  getApprovedOutlets: () => ipcRenderer.invoke('get-approved-outlets'),
+
   getConnectedDevices: () => ipcRenderer.invoke('get-connected-devices'),
 
   scanMdnsServers: () => ipcRenderer.invoke('scan-mdns-servers'),

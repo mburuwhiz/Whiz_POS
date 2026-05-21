@@ -32,6 +32,7 @@ export default function BusinessRegistration() {
   const [isFinished, setIsFinished] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [foundServers, setFoundServers] = useState<any[]>([]);
+  const [handshakeStatus, setHandshakeStatus] = useState<'idle' | 'scanning' | 'handshaking' | 'pending' | 'approved' | 'rejected'>('idle');
 
   const [formData, setFormData] = useState({
     appMode: 'SERVER' as 'SERVER' | 'OUTLET',
@@ -75,7 +76,85 @@ export default function BusinessRegistration() {
 
   const handleNext = () => {
     soundManager.playClick();
+
+    // Custom logic for outlet connection step
+    if (steps[currentStep].id === 'outletConnect') {
+        if (!formData.serverIp || !formData.outletName) {
+            Swal.fire('Error', 'Please enter terminal name and select a server.', 'error');
+            return;
+        }
+        performHandshake();
+        return;
+    }
+
     if (currentStep < steps.length - 1) setCurrentStep((prev) => prev + 1);
+  };
+
+  const performHandshake = async () => {
+      setHandshakeStatus('handshaking');
+      const outletId = crypto.randomUUID();
+
+      try {
+          const response = await fetch(`${formData.serverIp}/api/handshake`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  outletName: formData.outletName,
+                  outletId: outletId,
+                  ip: 'auto'
+              })
+          });
+
+          if (response.ok) {
+              setHandshakeStatus('pending');
+              // Start polling for approval
+              pollForApproval(outletId);
+          } else {
+              setHandshakeStatus('idle');
+              Swal.fire('Connection Failed', 'Could not reach the server. Please check your network.', 'error');
+          }
+      } catch (e) {
+          setHandshakeStatus('idle');
+          Swal.fire('Error', 'An error occurred while connecting to the server.', 'error');
+      }
+  };
+
+  const pollForApproval = async (outletId: string) => {
+      const interval = setInterval(async () => {
+          try {
+              const res = await fetch(`${formData.serverIp}/api/handshake/status/${outletId}`);
+              const data = await res.json();
+
+              if (data.status === 'approved') {
+                  clearInterval(interval);
+                  setHandshakeStatus('approved');
+
+                  // Update formData with received config
+                  setFormData(prev => ({
+                      ...prev,
+                      apiKey: data.apiKey,
+                      businessName: data.businessSetup?.businessName || prev.businessName,
+                      address: data.businessSetup?.address || prev.address,
+                      phone: data.businessSetup?.phone || prev.phone,
+                      email: data.businessSetup?.email || prev.email,
+                      mpesaPaybill: data.businessSetup?.mpesaPaybill || prev.mpesaPaybill,
+                      mpesaTill: data.businessSetup?.mpesaTill || prev.mpesaTill,
+                      mpesaAccountNumber: data.businessSetup?.mpesaAccountNumber || prev.mpesaAccountNumber,
+                      servedByLabel: data.businessSetup?.servedByLabel || prev.servedByLabel,
+                  }));
+
+                  // Automatically move to the next step (PIN)
+                  setCurrentStep(prev => prev + 1);
+                  Swal.fire('Approved!', 'The server has approved your connection.', 'success');
+              } else if (data.status === 'rejected') {
+                  clearInterval(interval);
+                  setHandshakeStatus('rejected');
+                  Swal.fire('Rejected', 'The server rejected your connection request.', 'error');
+              }
+          } catch (e) {
+              console.error('Polling error:', e);
+          }
+      }, 3000);
   };
 
   const handleBack = () => {
@@ -276,77 +355,107 @@ export default function BusinessRegistration() {
               <h2 className="text-3xl font-bold text-white">Connect to Server</h2>
             </div>
 
-            <div className="space-y-4">
-              <label className="block text-blue-100 font-medium">Terminal Name</label>
-              <input
-                type="text"
-                placeholder="e.g. Counter 1, VIP Lounge"
-                value={formData.outletName}
-                onChange={(e) => handleInputChange('outletName', e.target.value)}
-                className="w-full bg-white/10 border border-white/20 rounded-xl p-4 text-lg text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-teal-500 backdrop-blur-md"
-              />
-            </div>
+            {handshakeStatus === 'pending' ? (
+                <div className="text-center space-y-8 py-10">
+                    <div className="relative">
+                        <div className="w-20 h-20 border-4 border-teal-500 border-t-transparent animate-spin rounded-full mx-auto" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <Server className="w-8 h-8 text-teal-400" />
+                        </div>
+                    </div>
+                    <div className="space-y-3">
+                        <h3 className="text-2xl font-bold text-white tracking-tight">Pending Server Approval</h3>
+                        <p className="text-blue-100/70 max-w-sm mx-auto">
+                            Handshake request sent to <b>{formData.serverIp}</b>. Please visit the Server dashboard to approve this terminal: <b>"{formData.outletName}"</b>.
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => setHandshakeStatus('idle')}
+                        className="text-teal-400 font-bold hover:text-teal-300 transition-colors"
+                    >
+                        Cancel Request
+                    </button>
+                </div>
+            ) : handshakeStatus === 'handshaking' ? (
+                 <div className="text-center py-20">
+                     <div className="w-16 h-16 border-4 border-white/20 border-t-white animate-spin rounded-full mx-auto mb-6" />
+                     <p className="text-white font-bold">Initializing handshake...</p>
+                 </div>
+            ) : (
+                <>
+                <div className="space-y-4">
+                <label className="block text-blue-100 font-medium">Terminal Name</label>
+                <input
+                    type="text"
+                    placeholder="e.g. Counter 1, VIP Lounge"
+                    value={formData.outletName}
+                    onChange={(e) => handleInputChange('outletName', e.target.value)}
+                    className="w-full bg-white/10 border border-white/20 rounded-xl p-4 text-lg text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-teal-500 backdrop-blur-md"
+                />
+                </div>
 
-            <div className="space-y-4 pt-4 border-t border-white/10">
-               <div className="flex items-center justify-between">
-                   <label className="block text-blue-100 font-medium">Select Master Server</label>
-                   <button
-                      onClick={async () => {
-                          setIsScanning(true);
-                          if (window.electron && window.electron.scanMdnsServers) {
-                              const servers = await window.electron.scanMdnsServers();
-                              setFoundServers(servers);
-                          }
-                          setIsScanning(false);
-                      }}
-                      className="text-teal-300 text-sm hover:text-teal-200 flex items-center"
-                   >
-                       {isScanning ? 'Scanning...' : 'Scan Network'}
-                   </button>
-               </div>
+                <div className="space-y-4 pt-4 border-t border-white/10">
+                <div className="flex items-center justify-between">
+                    <label className="block text-blue-100 font-medium">Select Master Server</label>
+                    <button
+                        onClick={async () => {
+                            setIsScanning(true);
+                            if (window.electron && window.electron.scanMdnsServers) {
+                                const servers = await window.electron.scanMdnsServers();
+                                setFoundServers(servers);
+                            }
+                            setIsScanning(false);
+                        }}
+                        className="text-teal-300 text-sm hover:text-teal-200 flex items-center"
+                    >
+                        {isScanning ? 'Scanning...' : 'Scan Network'}
+                    </button>
+                </div>
 
-               {foundServers.length > 0 ? (
-                   <div className="space-y-2 max-h-48 overflow-y-auto">
-                       {foundServers.map((server, idx) => (
-                           <div
-                              key={idx}
-                              onClick={() => handleInputChange('serverIp', server.url)}
-                              className={`p-4 rounded-xl border cursor-pointer transition-all ${formData.serverIp === server.url ? 'bg-teal-500/30 border-teal-400' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
-                           >
-                               <div className="font-semibold text-white">{server.name}</div>
-                               <div className="text-sm text-teal-200">{server.url}</div>
-                           </div>
-                       ))}
-                   </div>
-               ) : (
-                   <div className="bg-black/20 rounded-xl p-4 text-center border border-white/5">
-                       <p className="text-white/50 text-sm">No servers discovered automatically.</p>
-                   </div>
-               )}
+                {foundServers.length > 0 ? (
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {foundServers.map((server, idx) => (
+                            <div
+                                key={idx}
+                                onClick={() => handleInputChange('serverIp', server.url)}
+                                className={`p-4 rounded-xl border cursor-pointer transition-all ${formData.serverIp === server.url ? 'bg-teal-500/30 border-teal-400' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
+                            >
+                                <div className="font-semibold text-white">{server.name}</div>
+                                <div className="text-sm text-teal-200">{server.url}</div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="bg-black/20 rounded-xl p-4 text-center border border-white/5">
+                        <p className="text-white/50 text-sm">No servers discovered automatically.</p>
+                    </div>
+                )}
 
-              <input
-                type="text"
-                placeholder="Or enter manually (e.g. http://192.168.1.5:3000)"
-                value={formData.serverIp}
-                onChange={(e) => handleInputChange('serverIp', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-teal-500 mt-2"
-              />
-            </div>
+                <input
+                    type="text"
+                    placeholder="Or enter manually (e.g. http://192.168.1.5:3000)"
+                    value={formData.serverIp}
+                    onChange={(e) => handleInputChange('serverIp', e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-teal-500 mt-2"
+                />
+                </div>
 
-            <div className="flex justify-between pt-8 border-t border-white/10">
-              <button onClick={handleBack} className="text-white/60 hover:text-white font-medium flex items-center space-x-1">
-                <ChevronLeft className="w-5 h-5" />
-                <span>Back</span>
-              </button>
-              <button
-                disabled={!formData.outletName || !formData.serverIp}
-                onClick={handleNext}
-                className="bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white px-8 py-4 rounded-xl font-bold flex items-center space-x-2 transition-all"
-              >
-                <span>Continue</span>
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
+                <div className="flex justify-between pt-8 border-t border-white/10">
+                <button onClick={handleBack} className="text-white/60 hover:text-white font-medium flex items-center space-x-1">
+                    <ChevronLeft className="w-5 h-5" />
+                    <span>Back</span>
+                </button>
+                <button
+                    disabled={!formData.outletName || !formData.serverIp}
+                    onClick={handleNext}
+                    className="bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white px-8 py-4 rounded-xl font-bold flex items-center space-x-2 transition-all shadow-lg shadow-teal-900/40"
+                >
+                    <span>Connect Terminal</span>
+                    <ChevronRight className="w-5 h-5" />
+                </button>
+                </div>
+                </>
+            )}
           </motion.div>
         );
 

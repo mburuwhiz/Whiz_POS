@@ -10,7 +10,8 @@ import { Edit, Trash2, Shield, User as UserIcon, Lock, Unlock, Plus } from 'luci
 import { useToast } from '../components/ui/use-toast';
 
 export default function UsersPage() {
-  const { users, addUser, updateUser, deleteUser } = usePosStore();
+  const { users, addUser, updateUser, deleteUser, businessSetup } = usePosStore();
+  const isServer = businessSetup?.appMode === 'SERVER';
   const { toast } = useToast();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<Partial<User>>({});
@@ -100,10 +101,12 @@ export default function UsersPage() {
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">User Management</h1>
           <p className="text-slate-500">Manage access and roles for your staff.</p>
         </div>
-        <Button onClick={handleOpenAdd} className="bg-blue-600 hover:bg-blue-700">
-          <Plus className="w-4 h-4 mr-2" />
-          Add User
-        </Button>
+        {isServer && (
+            <Button onClick={handleOpenAdd} className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="w-4 h-4 mr-2" />
+            Add User
+            </Button>
+        )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -151,15 +154,21 @@ export default function UsersPage() {
                       </Badge>
                     </td>
                     <td className="px-6 py-4 text-right space-x-2">
-                      <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(user)} title="Edit">
-                        <Edit className="w-4 h-4 text-slate-500" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => toggleStatus(user)} title={user.isActive ? "Disable" : "Enable"}>
-                        {user.isActive ? <Lock className="w-4 h-4 text-amber-500" /> : <Unlock className="w-4 h-4 text-emerald-500" />}
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(user)} title="Delete">
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                      </Button>
+                      {isServer ? (
+                          <>
+                            <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(user)} title="Edit">
+                                <Edit className="w-4 h-4 text-slate-500" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => toggleStatus(user)} title={user.isActive ? "Disable" : "Enable"}>
+                                {user.isActive ? <Lock className="w-4 h-4 text-amber-500" /> : <Unlock className="w-4 h-4 text-emerald-500" />}
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDelete(user)} title="Delete">
+                                <Trash2 className="w-4 h-4 text-red-500" />
+                            </Button>
+                          </>
+                      ) : (
+                          <span className="text-gray-400 italic text-xs">Read Only</span>
+                      )}
                     </td>
                   </tr>
                 ))}

@@ -134,6 +134,12 @@ const Navigation = () => {
 
         {isAdminOrManager && (
           <NavGroup title="Administration">
+            {businessSetup.appMode === 'SERVER' && (
+                <NavLink to="/outlets" className={navLinkClasses}>
+                    <Monitor className="w-5 h-5" />
+                    <span>Manage Outlets</span>
+                </NavLink>
+            )}
             <NavLink to="/sync" className={navLinkClasses}>
               <Database className="w-5 h-5" />
               <span>Sync</span>

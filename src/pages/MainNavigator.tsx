@@ -24,6 +24,8 @@ import SalariesPage from './SalariesPage';
 import DeveloperPage from './DeveloperPage';
 import UsersPage from './UsersPage';
 import InvoiceGenerator from './InvoiceGenerator';
+import ManageOutletsPage from './ManageOutletsPage';
+import ServerDashboardPage from './server/ServerDashboardPage';
 
 const MainNavigator = () => {
   const { businessSetup, users } = usePosStore();
@@ -57,10 +59,13 @@ const MainNavigator = () => {
     );
   }
 
+  const isServer = businessSetup?.appMode === 'SERVER';
+
   return (
     <AppLayout>
       <Routes>
         <Route path="/" element={
+          isServer ? <Navigate to="/dashboard" replace /> : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-theme(spacing.24))]">
             {/*
               Product Grid Container:
@@ -81,6 +86,7 @@ const MainNavigator = () => {
               <OrderArea />
             </div>
           </div>
+          )
         } />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/customers" element={<CreditCustomersPage />} />
@@ -90,7 +96,7 @@ const MainNavigator = () => {
         <Route path="/sync" element={<OfflineSyncStatus />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/register" element={<BusinessRegistrationPage />} />
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/dashboard" element={isServer ? <ServerDashboardPage /> : <Dashboard />} />
         <Route path="/inventory" element={<InventoryManagement />} />
         <Route path="/loyalty" element={<LoyaltyProgram />} />
         <Route path="/scanner" element={<BarcodeScanner />} />
@@ -98,6 +104,7 @@ const MainNavigator = () => {
         <Route path="/previous-receipts" element={<PreviousReceiptsPage />} />
         <Route path="/mobile-receipts" element={<MobileReceiptsPage />} />
         <Route path="/invoices" element={<InvoiceGenerator />} />
+        <Route path="/outlets" element={<ManageOutletsPage />} />
         <Route path="/manage" element={<SettingsPage />} />
         <Route path="/developer" element={<DeveloperPage />} />
         <Route path="/users" element={<UsersPage />} />

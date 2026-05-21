@@ -24,6 +24,8 @@ function initDB(userDataPath) {
         CREATE TABLE IF NOT EXISTS dailySummaries (id TEXT PRIMARY KEY, data TEXT);
         CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, data TEXT);
         CREATE TABLE IF NOT EXISTS suppliers (id TEXT PRIMARY KEY, data TEXT);
+        CREATE TABLE IF NOT EXISTS syncQueue (id TEXT PRIMARY KEY, data TEXT);
+        CREATE TABLE IF NOT EXISTS outletSyncQueue (id INTEGER PRIMARY KEY AUTOINCREMENT, outletId TEXT, operation TEXT, payload TEXT, createdAt TEXT);
     `);
 
     return dbPath;
@@ -46,7 +48,8 @@ async function migrateLegacyData(userDataPath) {
         { file: 'inventory-logs.json', table: 'inventoryLogs', isArray: true },
         { file: 'daily-summaries.json', table: 'dailySummaries', isArray: false },
         { file: 'sessions.json', table: 'sessions', isArray: true },
-        { file: 'suppliers.json', table: 'suppliers', isArray: true }
+        { file: 'suppliers.json', table: 'suppliers', isArray: true },
+        { file: 'sync-queue.json', table: 'syncQueue', isArray: true }
     ];
 
     let migrationOccurred = false;
@@ -171,7 +174,8 @@ function getFileTableMapping(filename) {
         'inventory-logs.json': { table: 'inventoryLogs', isArray: true },
         'daily-summaries.json': { table: 'dailySummaries', isArray: false },
         'sessions.json': { table: 'sessions', isArray: true },
-        'suppliers.json': { table: 'suppliers', isArray: true }
+        'suppliers.json': { table: 'suppliers', isArray: true },
+        'sync-queue.json': { table: 'syncQueue', isArray: true }
     };
     return map[filename];
 }
@@ -236,5 +240,24 @@ module.exports = {
             db.close();
             db = null;
         }
+    },
+    // Sync Queue Methods
+    addToOutletSyncQueue: (operation, payload) => {
+        if (!db) return;
+        const stmt = db.prepare(`INSERT INTO outletSyncQueue (operation, payload, createdAt) VALUES (?, ?, ?)`);
+        stmt.run(operation, JSON.stringify(payload), new Date().toISOString());
+    },
+    getPendingOperations: () => {
+        if (!db) return [];
+        const stmt = db.prepare(`SELECT * FROM outletSyncQueue ORDER BY id ASC`);
+        return stmt.all().map(r => ({ ...r, payload: JSON.parse(r.payload) }));
+    },
+    clearOperations: (ids) => {
+        if (!db || !ids.length) return;
+        const stmt = db.prepare(`DELETE FROM outletSyncQueue WHERE id = ?`);
+        const deleteMany = db.transaction((idList) => {
+            for (const id of idList) stmt.run(id);
+        });
+        deleteMany(ids);
     }
 };

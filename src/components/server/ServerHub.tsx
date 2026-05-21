@@ -131,93 +131,35 @@ const ManageOutlets = () => {
 };
 
 export default function ServerHub() {
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const { logout, currentCashier } = usePosStore();
-
-  const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'outlets', label: 'Manage Outlets', icon: Monitor },
-    { id: 'inventory', label: 'Global Inventory', icon: Package },
-    { id: 'Staff & PINs', label: 'Staff & PINs', icon: Users },
-    { id: 'Sales Reports', label: 'Sales Reports', icon: BarChart3 },
-    { id: 'settings', label: 'System Settings', icon: Settings },
-  ];
+  const [activeTab, setActiveTab] = useState('outlets');
 
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard': return <ServerDashboard />;
       case 'outlets': return <ManageOutlets />;
-      case 'inventory': return <InventoryManagement />;
-      case 'Staff & PINs': return <UsersPage />;
-      case 'Sales Reports': return <ReportsPage />;
-      case 'settings': return <SettingsPage />;
-      default: return <ServerDashboard />;
+      default: return <ManageOutlets />;
     }
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
-      {/* Sidebar */}
-      <div className="w-72 bg-slate-900 text-white flex flex-col shadow-2xl z-50">
-        <div className="p-8 border-b border-white/5">
-          <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/20">
-                  <Database className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-black tracking-tight text-white">SERVER <span className="text-blue-400">HUB</span></h1>
-                <p className="text-[10px] text-white/40 uppercase font-black tracking-[0.2em]">Whiz Point POS</p>
-              </div>
-          </div>
-        </div>
-
-        <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
-          {menuItems.map((item) => (
+    <div className="flex-1 overflow-y-auto relative h-full">
+        <div className="p-6 mx-auto animate-in fade-in duration-700 slide-in-from-bottom-4">
+          <div className="flex gap-4 mb-8">
             <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all font-bold \${
-                activeTab === item.id
-                  ? 'bg-blue-600 text-white shadow-xl shadow-blue-600/20 translate-x-1'
-                  : 'text-white/50 hover:bg-white/5 hover:text-white'
-              }`}
+                onClick={() => setActiveTab('outlets')}
+                className={`px-6 py-2 rounded-xl font-bold transition-all ${activeTab === 'outlets' ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20' : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-200'}`}
             >
-              <item.icon className={`w-5 h-5 \${activeTab === item.id ? 'text-white' : 'text-blue-400/50'}`} />
-              <span>{item.label}</span>
+                Terminal Approvals
             </button>
-          ))}
-        </nav>
-
-        <div className="p-6 border-t border-white/5 bg-black/20">
-          <div className="flex items-center gap-4 px-2 mb-6">
-             <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center text-blue-400 font-black border border-white/10 shadow-inner">
-               {currentCashier?.name?.charAt(0) || "A"}
-             </div>
-             <div className="flex-1 overflow-hidden">
-                <p className="text-sm font-black text-white truncate">{currentCashier?.name || "Administrator"}</p>
-                <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">{currentCashier?.role || "Owner"}</p>
-             </div>
+            <button
+                onClick={() => setActiveTab('dashboard')}
+                className={`px-6 py-2 rounded-xl font-bold transition-all ${activeTab === 'dashboard' ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20' : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-200'}`}
+            >
+                System Health
+            </button>
           </div>
-          <button
-            onClick={logout}
-            className="w-full flex items-center justify-center gap-3 px-4 py-4 rounded-2xl text-red-400 hover:bg-red-500/10 transition-all font-black text-xs uppercase tracking-widest border border-red-400/20"
-          >
-            Sign Out
-          </button>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 overflow-y-auto relative">
-        <div className="p-10 max-w-7xl mx-auto animate-in fade-in duration-700 slide-in-from-bottom-4">
           {renderContent()}
         </div>
-
-        {/* Footer info */}
-        <div className="absolute bottom-6 right-10 text-[10px] font-black text-slate-300 uppercase tracking-widest">
-            Handshake Security Active • support@whizpoint.app
-        </div>
-      </div>
     </div>
   );
 }

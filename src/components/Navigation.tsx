@@ -89,8 +89,19 @@ const Navigation = () => {
           </NavLink>
         </NavGroup>
 
+
+        {isAdminOrManager && businessSetup?.appMode === 'SERVER' && (
+          <NavGroup title="Server Hub">
+            <NavLink to="/server-hub" className={navLinkClasses}>
+              <Store className="w-5 h-5" />
+              <span>Manage Outlets</span>
+            </NavLink>
+          </NavGroup>
+        )}
+
         {isAdminOrManager && (
           <NavGroup title="Analytics">
+
             <NavLink to="/dashboard" className={navLinkClasses}>
               <Activity className="w-5 h-5" />
               <span>Dashboard</span>

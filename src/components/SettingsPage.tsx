@@ -784,6 +784,30 @@ export default function SettingsPage() {
                         </div>
                     </div>
 
+                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <div className='flex items-center'>
+                            <Printer className="w-5 h-5 mr-2 text-gray-600" />
+                            <div className="flex-1">
+                                <label className="block text-sm font-medium text-gray-700">Print Mode</label>
+                                <p className="text-xs text-gray-500">Print single or duplicate copies</p>
+                            </div>
+                        </div>
+                        <div className="w-48">
+                            <select
+                                value={businessData.printMode || 'single'}
+                                onChange={(e) => {
+                                    const newVal = e.target.value as 'single' | 'double';
+                                    setBusinessData(prev => ({ ...prev, printMode: newVal }));
+                                    saveBusinessSetup({ ...businessSetup, ...businessData, printMode: newVal, isSetup: true } as any);
+                                }}
+                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border bg-white"
+                            >
+                                <option value="single">Single Receipt</option>
+                                <option value="double">Duplicate (Customer & Copy)</option>
+                            </select>
+                        </div>
+                    </div>
+
                     {!businessData.disableReceiptPrinting && (
                         <>
                             <div>

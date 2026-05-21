@@ -24,6 +24,7 @@ import SalariesPage from './SalariesPage';
 import DeveloperPage from './DeveloperPage';
 import UsersPage from './UsersPage';
 import InvoiceGenerator from './InvoiceGenerator';
+import ServerHub from '../components/server/ServerHub';
 
 const MainNavigator = () => {
   const { businessSetup, users } = usePosStore();
@@ -101,6 +102,7 @@ const MainNavigator = () => {
         <Route path="/manage" element={<SettingsPage />} />
         <Route path="/developer" element={<DeveloperPage />} />
         <Route path="/users" element={<UsersPage />} />
+        <Route path="/server-hub" element={<ServerHub />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </AppLayout>

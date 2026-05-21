@@ -1472,7 +1472,9 @@ app.whenReady().then(async () => {
    */
   ipcMain.on('print-receipt', async (event, transaction, businessSetup, isReprint = false) => {
       const htmlContent = await generateReceipt(transaction, businessSetup, isReprint);
-      printHtml(htmlContent);
+
+      const copies = businessSetup?.printMode === 'double' ? 2 : 1;
+      printHtml(htmlContent, { copies });
   });
 
   /**

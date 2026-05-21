@@ -157,7 +157,7 @@ function App() {
         <div className="min-h-screen bg-gray-100">
           <Routes>
             <Route path="/developer" element={<DeveloperPage />} />
-            <Route path="*" element={showLogin ? <LoginScreen /> : (businessSetup?.appMode === "SERVER" ? <ServerHub /> : <MainNavigator />)} />
+            <Route path="*" element={showLogin ? <LoginScreen /> : (<MainNavigator />)} />
           </Routes>
 
           {/* Global Modals */}

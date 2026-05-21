@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { usePosStore } from '../store/posStore';
-import { Store, Coffee, BarChart3, Users, Calendar, Settings, DollarSign, Database, Package, Gift, Camera, Activity, Building2, UserCheck, Printer, Smartphone, Maximize, Wrench, FileText } from 'lucide-react';
+import { Coffee, BarChart3, Users, Calendar, Settings, DollarSign, Database, Package, Gift, Camera, Activity, Building2, UserCheck, Printer, Smartphone, Maximize, Wrench, FileText, Store } from 'lucide-react';
 
 /**
  * Helper component to group navigation links with a title.

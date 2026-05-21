@@ -1552,7 +1552,6 @@ app.whenReady().then(async () => {
     // but if we set it to false, we can call downloadUpdate() here.
     // For now, checkForUpdatesAndNotify handles it.
   });
-});
 
 /**
  * IPC Handler: 'get-api-config'

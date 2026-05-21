@@ -13,7 +13,7 @@ const ServerDashboard = () => (
     <h2 className="text-2xl font-bold text-slate-800">Server Hub Dashboard</h2>
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-        <h3 className="text-slate-500 text-sm font-medium">Active Manage Outlets</h3>
+        <h3 className="text-slate-500 text-sm font-medium">Active Outlets</h3>
         <p className="text-4xl font-black text-slate-900 mt-2">0</p>
       </div>
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
@@ -30,32 +30,32 @@ const ServerDashboard = () => (
   </div>
 );
 
-const ManageManage Outlets = () => {
-  const [outlets, setManage Outlets] = useState<{ approved: any[], pending: any[] }>({ approved: [], pending: [] });
+const ManageOutlets = () => {
+  const [outlets, setOutlets] = useState<{ approved: any[], pending: any[] }>({ approved: [], pending: [] });
 
-  const fetchManage Outlets = async () => {
+  const fetchOutlets = async () => {
     if (window.electron && (window.electron as any).getConnectedDevices) {
       const data = await (window.electron as any).getConnectedDevices();
-      setManage Outlets(data || { approved: [], pending: [] });
+      setOutlets(data || { approved: [], pending: [] });
     }
   };
 
   useEffect(() => {
-    fetchManage Outlets();
-    const interval = setInterval(fetchManage Outlets, 5000);
+    fetchOutlets();
+    const interval = setInterval(fetchOutlets, 5000);
     return () => clearInterval(interval);
   }, []);
 
   const handleApprove = async (deviceId: string) => {
     if (window.electron && (window.electron as any).approveOutlet) {
       await (window.electron as any).approveOutlet(deviceId);
-      fetchManage Outlets();
+      fetchOutlets();
     }
   };
 
   return (
     <div className="space-y-8">
-      <h2 className="text-2xl font-bold text-slate-800">Manage Manage Outlets</h2>
+      <h2 className="text-2xl font-bold text-slate-800">Manage Outlets</h2>
 
       {/* Pending Section */}
       {outlets.pending.length > 0 && (
@@ -136,7 +136,7 @@ export default function ServerHub() {
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'outlets', label: 'Manage Manage Outlets', icon: Monitor },
+    { id: 'outlets', label: 'Manage Outlets', icon: Monitor },
     { id: 'inventory', label: 'Global Inventory', icon: Package },
     { id: 'Staff & PINs', label: 'Staff & PINs', icon: Users },
     { id: 'Sales Reports', label: 'Sales Reports', icon: BarChart3 },
@@ -146,7 +146,7 @@ export default function ServerHub() {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard': return <ServerDashboard />;
-      case 'outlets': return <ManageManage Outlets />;
+      case 'outlets': return <ManageOutlets />;
       case 'inventory': return <InventoryManagement />;
       case 'Staff & PINs': return <UsersPage />;
       case 'Sales Reports': return <ReportsPage />;

@@ -18,6 +18,7 @@
     "build:exe": "vite build && electron-builder",
     "preview": "vite preview",
     "back-office:dev": "npm run dev --prefix back-office",
+    "reset": "rm -rf dist build release *.tsbuildinfo && npm run dev",
     "postinstall": "electron-rebuild"
   },
   "dependencies": {

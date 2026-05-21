@@ -64,6 +64,9 @@ export interface Expense {
   timestamp: string;
   cashier: string;
   receipt?: string;
+  supplierId?: string;
+  supplierName?: string;
+  recordedBy?: string;
   outletId?: string; // Multi-outlet tracking
 }
 
@@ -105,6 +108,22 @@ export interface BusinessSetup {
   locationName?: string;
   autoLogoffEnabled?: boolean;
   autoLogoffMinutes?: number;
+  showDeveloperFooter?: boolean;
+  developerPin?: string;
+  disableReceiptPrinting?: boolean;
+  mpesaConfig?: {
+    enabled: boolean;
+    backendUrl: string;
+    apiKey: string;
+    consumerKey: string;
+    consumerSecret: string;
+    passkey: string;
+    shortcode: string;
+    partyB: string;
+    callbackUrl: string;
+    type: 'Paybill' | 'Till';
+    environment: 'Sandbox' | 'Production';
+  };
 }
 
 export interface SyncQueueItem {
@@ -114,4 +133,82 @@ export interface SyncQueueItem {
   data: any;
   timestamp: string;
   synced: boolean;
+}
+
+export interface Supplier {
+  id: string;
+  name: string;
+  contact: string;
+  location: string;
+  active: boolean;
+  notes?: string;
+  createdAt: string;
+  outletId?: string;
+}
+
+export interface Salary {
+  id: string;
+  employeeName: string;
+  amount: number;
+  date: string;
+  type: 'advance' | 'full';
+  notes?: string;
+  outletId?: string;
+}
+
+export interface ClosingReportData {
+  date: string;
+  cashiers: CashierReport[];
+  itemSales: ItemSales[];
+  grandTotal: number;
+  totalCash: number;
+  totalMpesa: number;
+  totalCredit: number;
+}
+
+export interface CashierReport {
+  cashierName: string;
+  transactions: Transaction[];
+  totalSales: number;
+  cashTotal: number;
+  mpesaTotal: number;
+  creditTotal: number;
+  items: ItemSales[];
+}
+
+export interface ItemSales {
+  name: string;
+  quantity: number;
+  total: number;
+}
+
+export interface InventoryLog {
+  id: string;
+  productId: number;
+  productName: string;
+  oldStock: number;
+  newStock: number;
+  variance: number;
+  cashierName: string;
+  timestamp: string;
+  reason?: string;
+  outletId?: string;
+}
+
+export interface DailySummary {
+  date: string;
+  totalSales: number;
+  cashTotal: number;
+  mpesaTotal: number;
+  creditTotal: number;
+  expenseTotal: number;
+  transactionCount: number;
+}
+
+export interface SavedDocument {
+  id: string;
+  type: string;
+  name: string;
+  date: string;
+  data: any;
 }

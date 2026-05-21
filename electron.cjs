@@ -242,11 +242,11 @@ const loadUrlWithRetries = (win, url) => {
  * Configures size, preferences, and loads the application content.
  */
 function createWindow() {
-  let winTitle = 'Whiz Pos';
+  let winTitle = 'Whiz Point';
   if (process.env.APP_INSTANCE && process.env.APP_INSTANCE === 'server') {
-      winTitle = 'Whiz Pos | Server';
+      winTitle = 'Whiz Point | Server';
   } else if (process.env.APP_INSTANCE && process.env.APP_INSTANCE === 'outlet') {
-      winTitle = 'Whiz Pos | Outlet';
+      winTitle = 'Whiz Point | Outlet';
   }
 
   const mainWindow = new BrowserWindow({
@@ -909,7 +909,7 @@ function startApiServer() {
         targetPort = 3001;
     }
 
-    server = apiApp.listen(targetPort, '0.0.0.0', async () => {
+    server = apiApp.listen(targetPort, "0.0.0.0", async () => {
         console.log(`API server started on port ${targetPort}`);
 
         // Check if we are in SERVER mode by reading businessSetup
@@ -923,7 +923,7 @@ function startApiServer() {
                     name: businessName,
                     type: 'whizpos',
                     port: targetPort,
-                    txt: { appVersion: '7.0.0' }
+                    txt: { appVersion: "7.0.0", serverUrl: `http://${getLocalIpAddress()}:${targetPort}` }
                 });
                 console.log(`[mDNS] Publishing Server: ${businessName} on port ${targetPort}`);
             }
@@ -1161,7 +1161,32 @@ app.whenReady().then(async () => {
       });
   });
 
-  ipcMain.handle('get-connected-devices', () => {
+  ipcMain.handle('get-connected-devices', async () => {
+      const approved = await readJsonFile("approved-outlets.json");
+      const pending = await readJsonFile("pending-outlets.json");
+      return { approved, pending };
+  });
+
+  ipcMain.handle('approve-outlet', async (event, deviceId) => {
+      const pending = await readJsonFile("pending-outlets.json");
+      const approved = await readJsonFile("approved-outlets.json");
+      const outlet = pending.find(o => o.deviceId === deviceId);
+      if (outlet) {
+          const newPending = pending.filter(o => o.deviceId !== deviceId);
+          approved.push({ ...outlet, approvedAt: new Date().toISOString() });
+          await writeJsonFile("pending-outlets.json", newPending);
+          await writeJsonFile("approved-outlets.json", approved);
+          return { success: true };
+      }
+      return { success: false, error: "Outlet not found" };
+  });
+
+  ipcMain.handle('reject-outlet', async (event, deviceId) => {
+    const pending = await readJsonFile("pending-outlets.json");
+    const newPending = pending.filter(o => o.deviceId !== deviceId);
+    await writeJsonFile("pending-outlets.json", newPending);
+    return { success: true };
+  });
       // Return array of connected devices (active in last hour)
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 
@@ -1254,6 +1279,30 @@ app.whenReady().then(async () => {
         console.error("Backup failed", e);
         return { success: false, error: e.message };
     }
+  });
+
+  ipcMain.handle('reset-app-data', async () => {
+      try {
+          const { response } = await dialog.showMessageBox({
+              type: "warning",
+              buttons: ["Cancel", "Reset Everything"],
+              defaultId: 0,
+              title: "Confirm Factory Reset",
+              message: "Are you absolutely sure you want to reset the application?",
+              detail: "This will delete ALL local data, transactions, products, and users. This action cannot be undone.",
+          });
+          if (response !== 1) return { success: false, error: "Cancelled" };
+          closeDB();
+          await fs.rm(userDataPath, { recursive: true, force: true });
+          await ensureAppDirs();
+          initDB(userDataPath);
+          await ensureDataFilesExist();
+          await initApiKey();
+          return { success: true };
+      } catch (e) {
+          console.error("Reset failed", e);
+          return { success: false, error: e.message };
+      }
   });
 
   ipcMain.handle('restore-data', async () => {

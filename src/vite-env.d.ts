@@ -12,12 +12,13 @@ declare global {
       readData: (fileName: string) => Promise<{ success: boolean; data?: any; error?: any }>;
       printReceipt: (transaction: any, businessSetup: any, isReprint?: boolean) => void;
       saveImage: (tempPath: string) => Promise<{ success: boolean; path?: string; fileName?: string; error?: any }>;
-      printClosingReport: (reportData: any, businessSetup: any) => void;
+      printClosingReport: (reportData: any, businessSetup: any, detailed?: boolean) => void;
       getApiConfig: () => Promise<{ apiKey: string; apiUrl: string; qrCodeDataUrl: string }>;
       printBusinessSetup: (businessSetup: any, adminUser: any) => void;
       uploadImage: (filePath: string, apiUrl: string, apiKey: string) => Promise<{ success: boolean; imageUrl: string }>;
       onMobileDataSync: (callback: (event: any, data: any) => void) => void;
       onNewMobileReceipt: (callback: (event: any, data: any) => void) => void;
+      onNewOutletRequest: (callback: (event: any, data: any) => void) => void;
       getPrinters: () => Promise<any[]>;
       savePrinterSettings: (settings: any) => Promise<{ success: boolean }>;
       getPrinterSettings: () => Promise<any>;
@@ -27,9 +28,26 @@ declare global {
       onUpdateDownloaded: (callback: (event: any, info: any) => void) => void;
       getDeveloperConfig: () => Promise<{ developerPin: string | null; mongoUri: string; backOfficeUrl: string; backOfficeApiKey: string }>;
       saveDeveloperConfig: (config: any) => Promise<{ success: boolean; error?: string }>;
+      directDbPush: (mongoUri: string) => Promise<{ success: boolean; error?: string }>;
+      directDbPull: (mongoUri: string) => Promise<{ success: boolean; data?: any; error?: string }>;
+      getConnectedDevices: () => Promise<any>;
+      approveOutlet: (deviceId: string) => Promise<{ success: boolean; error?: string }>;
+      rejectOutlet: (deviceId: string) => Promise<{ success: boolean; error?: string }>;
+      resetAppData: () => Promise<{ success: boolean; error?: string }>;
+      scanMdnsServers: () => Promise<{ name: string; ip: string; port: number; url: string }[]>;
       backupData: () => Promise<{ success: boolean; filePath?: string; error?: string }>;
       restoreData: () => Promise<{ success: boolean; error?: string }>;
       getLogs: () => Promise<string>;
+      auth: {
+          login: (userId: string, pin: string, deviceId?: string) => Promise<{ success: boolean; token?: string; user?: any; error?: string }>;
+          logout: (token: string) => Promise<{ success: boolean }>;
+          verify: (token: string) => Promise<{ success: boolean; user?: any }>;
+      };
+      userManagement: {
+          addUser: (userData: any) => Promise<{ success: boolean; error?: string }>;
+          updateUser: (userId: string, updates: any) => Promise<{ success: boolean; error?: string }>;
+          deleteUser: (userId: string) => Promise<{ success: boolean; error?: string }>;
+      };
     };
   }
 }

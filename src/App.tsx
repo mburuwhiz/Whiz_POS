@@ -1,8 +1,10 @@
 import React from 'react';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
+import { Transaction } from "./types/index";
 import { usePosStore } from './store/posStore';
 import CheckoutModal from './components/CheckoutModal';
 import MainNavigator from './pages/MainNavigator';
+import ServerHub from './components/server/ServerHub';
 import BusinessRegistrationPage from './pages/BusinessRegistrationPage';
 import LoginScreen from './components/LoginScreen';
 import DeveloperPage from './pages/DeveloperPage';
@@ -155,7 +157,7 @@ function App() {
         <div className="min-h-screen bg-gray-100">
           <Routes>
             <Route path="/developer" element={<DeveloperPage />} />
-            <Route path="*" element={showLogin ? <LoginScreen /> : <MainNavigator />} />
+            <Route path="*" element={showLogin ? <LoginScreen /> : (businessSetup?.appMode === "SERVER" ? <ServerHub /> : <MainNavigator />)} />
           </Routes>
 
           {/* Global Modals */}

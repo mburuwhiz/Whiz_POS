@@ -1,5 +1,5 @@
 {
-  "name": "whiz-pos",
+  "name": "whiz-point",
   "private": true,
   "version": "7.0.0",
   "type": "module",
@@ -87,11 +87,11 @@
     "vite": "^4.5.14",
     "wait-on": "^9.0.3"
   },
-  "author": "Whizpoint Solutions",
+  "author": "Whiz Point",
   "description": "A modern point-of-sale application.",
   "build": {
-    "appId": "com.whizpos.app",
-    "productName": "WHIZ POS",
+    "appId": "com.whizpoint.app",
+    "productName": "Whiz Point",
     "files": [
       "dist/**/*",
       "electron.cjs",

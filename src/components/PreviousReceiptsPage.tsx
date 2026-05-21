@@ -5,11 +5,11 @@ import { RefreshCcw, Search, Undo2, Trash2, X } from 'lucide-react';
 import DeleteReceiptsModal from './DeleteReceiptsModal';
 
 const PreviousReceiptsPage: React.FC = () => {
-  const transactions = usePosStore((state) => state.transactions);
-  const reprintTransaction = usePosStore((state) => state.reprintTransaction);
-  const reverseTransaction = usePosStore((state) => state.reverseTransaction);
-  const users = usePosStore((state) => state.users);
-  const currentCashier = usePosStore((state) => state.currentCashier);
+  const transactions = usePosStore((state: any) => state.transactions);
+  const reprintTransaction = usePosStore((state: any) => state.reprintTransaction);
+  const reverseTransaction = usePosStore((state: any) => state.reverseTransaction);
+  const users = usePosStore((state: any) => state.users);
+  const currentCashier = usePosStore((state: any) => state.currentCashier);
 
   // Check if current user is admin or manager
   const isAdminOrManager = useMemo(() => {

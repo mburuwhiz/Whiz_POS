@@ -101,8 +101,8 @@ const LoginScreen = () => {
         return;
       }
 
-      if (window.electron && window.electron.auth) {
-        const result = await window.electron.auth.login(userToLogin.id, String(loginPin).trim(), 'desktop-main');
+      if ((window as any).electron && (window as any).electron.auth) {
+        const result = await (window as any).electron.auth.login(userToLogin.id, String(loginPin).trim(), 'desktop-main');
         if (result.success && result.token && result.user) {
           soundManager.playSuccess();
           toast("Login Successful", "success");
@@ -240,9 +240,9 @@ const LoginScreen = () => {
           {[1, 2, 3, 4, 5].map((i) => (
             <span key={i} className="text-xs font-bold text-white/80 uppercase tracking-widest mx-12 flex items-center gap-4">
               <span className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
-              SYSTEM DEVELOPED AND MAINTAINED BY <span className="text-cyan-400">WHIZPOINT SOLUTIONS</span>
+              SYSTEM DEVELOPED AND MAINTAINED BY <span className="text-cyan-400">WHIZ POINT</span>
               <span className="text-white/40">|</span>
-              TELL/WHATSAPP <span className="text-cyan-400">0740 841 168</span> TO GET STARTED
+              EMAIL: <span className="text-cyan-400">support@whizpoint.app</span> | WEBSITE: <span className="text-cyan-400">https://pos.whizpoint.app</span>
             </span>
           ))}
         </div>

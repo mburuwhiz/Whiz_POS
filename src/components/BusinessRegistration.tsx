@@ -151,6 +151,9 @@ export default function BusinessRegistration() {
             <p className="font-bold text-white">Outlet Terminal</p>
           </div>
         </div>
+        <div className="flex justify-start mt-6">
+            <button onClick={handleBack} className="bg-white/10 text-white px-8 py-3 rounded-xl">Back</button>
+        </div>
       </motion.div>
     );
     if (sid === 'outletConnect') return (
@@ -160,13 +163,17 @@ export default function BusinessRegistration() {
           <div className="space-y-4">
             <input type="text" placeholder="Outlet Name" value={formData.outletName} onChange={e => handleInputChange('outletName', e.target.value)} className="w-full p-4 bg-white/10 rounded-xl text-white" />
             <input type="text" placeholder="Server URL (http://ip:3000)" value={formData.serverIp} onChange={e => handleInputChange('serverIp', e.target.value)} className="w-full p-4 bg-white/10 rounded-xl text-white font-mono" />
-            <button onClick={handleRequestApproval} className="w-full bg-blue-600 text-white p-4 rounded-xl font-bold">Request Approval</button>
+            <div className="flex justify-between mt-6">
+              <button onClick={handleBack} className="bg-white/10 text-white px-8 py-3 rounded-xl">Back</button>
+              <button onClick={handleRequestApproval} className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold">Request Approval</button>
+            </div>
           </div>
         ) : (
           <div className="text-center py-10 space-y-4">
             <Clock className="w-16 h-16 text-blue-400 mx-auto animate-pulse" />
             <h3 className="text-xl font-bold text-white">Pending Server Approval...</h3>
             <p className="text-white/60">Approve this outlet on the Main Server Hub.</p>
+            <button onClick={handleBack} className="bg-white/10 text-white px-8 py-3 rounded-xl mt-4">Back</button>
           </div>
         )}
       </motion.div>
@@ -175,16 +182,75 @@ export default function BusinessRegistration() {
       <motion.div key="bn" variants={stepVariants} initial="enter" animate="center" exit="exit" className="space-y-6">
         <h2 className="text-2xl font-bold text-white">Business Name</h2>
         <input type="text" value={formData.businessName} onChange={e => handleInputChange('businessName', e.target.value)} className="w-full p-4 bg-white/10 rounded-xl text-white" />
-        <button onClick={handleNext} className="bg-blue-600 text-white px-8 py-3 rounded-xl float-right">Next</button>
+        <div className="flex justify-between">
+            <button onClick={handleBack} className="bg-white/10 text-white px-8 py-3 rounded-xl">Back</button>
+            <button onClick={handleNext} className="bg-blue-600 text-white px-8 py-3 rounded-xl">Next</button>
+        </div>
       </motion.div>
     );
-    // ... other steps simplified for brevity ...
+    if (sid === 'ownerName') return (
+      <motion.div key="on" variants={stepVariants} initial="enter" animate="center" exit="exit" className="space-y-6">
+        <h2 className="text-2xl font-bold text-white">Owner Name</h2>
+        <input type="text" value={formData.ownerName} onChange={e => handleInputChange('ownerName', e.target.value)} className="w-full p-4 bg-white/10 rounded-xl text-white" />
+        <div className="flex justify-between">
+            <button onClick={handleBack} className="bg-white/10 text-white px-8 py-3 rounded-xl">Back</button>
+            <button onClick={handleNext} className="bg-blue-600 text-white px-8 py-3 rounded-xl">Next</button>
+        </div>
+      </motion.div>
+    );
+    if (sid === 'contact') return (
+      <motion.div key="contact" variants={stepVariants} initial="enter" animate="center" exit="exit" className="space-y-6">
+        <h2 className="text-2xl font-bold text-white">Contact Info</h2>
+        <input type="text" placeholder="Phone" value={formData.phone} onChange={e => handleInputChange('phone', e.target.value)} className="w-full p-4 bg-white/10 rounded-xl text-white mb-4" />
+        <input type="email" placeholder="Email" value={formData.email} onChange={e => handleInputChange('email', e.target.value)} className="w-full p-4 bg-white/10 rounded-xl text-white" />
+        <div className="flex justify-between mt-6">
+            <button onClick={handleBack} className="bg-white/10 text-white px-8 py-3 rounded-xl">Back</button>
+            <button onClick={handleNext} className="bg-blue-600 text-white px-8 py-3 rounded-xl">Next</button>
+        </div>
+      </motion.div>
+    );
+    if (sid === 'address') return (
+      <motion.div key="address" variants={stepVariants} initial="enter" animate="center" exit="exit" className="space-y-6">
+        <h2 className="text-2xl font-bold text-white">Location</h2>
+        <input type="text" placeholder="Physical Address" value={formData.address} onChange={e => handleInputChange('address', e.target.value)} className="w-full p-4 bg-white/10 rounded-xl text-white" />
+        <div className="flex justify-between mt-6">
+            <button onClick={handleBack} className="bg-white/10 text-white px-8 py-3 rounded-xl">Back</button>
+            <button onClick={handleNext} className="bg-blue-600 text-white px-8 py-3 rounded-xl">Next</button>
+        </div>
+      </motion.div>
+    );
+    if (sid === 'servedBy') return (
+      <motion.div key="servedBy" variants={stepVariants} initial="enter" animate="center" exit="exit" className="space-y-6">
+        <h2 className="text-2xl font-bold text-white">Receipt Labeling</h2>
+        <input type="text" placeholder="Served By Label (e.g. 'Cashier')" value={formData.servedByLabel} onChange={e => handleInputChange('servedByLabel', e.target.value)} className="w-full p-4 bg-white/10 rounded-xl text-white" />
+        <div className="flex justify-between mt-6">
+            <button onClick={handleBack} className="bg-white/10 text-white px-8 py-3 rounded-xl">Back</button>
+            <button onClick={handleNext} className="bg-blue-600 text-white px-8 py-3 rounded-xl">Next</button>
+        </div>
+      </motion.div>
+    );
+    if (sid === 'mpesa') return (
+      <motion.div key="mpesa" variants={stepVariants} initial="enter" animate="center" exit="exit" className="space-y-6">
+        <h2 className="text-2xl font-bold text-white">Payment Options (Optional)</h2>
+        <input type="text" placeholder="M-Pesa Paybill" value={formData.mpesaPaybill} onChange={e => handleInputChange('mpesaPaybill', e.target.value)} className="w-full p-4 bg-white/10 rounded-xl text-white mb-4" />
+        <input type="text" placeholder="M-Pesa Till Number" value={formData.mpesaTill} onChange={e => handleInputChange('mpesaTill', e.target.value)} className="w-full p-4 bg-white/10 rounded-xl text-white mb-4" />
+        <input type="text" placeholder="M-Pesa Account Number" value={formData.mpesaAccountNumber} onChange={e => handleInputChange('mpesaAccountNumber', e.target.value)} className="w-full p-4 bg-white/10 rounded-xl text-white" />
+        <div className="flex justify-between mt-6">
+            <button onClick={handleBack} className="bg-white/10 text-white px-8 py-3 rounded-xl">Back</button>
+            <button onClick={handleNext} className="bg-blue-600 text-white px-8 py-3 rounded-xl">Next</button>
+        </div>
+      </motion.div>
+    );
+
     if (sid === 'pin') return (
         <motion.div key="pin" variants={stepVariants} initial="enter" animate="center" exit="exit" className="space-y-6 text-center">
             <h2 className="text-2xl font-bold text-white">Terminal PIN</h2>
             <input type="password" maxLength={4} value={formData.pin} onChange={e => handleInputChange('pin', e.target.value.replace(/\D/g,''))} className="w-32 p-4 bg-white/10 rounded-xl text-white text-center text-2xl" />
             <input type="password" maxLength={4} value={formData.confirmPin} onChange={e => handleInputChange('confirmPin', e.target.value.replace(/\D/g,''))} className="w-32 p-4 bg-white/10 rounded-xl text-white text-center text-2xl ml-2" />
-            <button onClick={handleSubmit} className="block w-full mt-6 bg-blue-600 text-white p-4 rounded-xl font-bold">Finish Setup</button>
+            <div className="flex justify-between mt-6">
+                <button onClick={handleBack} className="bg-white/10 text-white px-8 py-3 rounded-xl">Back</button>
+                <button onClick={handleSubmit} className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold">Finish Setup</button>
+            </div>
         </motion.div>
     );
     if (sid === 'completion') return (

@@ -631,7 +631,49 @@ function startApiServer() {
 
     // Public Status Endpoint for Connectivity Check
     // IMPORTANT: Defined before other routes to ensure availability
-    apiApp.get('/api/status', (req, res) => {
+
+    // POST /api/outlets/register
+    apiApp.post("/api/outlets/register", async (req, res) => {
+        const { outletName, deviceId } = req.body;
+        const ip = req.ip.replace("::ffff:", "");
+
+        // metadata update logic
+        const approvedOutlets = await readJsonFile("approved-outlets.json");
+        const outletIdx = approvedOutlets.findIndex(o => o.ip === ip);
+        if (outletIdx !== -1 && req.body.metadata) {
+            approvedOutlets[outletIdx] = { ...approvedOutlets[outletIdx], ...req.body.metadata, lastSync: new Date().toISOString() };
+            await writeJsonFile("approved-outlets.json", approvedOutlets);
+        }
+
+        const pendingOutlets = await readJsonFile("pending-outlets.json");
+        if (!pendingOutlets.some(o => o.deviceId === deviceId)) {
+            pendingOutlets.push({ outletName, deviceId, ip, requestedAt: new Date().toISOString() });
+            await writeJsonFile("pending-outlets.json", pendingOutlets);
+            const mainWindow = BrowserWindow.getAllWindows()[0];
+            if (mainWindow) mainWindow.webContents.send("new-outlet-request", { outletName, ip });
+        }
+        res.json({ success: true });
+    });
+
+    // GET /api/outlets/status/:deviceId
+    apiApp.get("/api/outlets/status/:deviceId", async (req, res) => {
+        const { deviceId } = req.params;
+        const approved = await readJsonFile("approved-outlets.json");
+        const outlet = approved.find(o => o.deviceId === deviceId);
+        if (outlet) return res.json({ status: "approved", apiKey });
+        const pending = await readJsonFile("pending-outlets.json");
+        if (pending.find(o => o.deviceId === deviceId)) return res.json({ status: "pending" });
+        res.json({ status: "unknown" });
+    });
+
+    // GET /api/sync/full-state
+    apiApp.get("/api/sync/full-state", authMiddleware, async (req, res) => {
+        const products = await readJsonFile("products.json");
+        const users = await readJsonFile("users.json");
+        const categories = await readJsonFile("categories.json");
+        res.json({ products, users, categories });
+    });
+apiApp.get('/api/status', (req, res) => {
         console.log(`[API] Status check received from ${req.ip}`);
         res.json({ status: 'ok', message: 'Whiz POS Server Online' });
     });
@@ -1161,13 +1203,23 @@ app.whenReady().then(async () => {
       });
   });
 
-  ipcMain.handle('get-connected-devices', async () => {
+  });
+
+  ipcMain.handle('reject-outlet', async (event, deviceId) => {
+    const pending = await readJsonFile("pending-outlets.json");
+    const newPending = pending.filter(o => o.deviceId !== deviceId);
+    await writeJsonFile("pending-outlets.json", newPending);
+    return { success: true };
+  });
+  // --- Logs ---
+
+  ipcMain.handle("get-connected-devices", async () => {
       const approved = await readJsonFile("approved-outlets.json");
       const pending = await readJsonFile("pending-outlets.json");
       return { approved, pending };
   });
 
-  ipcMain.handle('approve-outlet', async (event, deviceId) => {
+  ipcMain.handle("approve-outlet", async (event, deviceId) => {
       const pending = await readJsonFile("pending-outlets.json");
       const approved = await readJsonFile("approved-outlets.json");
       const outlet = pending.find(o => o.deviceId === deviceId);
@@ -1178,31 +1230,17 @@ app.whenReady().then(async () => {
           await writeJsonFile("approved-outlets.json", approved);
           return { success: true };
       }
-      return { success: false, error: "Outlet not found" };
+      return { success: false };
   });
 
-  ipcMain.handle('reject-outlet', async (event, deviceId) => {
-    const pending = await readJsonFile("pending-outlets.json");
-    const newPending = pending.filter(o => o.deviceId !== deviceId);
-    await writeJsonFile("pending-outlets.json", newPending);
-    return { success: true };
+  ipcMain.handle("reset-app-data", async () => {
+      const { response } = await dialog.showMessageBox({ type: "warning", buttons: ["Cancel", "Reset"], title: "Reset", message: "Reset all data?" });
+      if (response !== 1) return { success: false };
+      closeDB();
+      await fs.rm(userDataPath, { recursive: true, force: true });
+      return { success: true };
   });
-      // Return array of connected devices (active in last hour)
-      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-
-      if (!global.connectedDevicesMap) return [];
-
-      const devices = [];
-      for (const [ip, device] of global.connectedDevicesMap.entries()) {
-          if (new Date(device.lastSeen) > oneHourAgo) {
-              devices.push(device);
-          }
-      }
-      return devices;
-  });
-
-  // --- Logs ---
-  ipcMain.handle('get-logs', async () => {
+ipcMain.handle('get-logs', async () => {
       try {
           const content = await fs.readFile(logFilePath, 'utf-8');
           // Filter last 48 hours
@@ -1279,82 +1317,6 @@ app.whenReady().then(async () => {
         console.error("Backup failed", e);
         return { success: false, error: e.message };
     }
-  });
-
-  ipcMain.handle('reset-app-data', async () => {
-      try {
-          const { response } = await dialog.showMessageBox({
-              type: "warning",
-              buttons: ["Cancel", "Reset Everything"],
-              defaultId: 0,
-              title: "Confirm Factory Reset",
-              message: "Are you absolutely sure you want to reset the application?",
-              detail: "This will delete ALL local data, transactions, products, and users. This action cannot be undone.",
-          });
-          if (response !== 1) return { success: false, error: "Cancelled" };
-          closeDB();
-          await fs.rm(userDataPath, { recursive: true, force: true });
-          await ensureAppDirs();
-          initDB(userDataPath);
-          await ensureDataFilesExist();
-          await initApiKey();
-          return { success: true };
-      } catch (e) {
-          console.error("Reset failed", e);
-          return { success: false, error: e.message };
-      }
-  });
-
-  ipcMain.handle('restore-data', async () => {
-      try {
-          const { canceled, filePaths } = await dialog.showOpenDialog({
-              title: 'Select Backup File',
-              properties: ['openFile'],
-              filters: [
-                  { name: 'Whiz POS Backup', extensions: ['wpos'] },
-                  { name: 'Legacy JSON Backup', extensions: ['json'] }
-              ]
-          });
-
-          if (canceled || filePaths.length === 0) return { success: false, error: 'Cancelled' };
-
-          const backupPath = filePaths[0];
-
-          if (backupPath.endsWith('.json')) {
-              const backupContent = await fs.readFile(backupPath, 'utf-8');
-              const backup = JSON.parse(backupContent);
-
-              if (!backup.data) throw new Error("Invalid backup file format");
-
-              for (const [filename, content] of Object.entries(backup.data)) {
-                  await writeJsonFileFallback(filename, content);
-              }
-          } else if (backupPath.endsWith('.wpos')) {
-              // Gracefully close connection to prevent locking or corruption during overwrite
-              closeDB();
-
-              const dbPath = path.join(userDataPath, 'whizpos.db');
-              const walPath = dbPath + '-wal';
-              const shmPath = dbPath + '-shm';
-
-              // Overwrite main DB file
-              await fs.copyFile(backupPath, dbPath);
-
-              // Remove previous WAL & SHM to ensure clean boot from restored file
-              try { await fs.unlink(walPath); } catch(e) {}
-              try { await fs.unlink(shmPath); } catch(e) {}
-
-              // Re-initialize DB
-              initDB(userDataPath);
-          } else {
-              throw new Error("Unsupported backup format");
-          }
-
-          return { success: true };
-      } catch (e) {
-          console.error("Restore failed", e);
-          return { success: false, error: e.message };
-      }
   });
 
   ipcMain.handle('get-developer-config', async () => {
@@ -1552,7 +1514,7 @@ app.whenReady().then(async () => {
     // but if we set it to false, we can call downloadUpdate() here.
     // For now, checkForUpdatesAndNotify handles it.
   });
-});
+
 
 /**
  * IPC Handler: 'get-api-config'

@@ -14,11 +14,12 @@
     "dev:outlet": "cross-env APP_INSTANCE=outlet concurrently \"npm:dev:vite\" \"npm:dev:electron\"",
     "dev:vite": "vite --port 5174",
     "dev:electron": "electron . http://localhost:5174",
-    "build": "npm run build:exe",
+    "build": "rm -rf dist && npm run build:exe",
     "build:exe": "vite build && electron-builder",
     "preview": "vite preview",
     "back-office:dev": "npm run dev --prefix back-office",
-    "postinstall": "electron-rebuild"
+    "postinstall": "electron-rebuild",
+    "reset": "rm -rf C:/ProgramData/whiz-pos/instance-* || rm -rf ~/.config/whiz-pos/instance-*"
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.3.22",

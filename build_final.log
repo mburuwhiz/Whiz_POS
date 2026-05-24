@@ -1,0 +1,38 @@
+
+> whiz-point@7.0.0 build
+> rm -rf dist && npm run build:exe
+
+
+> whiz-point@7.0.0 build:exe
+> vite build && electron-builder
+
+vite v4.5.14 building for production...
+transforming...
+✓ 2507 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                        0.39 kB │ gzip:   0.27 kB
+dist/assets/cart-07388e6d.png        581.70 kB
+dist/assets/index-6f2bb818.css        77.58 kB │ gzip:  12.67 kB
+dist/assets/purify.es-ce17b1ad.js     22.74 kB │ gzip:   8.79 kB
+dist/assets/index.es-ae79cef7.js     150.60 kB │ gzip:  51.52 kB
+dist/assets/index-88632694.js      1,585.02 kB │ gzip: 460.81 kB
+
+(!) Some chunks are larger than 500 kBs after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 14.31s
+  • electron-builder  version=24.13.3 os=6.8.0
+  • loaded configuration  file=package.json ("build" field)
+  • @electron/rebuild not required if you use electron-builder, please consider to remove excess dependency from devDependencies
+
+To ensure your native dependencies are always matched electron version, simply add script `"postinstall": "electron-builder install-app-deps" to your `package.json`
+  • rebuilding native dependencies  dependencies=better-sqlite3@12.8.0 platform=linux arch=x64
+  • install prebuilt binary  name=better-sqlite3 version=12.8.0 platform=linux arch=x64 napi=
+  • packaging       platform=linux arch=x64 electron=31.7.7 appOutDir=dist/linux-unpacked
+  • building        target=snap arch=x64 file=dist/whiz-point_7.0.0_amd64.snap
+  • building        target=AppImage arch=x64 file=dist/Whiz Point-7.0.0.AppImage
+  • application Linux category is set to default "Utility"  reason=linux.category is not set and cannot map from macOS docs=https://www.electron.build/configuration/linux
+  • default Electron icon is used  reason=application icon is not set
+  • application Linux category is set to default "Utility"  reason=linux.category is not set and cannot map from macOS docs=https://www.electron.build/configuration/linux

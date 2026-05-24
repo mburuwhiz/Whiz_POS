@@ -23,6 +23,7 @@ export default function BusinessRegistration() {
     appMode: 'SERVER' as 'SERVER' | 'OUTLET',
     outletName: '',
     serverIp: '',
+    serverName: '',
     apiKey: '',
     businessName: '',
     ownerName: '',
@@ -49,10 +50,29 @@ export default function BusinessRegistration() {
         { id: 'address', title: 'Location', description: 'Physical location' },
         { id: 'servedBy', title: 'Receipt Labels', description: 'Labels' },
         { id: 'mpesa', title: 'Payments', description: 'M-Pesa' },
+        { id: 'pin', title: 'Security PIN', description: 'Terminal PIN' },
     ]),
-    { id: 'pin', title: 'Security PIN', description: 'Terminal PIN' },
     { id: 'completion', title: 'Ready', description: 'Finished' }
   ];
+
+  useEffect(() => {
+    if (formData.appMode === 'OUTLET' && steps[currentStep]?.id === 'outletConnect') {
+      scanServers();
+    }
+  }, [currentStep, formData.appMode]);
+
+  const scanServers = async () => {
+    if (!window.electron) return;
+    setIsScanning(true);
+    try {
+      const servers = await window.electron.scanMdnsServers();
+      setFoundServers(servers || []);
+    } catch (e) {
+      console.error('Scan failed', e);
+    } finally {
+      setIsScanning(false);
+    }
+  };
 
   const handleNext = () => {
     soundManager.playClick();
@@ -67,46 +87,67 @@ export default function BusinessRegistration() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleRequestApproval = async () => {
-    if (!formData.outletName || !formData.serverIp) return;
+  const handleRequestApproval = async (selectedServer?: any) => {
+    const serverUrl = selectedServer?.url || formData.serverIp;
+    if (!formData.outletName || !serverUrl) {
+      Swal.fire('Error', 'Please enter Outlet Name and select a Server', 'warning');
+      return;
+    }
+
     try {
       const deviceId = crypto.randomUUID();
-      const response = await fetch(`${formData.serverIp}/api/outlets/register`, {
+      const response = await fetch(`${serverUrl}/api/outlets/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ outletName: formData.outletName, deviceId })
       });
+
       if (response.ok) {
         setApprovalStatus('pending');
         const pollInterval = setInterval(async () => {
           try {
-            const res = await fetch(`${formData.serverIp}/api/outlets/status/${deviceId}`);
+            const res = await fetch(`${serverUrl}/api/outlets/status/${deviceId}`);
             const data = await res.json();
+
             if (data.status === 'approved') {
               clearInterval(pollInterval);
               setApprovalStatus('approved');
-              handleInputChange('apiKey', data.apiKey);
-              const syncRes = await fetch(`${formData.serverIp}/api/sync/full-state`, {
-                headers: { 'Authorization': `Bearer ${data.apiKey}` }
-              });
-              if (syncRes.ok) {
-                const syncData = await syncRes.json();
-                usePosStore.setState({ products: syncData.products || [], users: syncData.users || [], categories: syncData.categories || [] });
-              }
-              handleNext();
+
+              // Auto-fill business data from server
+              const configRes = await fetch(`${serverUrl}/api/config`);
+              const configData = await configRes.json();
+
+              const businessData = {
+                ...formData,
+                serverIp: serverUrl,
+                apiKey: data.apiKey,
+                isSetup: true,
+                isLoggedIn: false,
+                businessName: selectedServer?.name || 'Whiz Point Outlet',
+                apiUrl: serverUrl
+              };
+
+              // Finalize setup automatically for outlet
+              await finishSetup(businessData, { id: 'outlet-admin', name: 'Outlet Admin', role: 'admin', isActive: true, pin: '0000' });
+              setIsFinished(true);
+              setCurrentStep(steps.length - 1);
             }
-          } catch (e) {}
+          } catch (e) {
+             console.error("Polling error", e);
+          }
         }, 3000);
       }
     } catch (e) {
-      Swal.fire('Connection Error', 'Server unreachable', 'error');
+      Swal.fire('Connection Error', 'Could not reach server at ' + serverUrl, 'error');
     }
   };
 
   const handleSubmit = async () => {
-    if (formData.pin.length !== 4 || formData.pin !== formData.confirmPin) {
-      Swal.fire({ title: 'Error', text: 'PIN mismatch', icon: 'error' });
-      return;
+    if (formData.appMode === 'SERVER') {
+        if (formData.pin.length !== 4 || formData.pin !== formData.confirmPin) {
+            Swal.fire({ title: 'Error', text: 'PIN mismatch', icon: 'error' });
+            return;
+        }
     }
     setIsSubmitting(true);
     try {
@@ -158,15 +199,64 @@ export default function BusinessRegistration() {
         <h2 className="text-2xl font-bold text-white">Connect to Server</h2>
         {approvalStatus === 'none' ? (
           <div className="space-y-4">
-            <input type="text" placeholder="Outlet Name" value={formData.outletName} onChange={e => handleInputChange('outletName', e.target.value)} className="w-full p-4 bg-white/10 rounded-xl text-white" />
-            <input type="text" placeholder="Server URL (http://ip:3000)" value={formData.serverIp} onChange={e => handleInputChange('serverIp', e.target.value)} className="w-full p-4 bg-white/10 rounded-xl text-white font-mono" />
-            <button onClick={handleRequestApproval} className="w-full bg-blue-600 text-white p-4 rounded-xl font-bold">Request Approval</button>
+            <div className="space-y-2">
+                <label className="text-sm text-white/60 ml-1">Terminal Name</label>
+                <input type="text" placeholder="e.g. Front Desk" value={formData.outletName} onChange={e => handleInputChange('outletName', e.target.value)} className="w-full p-4 bg-white/10 rounded-xl text-white border border-white/10 focus:border-blue-500 transition-colors" />
+            </div>
+
+            <div className="pt-4 border-t border-white/10">
+                <div className="flex items-center justify-between mb-4">
+                    <label className="text-sm text-white/60">Discovered Servers</label>
+                    <button onClick={scanServers} disabled={isScanning} className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1">
+                        <Wifi className={`w-3 h-3 ${isScanning ? 'animate-pulse' : ''}`} />
+                        {isScanning ? 'Scanning...' : 'Refresh'}
+                    </button>
+                </div>
+
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                    {foundServers.length > 0 ? (
+                        foundServers.map((s, i) => (
+                            <div key={i} onClick={() => handleRequestApproval(s)} className="p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl cursor-pointer flex items-center justify-between group transition-all">
+                                <div>
+                                    <p className="font-bold text-white group-hover:text-blue-400">{s.name}</p>
+                                    <p className="text-xs text-white/40 font-mono">{s.url}</p>
+                                </div>
+                                <ChevronRight className="w-5 h-5 text-white/20 group-hover:text-blue-400" />
+                            </div>
+                        ))
+                    ) : (
+                        <div className="text-center py-8 bg-white/5 rounded-xl border border-dashed border-white/10">
+                            <Network className="w-8 h-8 text-white/20 mx-auto mb-2" />
+                            <p className="text-sm text-white/40">No servers found yet</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <div className="relative py-4 text-center">
+                <span className="bg-slate-900 px-4 text-xs text-white/20 relative z-10">OR ENTER MANUALLY</span>
+                <div className="absolute top-1/2 left-0 w-full h-px bg-white/5"></div>
+            </div>
+
+            <input type="text" placeholder="Server URL (http://ip:3000)" value={formData.serverIp} onChange={e => handleInputChange('serverIp', e.target.value)} className="w-full p-4 bg-white/10 rounded-xl text-white font-mono text-sm border border-white/10" />
+            <button onClick={() => handleRequestApproval()} className="w-full bg-blue-600 text-white p-4 rounded-xl font-bold hover:bg-blue-500 transition-colors shadow-lg shadow-blue-900/20">Request Approval</button>
           </div>
         ) : (
-          <div className="text-center py-10 space-y-4">
-            <Clock className="w-16 h-16 text-blue-400 mx-auto animate-pulse" />
-            <h3 className="text-xl font-bold text-white">Pending Server Approval...</h3>
-            <p className="text-white/60">Approve this outlet on the Main Server Hub.</p>
+          <div className="text-center py-10 space-y-6">
+            <div className="relative">
+                <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full"></div>
+                <Clock className="w-20 h-20 text-blue-400 mx-auto relative animate-pulse" />
+            </div>
+            <div className="space-y-2">
+                <h3 className="text-2xl font-bold text-white">Pending Approval</h3>
+                <p className="text-white/60 px-8">Go to the <span className="text-blue-400 font-bold">Manage Outlets</span> tab on your Main Server and click "Approve" for <span className="text-white font-mono">{formData.outletName}</span>.</p>
+            </div>
+            <div className="flex items-center justify-center gap-2 text-xs text-white/30">
+                <div className="w-1 h-1 bg-white/30 rounded-full animate-bounce"></div>
+                <div className="w-1 h-1 bg-white/30 rounded-full animate-bounce [animation-delay:0.2s]"></div>
+                <div className="w-1 h-1 bg-white/30 rounded-full animate-bounce [animation-delay:0.4s]"></div>
+                Waiting for handshake...
+            </div>
           </div>
         )}
       </motion.div>

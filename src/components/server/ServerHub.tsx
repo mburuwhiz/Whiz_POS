@@ -8,13 +8,26 @@ import ReportsPage from '../ReportsPage';
 import SettingsPage from '../SettingsPage';
 import UsersPage from '../../pages/UsersPage';
 
-const ServerDashboard = () => (
+const ServerDashboard = () => {
+  const [activeCount, setActiveCount] = useState(0);
+
+  useEffect(() => {
+    const fetchCount = async () => {
+        if (window.electron && (window.electron as any).getConnectedDevices) {
+            const data = await (window.electron as any).getConnectedDevices();
+            setActiveCount(data?.approved?.length || 0);
+        }
+    };
+    fetchCount();
+  }, []);
+
+  return (
   <div className="space-y-6">
     <h2 className="text-2xl font-bold text-slate-800">Server Hub Dashboard</h2>
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-        <h3 className="text-slate-500 text-sm font-medium">Active Manage Outlets</h3>
-        <p className="text-4xl font-black text-slate-900 mt-2">0</p>
+        <h3 className="text-slate-500 text-sm font-medium">Active Terminals</h3>
+        <p className="text-4xl font-black text-slate-900 mt-2">{activeCount}</p>
       </div>
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
         <h3 className="text-slate-500 text-sm font-medium">Total Daily Sales</h3>
@@ -28,34 +41,42 @@ const ServerDashboard = () => (
       </div>
     </div>
   </div>
-);
+  );
+};
 
-const ManageManage Outlets = () => {
-  const [outlets, setManage Outlets] = useState<{ approved: any[], pending: any[] }>({ approved: [], pending: [] });
+const ManageOutlets = () => {
+  const [outlets, setOutlets] = useState<{ approved: any[], pending: any[] }>({ approved: [], pending: [] });
 
-  const fetchManage Outlets = async () => {
+  const fetchOutlets = async () => {
     if (window.electron && (window.electron as any).getConnectedDevices) {
       const data = await (window.electron as any).getConnectedDevices();
-      setManage Outlets(data || { approved: [], pending: [] });
+      setOutlets(data || { approved: [], pending: [] });
     }
   };
 
   useEffect(() => {
-    fetchManage Outlets();
-    const interval = setInterval(fetchManage Outlets, 5000);
+    fetchOutlets();
+    const interval = setInterval(fetchOutlets, 5000);
     return () => clearInterval(interval);
   }, []);
 
   const handleApprove = async (deviceId: string) => {
     if (window.electron && (window.electron as any).approveOutlet) {
       await (window.electron as any).approveOutlet(deviceId);
-      fetchManage Outlets();
+      fetchOutlets();
+    }
+  };
+
+  const handleReject = async (deviceId: string) => {
+    if (window.electron && (window.electron as any).rejectOutlet) {
+      await (window.electron as any).rejectOutlet(deviceId);
+      fetchOutlets();
     }
   };
 
   return (
     <div className="space-y-8">
-      <h2 className="text-2xl font-bold text-slate-800">Manage Manage Outlets</h2>
+      <h2 className="text-2xl font-bold text-slate-800">Manage Outlets</h2>
 
       {/* Pending Section */}
       {outlets.pending.length > 0 && (
@@ -70,12 +91,20 @@ const ManageManage Outlets = () => {
                     <p className="font-bold text-slate-900">{outlet.outletName}</p>
                     <p className="text-xs text-slate-500 uppercase font-bold tracking-tighter">IP: {outlet.ip} • REQ: {new Date(outlet.requestedAt).toLocaleTimeString()}</p>
                 </div>
-                <button
-                    onClick={() => handleApprove(outlet.deviceId)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl text-sm font-black shadow-lg shadow-blue-600/20 transition-all active:scale-95"
-                >
-                    APPROVE TERMINAL
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => handleReject(outlet.deviceId)}
+                        className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-xl text-sm font-black transition-all active:scale-95"
+                    >
+                        REJECT
+                    </button>
+                    <button
+                        onClick={() => handleApprove(outlet.deviceId)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl text-sm font-black shadow-lg shadow-blue-600/20 transition-all active:scale-95"
+                    >
+                        APPROVE TERMINAL
+                    </button>
+                </div>
                 </div>
             ))}
             </div>
@@ -108,7 +137,7 @@ const ManageManage Outlets = () => {
                     </td>
                     <td className="px-6 py-4 text-slate-500 font-medium">{outlet.lastSync || "Just now"}</td>
                     <td className="px-6 py-4">
-                        <span className={`font-bold \${(outlet.pendingSales || 0) > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
+                        <span className={`font-bold ${(outlet.pendingSales || 0) > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
                             {outlet.pendingSales || 0}
                         </span>
                     </td>
@@ -136,7 +165,7 @@ export default function ServerHub() {
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'outlets', label: 'Manage Manage Outlets', icon: Monitor },
+    { id: 'outlets', label: 'Manage Outlets', icon: Monitor },
     { id: 'inventory', label: 'Global Inventory', icon: Package },
     { id: 'Staff & PINs', label: 'Staff & PINs', icon: Users },
     { id: 'Sales Reports', label: 'Sales Reports', icon: BarChart3 },
@@ -146,7 +175,7 @@ export default function ServerHub() {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard': return <ServerDashboard />;
-      case 'outlets': return <ManageManage Outlets />;
+      case 'outlets': return <ManageOutlets />;
       case 'inventory': return <InventoryManagement />;
       case 'Staff & PINs': return <UsersPage />;
       case 'Sales Reports': return <ReportsPage />;
@@ -176,13 +205,13 @@ export default function ServerHub() {
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all font-bold \${
+              className={`w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all font-bold ${
                 activeTab === item.id
                   ? 'bg-blue-600 text-white shadow-xl shadow-blue-600/20 translate-x-1'
                   : 'text-white/50 hover:bg-white/5 hover:text-white'
               }`}
             >
-              <item.icon className={`w-5 h-5 \${activeTab === item.id ? 'text-white' : 'text-blue-400/50'}`} />
+              <item.icon className={`w-5 h-5 ${activeTab === item.id ? 'text-white' : 'text-blue-400/50'}`} />
               <span>{item.label}</span>
             </button>
           ))}

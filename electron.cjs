@@ -636,6 +636,44 @@ function startApiServer() {
         res.json({ status: 'ok', message: 'Whiz POS Server Online' });
     });
 
+    // --- MULTI-OUTLET HANDSHAKE ENDPOINTS ---
+
+    apiApp.post('/api/outlets/register', async (req, res) => {
+        const { outletName, deviceId } = req.body;
+        if (!outletName || !deviceId) return res.status(400).json({ error: 'Missing parameters' });
+
+        try {
+            const pending = await readJsonFile('pending-outlets.json');
+            const existing = pending.find(o => o.deviceId === deviceId);
+
+            if (!existing) {
+                pending.push({ outletName, deviceId, requestedAt: new Date().toISOString() });
+                await writeJsonFile('pending-outlets.json', pending);
+            }
+
+            res.json({ success: true, status: 'pending' });
+        } catch (e) {
+            res.status(500).json({ error: 'Failed to register outlet' });
+        }
+    });
+
+    apiApp.get('/api/outlets/status/:deviceId', async (req, res) => {
+        const { deviceId } = req.params;
+        try {
+            const approved = await readJsonFile('approved-outlets.json');
+            const isApproved = approved.find(o => o.deviceId === deviceId);
+
+            if (isApproved) {
+                // Re-fetch API Key to return upon approval
+                if (!apiKey) await initApiKey();
+                return res.json({ status: 'approved', apiKey });
+            }
+            return res.json({ status: 'pending' });
+        } catch (e) {
+            res.status(500).json({ error: 'Failed to check status' });
+        }
+    });
+
     apiApp.get('/', (req, res) => {
         console.log(`[API] Root accessed from ${req.ip}`);
         res.send(`
@@ -685,7 +723,7 @@ function startApiServer() {
     });
 
     // GET /api/sync - Full state for Mobile Pull
-    apiApp.get('/api/sync', authMiddleware, async (req, res) => {
+    const syncHandler = async (req, res) => {
         try {
             const [products, users, expenses, salaries, creditCustomers, businessSetup, transactions] = await Promise.all([
                 readJsonFile('products.json'),
@@ -730,7 +768,9 @@ function startApiServer() {
             console.error('Sync GET error:', error);
             res.status(500).json({ error: 'Sync failed' });
         }
-    });
+    };
+    apiApp.get('/api/sync', authMiddleware, syncHandler);
+    apiApp.get('/api/sync/full-state', authMiddleware, syncHandler);
 
     // POST /api/sync - Handle Push Operations
     apiApp.post('/api/sync', authMiddleware, async (req, res) => {

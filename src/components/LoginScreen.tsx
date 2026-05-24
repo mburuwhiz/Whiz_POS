@@ -41,10 +41,13 @@ const LoginScreen = () => {
     } else if (key === 'enter') {
       handleLogin();
     } else {
-      if (pin.length < 12) {
+      if (pin.length < 4) {
         soundManager.playClick();
         const newPin = pin + key;
         setPin(newPin);
+        if (newPin.length === 4) {
+          handleLogin(newPin);
+        }
       }
     }
   };
@@ -71,7 +74,7 @@ const LoginScreen = () => {
     if (isLoading) return;
 
     if (loginPin.length < 4) {
-      setError('Enter at least 4-digit PIN');
+      setError('Enter 4-digit PIN');
       return;
     }
 
@@ -104,7 +107,12 @@ const LoginScreen = () => {
           soundManager.playSuccess();
           toast("Login Successful", "success");
           setSession(result.user, result.token);
-          navigate('/', { replace: true });
+
+          if (businessSetup?.appMode === 'SERVER') {
+            navigate('/server-hub', { replace: true });
+          } else {
+            navigate('/', { replace: true });
+          }
         } else {
           soundManager.playError();
           setError(result.error || 'Login failed');
@@ -115,7 +123,12 @@ const LoginScreen = () => {
         soundManager.playSuccess();
         toast("Login Successful (Dev Mode)", "success");
         setSession(userToLogin, 'dev-token');
-        navigate('/', { replace: true });
+
+        if (businessSetup?.appMode === 'SERVER') {
+            navigate('/server-hub', { replace: true });
+        } else {
+            navigate('/', { replace: true });
+        }
       }
     } catch (e) {
       setError('System Error during Login');
@@ -161,7 +174,7 @@ const LoginScreen = () => {
 
           {/* PIN Display Dots */}
           <div className="flex gap-5 py-4">
-            {Array.from({ length: Math.max(4, pin.length) }).map((_, i) => (
+            {[0, 1, 2, 3].map((i) => (
               <div
                 key={i}
                 className={cn(

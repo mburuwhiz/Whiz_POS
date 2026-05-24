@@ -103,7 +103,7 @@ const MainNavigator = () => {
         <Route path="/developer" element={<DeveloperPage />} />
         <Route path="/users" element={<UsersPage />} />
         <Route path="/server-hub" element={<ServerHub />} />
-        <Route path="*" element={<Navigate to="/" />} />
+        <Route path="*" element={<Navigate to={businessSetup.appMode === 'SERVER' ? '/server-hub' : '/'} />} />
       </Routes>
     </AppLayout>
   );

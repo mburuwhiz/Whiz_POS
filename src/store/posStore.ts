@@ -608,7 +608,14 @@ export const usePosStore = create<PosState>()(
         const setup = { ...data, isSetup: true, createdAt: new Date().toISOString() };
         set({ businessSetup: setup });
         await saveDataToFile('business-setup.json', setup);
-        if ((window as any).electron && (window as any).electron.userManagement) await (window as any).electron.userManagement.addUser(admin);
+        if ((window as any).electron && (window as any).electron.userManagement) {
+            await (window as any).electron.userManagement.addUser(admin);
+        } else {
+            // Fallback for non-electron (web) environment or missing API
+            set((state: any) => ({ users: [...state.users, admin] }));
+        }
+        // Force refresh of users from disk to ensure posStore is updated
+        get().loadUsers();
       },
       pushDataToServer: async () => {},
       addCreditPayment: (cId: string, amt: number) => {},

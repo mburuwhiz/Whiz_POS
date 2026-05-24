@@ -70,12 +70,18 @@ const ManageOutlets = () => {
                     <p className="font-bold text-slate-900">{outlet.outletName}</p>
                     <p className="text-xs text-slate-500 uppercase font-bold tracking-tighter">IP: {outlet.ip} • REQ: {new Date(outlet.requestedAt).toLocaleTimeString()}</p>
                 </div>
-                <button
-                    onClick={() => handleApprove(outlet.deviceId)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl text-sm font-black shadow-lg shadow-blue-600/20 transition-all active:scale-95"
-                >
-                    APPROVE TERMINAL
-                </button>
+                {isAuthorized ? (
+                  <div className="flex gap-2">
+                    <button onClick={() => handleApprove(outlet.deviceId)} className="bg-sky-500 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-sky-600 transition-colors">
+                        Approve
+                    </button>
+                    <button onClick={() => handleReject(outlet.deviceId)} className="bg-red-500 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-red-600 transition-colors">
+                        Reject
+                    </button>
+                  </div>
+                ) : (
+                  <span className="text-xs text-slate-400 font-bold">Admin Required</span>
+                )}
                 </div>
             ))}
             </div>

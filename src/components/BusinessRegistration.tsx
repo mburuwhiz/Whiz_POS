@@ -104,8 +104,8 @@ export default function BusinessRegistration() {
   };
 
   const handleSubmit = async () => {
-    if (formData.pin.length < 4 || formData.pin !== formData.confirmPin) {
-      Swal.fire({ title: 'Error', text: 'PIN mismatch or too short (min 4)', icon: 'error' });
+    if (formData.pin.length !== 4 || formData.pin !== formData.confirmPin) {
+      Swal.fire({ title: 'Error', text: 'PIN mismatch', icon: 'error' });
       return;
     }
     setIsSubmitting(true);
@@ -284,8 +284,8 @@ export default function BusinessRegistration() {
     if (sid === 'pin') return (
         <motion.div key="pin" variants={stepVariants} initial="enter" animate="center" exit="exit" className="space-y-6 text-center">
             <h2 className="text-2xl font-bold text-white">Terminal PIN</h2>
-            <input type="password" maxLength={12} value={formData.pin} onChange={e => handleInputChange('pin', e.target.value.replace(/\D/g,''))} className="w-32 p-4 bg-white/10 rounded-xl text-white text-center text-2xl" />
-            <input type="password" maxLength={12} value={formData.confirmPin} onChange={e => handleInputChange('confirmPin', e.target.value.replace(/\D/g,''))} className="w-32 p-4 bg-white/10 rounded-xl text-white text-center text-2xl ml-2" />
+            <input type="password" maxLength={4} value={formData.pin} onChange={e => handleInputChange('pin', e.target.value.replace(/\D/g,''))} className="w-32 p-4 bg-white/10 rounded-xl text-white text-center text-2xl" />
+            <input type="password" maxLength={4} value={formData.confirmPin} onChange={e => handleInputChange('confirmPin', e.target.value.replace(/\D/g,''))} className="w-32 p-4 bg-white/10 rounded-xl text-white text-center text-2xl ml-2" />
             <div className="flex justify-between mt-6">
                 <button onClick={handleBack} className="bg-white/10 text-white px-8 py-3 rounded-xl">Back</button>
                 <button onClick={handleSubmit} className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold">Finish Setup</button>

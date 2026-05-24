@@ -41,13 +41,10 @@ const LoginScreen = () => {
     } else if (key === 'enter') {
       handleLogin();
     } else {
-      if (pin.length < 4) {
+      if (pin.length < 12) {
         soundManager.playClick();
         const newPin = pin + key;
         setPin(newPin);
-        if (newPin.length === 4) {
-          handleLogin(newPin);
-        }
       }
     }
   };
@@ -74,7 +71,7 @@ const LoginScreen = () => {
     if (isLoading) return;
 
     if (loginPin.length < 4) {
-      setError('Enter 4-digit PIN');
+      setError('Enter at least 4-digit PIN');
       return;
     }
 
@@ -164,7 +161,7 @@ const LoginScreen = () => {
 
           {/* PIN Display Dots */}
           <div className="flex gap-5 py-4">
-            {[0, 1, 2, 3].map((i) => (
+            {Array.from({ length: Math.max(4, pin.length) }).map((_, i) => (
               <div
                 key={i}
                 className={cn(

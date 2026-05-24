@@ -1,2 +1,10 @@
-  ➜  Local:   http://localhost:5173/
+
+> whiz-point@7.0.0 dev:vite
+> vite --port 5174
+
+
+  VITE v4.5.14  ready in 550 ms
+
+  ➜  Local:   http://localhost:5174/
   ➜  Network: use --host to expose
+7:14:53 PM [vite] hmr update /src/components/LoginScreen.tsx, /src/index.css

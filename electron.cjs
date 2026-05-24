@@ -1326,6 +1326,14 @@ app.whenReady().then(async () => {
 
               if (!backup.data) throw new Error("Invalid backup file format");
 
+              // Clear existing data first
+              closeDB();
+              const dbPath = path.join(userDataPath, 'whizpos.db');
+              try { await fs.unlink(dbPath); } catch(e) {}
+              try { await fs.unlink(dbPath + '-wal'); } catch(e) {}
+              try { await fs.unlink(dbPath + '-shm'); } catch(e) {}
+              initDB(userDataPath);
+
               for (const [filename, content] of Object.entries(backup.data)) {
                   await writeJsonFileFallback(filename, content);
               }

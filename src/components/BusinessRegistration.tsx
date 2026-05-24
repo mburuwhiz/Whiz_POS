@@ -104,8 +104,8 @@ export default function BusinessRegistration() {
   };
 
   const handleSubmit = async () => {
-    if (formData.pin.length !== 4 || formData.pin !== formData.confirmPin) {
-      Swal.fire({ title: 'Error', text: 'PIN mismatch', icon: 'error' });
+    if (formData.pin.length < 4 || formData.pin !== formData.confirmPin) {
+      Swal.fire({ title: 'Error', text: 'PIN mismatch or too short (min 4)', icon: 'error' });
       return;
     }
     setIsSubmitting(true);
@@ -113,6 +113,12 @@ export default function BusinessRegistration() {
       const businessData = { ...formData, isSetup: true, isLoggedIn: false, printerType: 'thermal' as const, tax: 0, subtotal: 0 };
       const adminUser = { id: crypto.randomUUID(), name: formData.appMode === 'OUTLET' ? 'Outlet Admin' : formData.ownerName, pin: formData.pin, role: 'admin' as const, isActive: true, createdAt: new Date().toISOString() };
       await finishSetup(businessData, adminUser);
+
+      // Print Welcome Receipt (Business Setup) if in Desktop Mode
+      if ((window as any).electron && (window as any).electron.printBusinessSetup) {
+          (window as any).electron.printBusinessSetup(businessData, adminUser);
+      }
+
       setIsFinished(true);
       setCurrentStep(steps.length - 1);
       Swal.fire({ title: 'Success!', text: 'Setup complete', icon: 'success' });
@@ -122,6 +128,23 @@ export default function BusinessRegistration() {
       setIsSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    const stepId = steps[currentStep]?.id;
+    if (stepId === 'outletConnect' && approvalStatus === 'none' && !isScanning) {
+      setIsScanning(true);
+      if ((window as any).electron && (window as any).electron.scanMdnsServers) {
+        (window as any).electron.scanMdnsServers().then((servers: any) => {
+          setFoundServers(servers || []);
+          setIsScanning(false);
+        }).catch(() => {
+          setIsScanning(false);
+        });
+      } else {
+        setIsScanning(false);
+      }
+    }
+  }, [currentStep, approvalStatus]);
 
   const stepVariants = {
     enter: { opacity: 0, x: 50 },
@@ -161,6 +184,22 @@ export default function BusinessRegistration() {
         <h2 className="text-2xl font-bold text-white">Connect to Server</h2>
         {approvalStatus === 'none' ? (
           <div className="space-y-4">
+            {foundServers.length > 0 && (
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                <h3 className="text-sm font-semibold text-white/70 mb-3">Discovered Servers</h3>
+                <div className="space-y-2">
+                  {foundServers.map((server, i) => (
+                    <button key={i} onClick={() => handleInputChange('serverIp', server.url)} className="w-full text-left px-4 py-3 bg-white/10 hover:bg-blue-600/50 rounded-lg text-white text-sm transition-colors flex items-center justify-between">
+                      <span>{server.name}</span>
+                      <span className="opacity-50 text-xs">{server.url}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {isScanning && foundServers.length === 0 && (
+              <div className="text-center py-4"><p className="text-white/50 text-sm animate-pulse">Scanning for local servers...</p></div>
+            )}
             <input type="text" placeholder="Outlet Name" value={formData.outletName} onChange={e => handleInputChange('outletName', e.target.value)} className="w-full p-4 bg-white/10 rounded-xl text-white" />
             <input type="text" placeholder="Server URL (http://ip:3000)" value={formData.serverIp} onChange={e => handleInputChange('serverIp', e.target.value)} className="w-full p-4 bg-white/10 rounded-xl text-white font-mono" />
             <div className="flex justify-between mt-6">
@@ -245,8 +284,8 @@ export default function BusinessRegistration() {
     if (sid === 'pin') return (
         <motion.div key="pin" variants={stepVariants} initial="enter" animate="center" exit="exit" className="space-y-6 text-center">
             <h2 className="text-2xl font-bold text-white">Terminal PIN</h2>
-            <input type="password" maxLength={4} value={formData.pin} onChange={e => handleInputChange('pin', e.target.value.replace(/\D/g,''))} className="w-32 p-4 bg-white/10 rounded-xl text-white text-center text-2xl" />
-            <input type="password" maxLength={4} value={formData.confirmPin} onChange={e => handleInputChange('confirmPin', e.target.value.replace(/\D/g,''))} className="w-32 p-4 bg-white/10 rounded-xl text-white text-center text-2xl ml-2" />
+            <input type="password" maxLength={12} value={formData.pin} onChange={e => handleInputChange('pin', e.target.value.replace(/\D/g,''))} className="w-32 p-4 bg-white/10 rounded-xl text-white text-center text-2xl" />
+            <input type="password" maxLength={12} value={formData.confirmPin} onChange={e => handleInputChange('confirmPin', e.target.value.replace(/\D/g,''))} className="w-32 p-4 bg-white/10 rounded-xl text-white text-center text-2xl ml-2" />
             <div className="flex justify-between mt-6">
                 <button onClick={handleBack} className="bg-white/10 text-white px-8 py-3 rounded-xl">Back</button>
                 <button onClick={handleSubmit} className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold">Finish Setup</button>

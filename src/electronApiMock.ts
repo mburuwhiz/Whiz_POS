@@ -95,6 +95,14 @@ export const setupElectronMock = () => {
       saveDeveloperConfig: async (config) => {
           console.log('[Mock] saveDeveloperConfig:', config);
           return { success: true };
+      },
+      approveOutlet: async (deviceId) => {
+          console.log('[Mock] approveOutlet:', deviceId);
+          return { success: true };
+      },
+      rejectOutlet: async (deviceId) => {
+          console.log('[Mock] rejectOutlet:', deviceId);
+          return { success: true };
       }
     };
   }

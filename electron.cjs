@@ -649,7 +649,8 @@ function startApiServer() {
             const existing = pending.find(o => o.deviceId === deviceId);
 
             if (!existing) {
-                pending.push({ outletName, deviceId, requestedAt: new Date().toISOString() });
+                const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+                pending.push({ outletName, deviceId, requestedAt: new Date().toISOString(), ip });
                 await writeJsonFile('pending-outlets.json', pending);
             }
 
@@ -1367,6 +1368,14 @@ app.whenReady().then(async () => {
 
           const backupPath = filePaths[0];
 
+          let currentAppMode = 'SERVER';
+          try {
+              const currentSetup = await readJsonFileFallback('business-setup.json');
+              if (currentSetup && currentSetup.appMode) {
+                  currentAppMode = currentSetup.appMode;
+              }
+          } catch(e) {}
+
           if (backupPath.endsWith('.json')) {
               const backupContent = await fs.readFile(backupPath, 'utf-8');
               const backup = JSON.parse(backupContent);
@@ -1382,6 +1391,10 @@ app.whenReady().then(async () => {
               initDB(userDataPath);
 
               for (const [filename, content] of Object.entries(backup.data)) {
+                  if (filename === 'business-setup.json' && content) {
+                      if (Array.isArray(content)) content[0].appMode = currentAppMode;
+                      else content.appMode = currentAppMode;
+                  }
                   await writeJsonFileFallback(filename, content);
               }
           } else if (backupPath.endsWith('.wpos')) {

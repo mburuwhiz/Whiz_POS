@@ -959,13 +959,18 @@ function startApiServer() {
 
             if (isServerMode) {
                 const businessName = (setup && setup.businessName) ? setup.businessName : `Whiz POS Server ${process.env.APP_INSTANCE ? '(' + process.env.APP_INSTANCE + ')' : ''}`;
-                mDnsService = bonjour.publish({
-                    name: businessName,
-                    type: 'whizpos',
-                    port: targetPort,
-                    txt: { appVersion: "7.0.0", serverUrl: `http://${getLocalIpAddress()}:${targetPort}` }
-                });
-                console.log(`[mDNS] Publishing Server: ${businessName} on port ${targetPort}`);
+                const uniqueName = `${businessName} (${crypto.randomBytes(2).toString('hex')})`;
+                try {
+                    mDnsService = bonjour.publish({
+                        name: uniqueName,
+                        type: 'whizpos',
+                        port: targetPort,
+                        txt: { appVersion: "7.0.0", serverUrl: `http://${getLocalIpAddress()}:${targetPort}` }
+                    });
+                    console.log(`[mDNS] Publishing Server: ${uniqueName} on port ${targetPort}`);
+                } catch (e) {
+                     console.log(`[mDNS] Failed to publish service: ${e.message}`);
+                }
             }
         } catch (e) {
             console.log('[mDNS] Error determining server mode, skipping mDNS publish:', e);

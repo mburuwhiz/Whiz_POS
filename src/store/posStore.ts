@@ -574,7 +574,50 @@ export const usePosStore = create<PosState>()(
         return { cash, mpesa, credit, total: cash + mpesa + credit };
       },
       getDailyClosingReport: (date: string) => {
-          return {} as any;
+          const state = get();
+          const targetDate = new Date(date).toISOString().split('T')[0];
+          const transactions = state.transactions.filter((t: any) => t.timestamp.startsWith(targetDate) && t.status === 'completed');
+
+          const totalSales = transactions.reduce((sum: number, t: any) => sum + t.total, 0);
+          const totalCash = transactions.filter((t: any) => t.paymentMethod === 'cash').reduce((sum: number, t: any) => sum + t.total, 0);
+          const totalMpesa = transactions.filter((t: any) => t.paymentMethod === 'mpesa').reduce((sum: number, t: any) => sum + t.total, 0);
+          const totalCredit = transactions.filter((t: any) => t.paymentMethod === 'credit').reduce((sum: number, t: any) => sum + t.total, 0);
+
+          const expenses = state.expenses.filter((e: any) => e.date.startsWith(targetDate));
+          const totalExpenses = expenses.reduce((sum: number, e: any) => sum + e.amount, 0);
+
+          const cashiersMap = new Map();
+          transactions.forEach((tx: any) => {
+             if (!cashiersMap.has(tx.cashierId)) {
+                 const cashier = state.users.find((u: any) => u.id === tx.cashierId) || { name: 'Unknown', pin: tx.cashierId };
+                 cashiersMap.set(tx.cashierId, {
+                     cashierId: tx.cashierId,
+                     cashierName: cashier.name,
+                     totalSales: 0,
+                     totalCash: 0,
+                     totalMpesa: 0,
+                     totalCredit: 0,
+                     transactions: []
+                 });
+             }
+             const cStat = cashiersMap.get(tx.cashierId);
+             cStat.totalSales += tx.total;
+             if (tx.paymentMethod === 'cash') cStat.totalCash += tx.total;
+             if (tx.paymentMethod === 'mpesa') cStat.totalMpesa += tx.total;
+             if (tx.paymentMethod === 'credit') cStat.totalCredit += tx.total;
+             cStat.transactions.push(tx);
+          });
+
+          return {
+              date: targetDate,
+              totalSales,
+              totalCash,
+              totalMpesa,
+              totalCredit,
+              totalExpenses,
+              netCash: totalCash - totalExpenses,
+              cashiers: Array.from(cashiersMap.values())
+          } as any;
       },
       getTransactionsByDateRange: (start: string, end: string) => {
           return get().transactions.filter((t: any) => t.timestamp >= start && t.timestamp <= end);
@@ -595,6 +638,21 @@ export const usePosStore = create<PosState>()(
       setCategories: (c: string[]) => set({ categories: c }),
       addCategory: (c: string) => set((state: any) => ({ categories: [...state.categories, c] })),
       deleteCategory: (c: string) => set((state: any) => ({ categories: state.categories.filter((cat: any) => cat !== c) })),
+      addUser: (u: User) => {
+          set((state: any) => ({ users: [...state.users, u] }));
+          get().addToSyncQueue({ type: 'add-user', data: u });
+          saveDataToFile('users.json', get().users);
+      },
+      updateUser: (id: string, updates: Partial<User>) => {
+          set((state: any) => ({ users: state.users.map((u: any) => u.id === id ? { ...u, ...updates } : u) }));
+          get().addToSyncQueue({ type: 'update-user', data: { id, updates } });
+          saveDataToFile('users.json', get().users);
+      },
+      deleteUser: (id: string) => {
+          set((state: any) => ({ users: state.users.filter((u: any) => u.id !== id) }));
+          get().addToSyncQueue({ type: 'delete-user', data: { id } });
+          saveDataToFile('users.json', get().users);
+      },
       loadInitialData: async () => {
         const setupRes = await readDataFromFile('business-setup.json');
         if (setupRes.data) set({ businessSetup: setupRes.data });

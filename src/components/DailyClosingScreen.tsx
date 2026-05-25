@@ -193,7 +193,7 @@ export default function DailyClosingScreen() {
           </div>
 
           {/* Cashier Breakdown - Conditionally Rendered */}
-          {showDetailed && report.cashiers.map((cashier) => (
+          {showDetailed && report.cashiers && report.cashiers.map((cashier) => (
             <div key={cashier.cashierName} className="mb-8 last:mb-0">
               <div className="bg-gray-50 p-4 rounded-lg mb-4">
                 <h3 className="text-xl font-semibold flex items-center">
@@ -214,7 +214,7 @@ export default function DailyClosingScreen() {
                     </tr>
                   </thead>
                   <tbody>
-                    {cashier.transactions.map((tx) => (
+                    {cashier.transactions && cashier.transactions.map((tx) => (
                       <tr key={tx.id} className="border-b">
                         <td className="p-2 font-mono">{tx.id.slice(-6)}</td>
                         <td className="p-2">{new Date(tx.timestamp).toLocaleTimeString()}</td>

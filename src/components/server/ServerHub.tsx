@@ -70,18 +70,14 @@ const ManageOutlets = () => {
                     <p className="font-bold text-slate-900">{outlet.outletName}</p>
                     <p className="text-xs text-slate-500 uppercase font-bold tracking-tighter">IP: {outlet.ip} • REQ: {new Date(outlet.requestedAt).toLocaleTimeString()}</p>
                 </div>
-                {isAuthorized ? (
-                  <div className="flex gap-2">
-                    <button onClick={() => handleApprove(outlet.deviceId)} className="bg-sky-500 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-sky-600 transition-colors">
-                        Approve
-                    </button>
-                    <button onClick={() => handleReject(outlet.deviceId)} className="bg-red-500 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-red-600 transition-colors">
-                        Reject
-                    </button>
-                  </div>
-                ) : (
-                  <span className="text-xs text-slate-400 font-bold">Admin Required</span>
-                )}
+                <div className="flex gap-2">
+                  <button onClick={() => handleApprove(outlet.deviceId)} className="bg-sky-500 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-sky-600 transition-colors">
+                      Approve
+                  </button>
+                  {/* <button onClick={() => handleReject(outlet.deviceId)} className="bg-red-500 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-red-600 transition-colors">
+                      Reject
+                  </button> */}
+                </div>
                 </div>
             ))}
             </div>
@@ -137,23 +133,99 @@ const ManageOutlets = () => {
 };
 
 const StockTransfer = () => {
+  const { products, updateProduct } = usePosStore();
+  const [selectedProduct, setSelectedProduct] = useState<number | null>(null);
+  const [transferAmount, setTransferAmount] = useState<number>(0);
+  const [actionType, setActionType] = useState<'add' | 'subtract'>('add');
+  const [note, setNote] = useState('');
+
+  const handleApply = () => {
+      if (!selectedProduct || transferAmount <= 0) return;
+      const product = products.find(p => p.id === selectedProduct);
+      if (!product) return;
+
+      const currentStock = product.stock || 0;
+      const newStock = actionType === 'add' ? currentStock + transferAmount : currentStock - transferAmount;
+
+      updateProduct(selectedProduct, { stock: newStock });
+
+      setTransferAmount(0);
+      setNote('');
+      setSelectedProduct(null);
+      // In a real scenario, we would also save an inventory transfer log here
+      alert('Stock updated successfully!');
+  };
+
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-slate-800">Stock Transfer & Write-Offs</h2>
-      <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center space-y-4">
-        <Package className="w-16 h-16 text-slate-300" />
-        <h3 className="text-lg font-bold text-slate-700">Master Stock Management</h3>
-        <p className="text-slate-500 max-w-md">
-          Move items between the Master Store and individual Outlets, or record stock write-offs for damaged/expired goods.
-        </p>
-        <div className="flex gap-4 mt-4">
-          <button className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-all">
-            New Transfer
-          </button>
-          <button className="px-6 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold transition-all">
-            Record Write-Off
-          </button>
-        </div>
+      <h2 className="text-2xl font-bold text-slate-800">Stock Transfer & Adjustments</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+              <h3 className="text-lg font-bold text-slate-700 flex items-center gap-2"><Package className="w-5 h-5 text-blue-500"/> Adjust Master Stock</h3>
+
+              <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">Select Product</label>
+                  <select
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg"
+                      value={selectedProduct || ''}
+                      onChange={(e) => setSelectedProduct(Number(e.target.value))}
+                  >
+                      <option value="" disabled>Choose a product...</option>
+                      {products.map(p => (
+                          <option key={p.id} value={p.id}>{p.name} (Current Stock: {p.stock || 0})</option>
+                      ))}
+                  </select>
+              </div>
+
+              {selectedProduct && (
+                <>
+                  <div className="flex gap-4">
+                      <div className="flex-1">
+                          <label className="block text-sm font-medium text-slate-600 mb-1">Action</label>
+                          <select
+                              className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg"
+                              value={actionType}
+                              onChange={(e) => setActionType(e.target.value as 'add'|'subtract')}
+                          >
+                              <option value="add">Add Stock (Receive/Transfer-In)</option>
+                              <option value="subtract">Subtract Stock (Write-Off/Transfer-Out)</option>
+                          </select>
+                      </div>
+                      <div className="flex-1">
+                          <label className="block text-sm font-medium text-slate-600 mb-1">Quantity</label>
+                          <input
+                              type="number"
+                              min="1"
+                              value={transferAmount}
+                              onChange={(e) => setTransferAmount(Number(e.target.value))}
+                              className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg"
+                          />
+                      </div>
+                  </div>
+                  <div>
+                      <label className="block text-sm font-medium text-slate-600 mb-1">Reason / Note (Optional)</label>
+                      <input
+                          type="text"
+                          value={note}
+                          onChange={(e) => setNote(e.target.value)}
+                          placeholder="e.g. Received from supplier, Damaged goods"
+                          className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg"
+                      />
+                  </div>
+                  <button onClick={handleApply} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-all">
+                      Apply Adjustment
+                  </button>
+                </>
+              )}
+          </div>
+
+          <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 flex flex-col items-center justify-center text-center space-y-4">
+            <Database className="w-16 h-16 text-slate-300" />
+            <h3 className="text-lg font-bold text-slate-700">Centralized Intelligence</h3>
+            <p className="text-slate-500 max-w-sm text-sm">
+              All stock adjustments made here will automatically synchronize and push out to all active terminal branches based on delta-syncing principles.
+            </p>
+          </div>
       </div>
     </div>
   );

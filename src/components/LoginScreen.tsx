@@ -101,6 +101,14 @@ const LoginScreen = () => {
         return;
       }
 
+      if (businessSetup?.appMode === 'SERVER' && userToLogin.role !== 'admin' && userToLogin.role !== 'manager') {
+        soundManager.playError();
+        setError('Access Denied. Server requires Admin/Manager role.');
+        setPin('');
+        setIsLoading(false);
+        return;
+      }
+
       if ((window as any).electron && (window as any).electron.auth) {
         const result = await (window as any).electron.auth.login(userToLogin.id, String(loginPin).trim(), 'desktop-main');
         if (result.success && result.token && result.user) {

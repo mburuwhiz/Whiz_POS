@@ -136,6 +136,29 @@ const ManageOutlets = () => {
   );
 };
 
+const StockTransfer = () => {
+  return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-slate-800">Stock Transfer & Write-Offs</h2>
+      <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center space-y-4">
+        <Package className="w-16 h-16 text-slate-300" />
+        <h3 className="text-lg font-bold text-slate-700">Master Stock Management</h3>
+        <p className="text-slate-500 max-w-md">
+          Move items between the Master Store and individual Outlets, or record stock write-offs for damaged/expired goods.
+        </p>
+        <div className="flex gap-4 mt-4">
+          <button className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-all">
+            New Transfer
+          </button>
+          <button className="px-6 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold transition-all">
+            Record Write-Off
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function ServerHub() {
   const [activeTab, setActiveTab] = useState('outlets');
 
@@ -143,6 +166,7 @@ export default function ServerHub() {
     switch (activeTab) {
       case 'dashboard': return <ServerDashboard />;
       case 'outlets': return <ManageOutlets />;
+      case 'transfers': return <StockTransfer />;
       default: return <ManageOutlets />;
     }
   };
@@ -162,6 +186,12 @@ export default function ServerHub() {
                 className={`px-6 py-2 rounded-xl font-bold transition-all ${activeTab === 'dashboard' ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20' : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-200'}`}
             >
                 System Health
+            </button>
+            <button
+                onClick={() => setActiveTab('transfers')}
+                className={`px-6 py-2 rounded-xl font-bold transition-all ${activeTab === 'transfers' ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20' : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-200'}`}
+            >
+                Stock Transfers
             </button>
           </div>
           {renderContent()}

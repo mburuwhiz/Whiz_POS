@@ -10,6 +10,8 @@ import Swal from 'sweetalert2';
 import { soundManager } from '../lib/soundUtils';
 import setupBg from '../assets/setup_install_bg.png';
 
+const PERSIST_KEY = 'whizpos_outlet_registration';
+
 export default function BusinessRegistration() {
   const { finishSetup } = usePosStore();
   const [currentStep, setCurrentStep] = useState(0);
@@ -18,6 +20,11 @@ export default function BusinessRegistration() {
   const [isScanning, setIsScanning] = useState(false);
   const [foundServers, setFoundServers] = useState<any[]>([]);
   const [approvalStatus, setApprovalStatus] = useState<'none' | 'pending' | 'approved' | 'rejected'>('none');
+
+  const [deviceId] = useState<string>(() => {
+    const saved = localStorage.getItem(PERSIST_KEY);
+    return saved ? JSON.parse(saved).deviceId : crypto.randomUUID();
+  });
 
   const [formData, setFormData] = useState({
     appMode: 'SERVER' as 'SERVER' | 'OUTLET',
@@ -67,10 +74,56 @@ export default function BusinessRegistration() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const startPolling = (serverIp: string, did: string) => {
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch(`${serverIp}/api/outlets/status/${did}`);
+        const data = await res.json();
+        if (data.status === 'approved') {
+          clearInterval(pollInterval);
+          setApprovalStatus('approved');
+          handleInputChange('apiKey', data.apiKey);
+          const syncRes = await fetch(`${serverIp}/api/sync/full-state`, {
+            headers: { 'Authorization': `Bearer ${data.apiKey}` }
+          });
+
+          let downloadedBusinessSetup = {};
+          if (syncRes.ok) {
+            const syncData = await syncRes.json();
+            usePosStore.setState({ products: syncData.products || [], users: syncData.users || [], categories: syncData.categories || [] });
+            if (syncData.businessSetup) {
+                downloadedBusinessSetup = syncData.businessSetup;
+            }
+          }
+
+          localStorage.removeItem(PERSIST_KEY);
+
+          // Complete outlet setup silently without going to PIN step
+          const businessData = {
+              ...formData,
+              ...downloadedBusinessSetup,
+              appMode: 'OUTLET',
+              outletName: formData.outletName,
+              serverIp: serverIp,
+              apiKey: data.apiKey,
+              isSetup: true,
+              isLoggedIn: false,
+              printerType: 'thermal' as const,
+              tax: 0,
+              subtotal: 0
+          };
+
+          await finishSetup(businessData, null);
+          setIsFinished(true);
+          setCurrentStep(steps.length - 1);
+        }
+      } catch (e) {}
+    }, 3000);
+  };
+
   const handleRequestApproval = async () => {
     if (!formData.outletName || !formData.serverIp) return;
     try {
-      const deviceId = crypto.randomUUID();
       const response = await fetch(`${formData.serverIp}/api/outlets/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -78,25 +131,13 @@ export default function BusinessRegistration() {
       });
       if (response.ok) {
         setApprovalStatus('pending');
-        const pollInterval = setInterval(async () => {
-          try {
-            const res = await fetch(`${formData.serverIp}/api/outlets/status/${deviceId}`);
-            const data = await res.json();
-            if (data.status === 'approved') {
-              clearInterval(pollInterval);
-              setApprovalStatus('approved');
-              handleInputChange('apiKey', data.apiKey);
-              const syncRes = await fetch(`${formData.serverIp}/api/sync/full-state`, {
-                headers: { 'Authorization': `Bearer ${data.apiKey}` }
-              });
-              if (syncRes.ok) {
-                const syncData = await syncRes.json();
-                usePosStore.setState({ products: syncData.products || [], users: syncData.users || [], categories: syncData.categories || [] });
-              }
-              handleNext();
-            }
-          } catch (e) {}
-        }, 3000);
+        localStorage.setItem(PERSIST_KEY, JSON.stringify({
+          status: 'pending',
+          outletName: formData.outletName,
+          serverIp: formData.serverIp,
+          deviceId
+        }));
+        startPolling(formData.serverIp, deviceId);
       }
     } catch (e) {
       Swal.fire('Connection Error', 'Server unreachable', 'error');
@@ -128,6 +169,27 @@ export default function BusinessRegistration() {
       setIsSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    const saved = localStorage.getItem(PERSIST_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed.status === 'pending') {
+        setFormData(prev => ({
+          ...prev,
+          appMode: 'OUTLET',
+          outletName: parsed.outletName,
+          serverIp: parsed.serverIp
+        }));
+        setApprovalStatus('pending');
+
+        const idx = steps.findIndex(s => s.id === 'outletConnect');
+        if (idx !== -1) setCurrentStep(idx);
+
+        startPolling(parsed.serverIp, parsed.deviceId);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const stepId = steps[currentStep]?.id;

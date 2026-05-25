@@ -61,28 +61,31 @@ const MainNavigator = () => {
   return (
     <AppLayout>
       <Routes>
-        <Route path="/" element={
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-theme(spacing.24))]">
-            {/*
-              Product Grid Container:
-              - overflow-y-auto: Allows scrolling within this column ONLY.
-              - h-full: Ensures it fills the calculated height.
-            */}
-            <div className="lg:col-span-2 h-full overflow-y-auto pr-2">
-              <ProductGrid />
-            </div>
+        {/* POS specific routes - only available in OUTLET mode or default single mode */}
+        {businessSetup.appMode !== 'SERVER' && (
+          <>
+            <Route path="/" element={
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-theme(spacing.24))]">
+                <div className="lg:col-span-2 h-full overflow-y-auto pr-2">
+                  <ProductGrid />
+                </div>
+                <div className="lg:col-span-1 h-full overflow-hidden">
+                  <OrderArea />
+                </div>
+              </div>
+            } />
+            <Route path="/scanner" element={<BarcodeScanner />} />
+            <Route path="/previous-receipts" element={<PreviousReceiptsPage />} />
+            <Route path="/loyalty" element={<LoyaltyProgram />} />
+          </>
+        )}
 
-            {/*
-              Order Area Container:
-              - h-full: Fills height.
-              - overflow-hidden: Prevents outer scroll.
-              - The OrderArea component itself handles internal scrolling for items.
-            */}
-            <div className="lg:col-span-1 h-full overflow-hidden">
-              <OrderArea />
-            </div>
-          </div>
-        } />
+        {/* Server specific route */}
+        {businessSetup.appMode === 'SERVER' && (
+          <Route path="/" element={<Navigate to="/server-hub" replace />} />
+        )}
+
+        {/* Shared and Admin/Manager routes */}
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/customers" element={<CreditCustomersPage />} />
         <Route path="/expenses" element={<EnhancedExpenseTracker />} />
@@ -93,17 +96,15 @@ const MainNavigator = () => {
         <Route path="/register" element={<BusinessRegistrationPage />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/inventory" element={<InventoryManagement />} />
-        <Route path="/loyalty" element={<LoyaltyProgram />} />
-        <Route path="/scanner" element={<BarcodeScanner />} />
         <Route path="/status" element={<OfflineSyncStatus />} />
-        <Route path="/previous-receipts" element={<PreviousReceiptsPage />} />
         <Route path="/mobile-receipts" element={<MobileReceiptsPage />} />
         <Route path="/invoices" element={<InvoiceGenerator />} />
         <Route path="/manage" element={<SettingsPage />} />
         <Route path="/developer" element={<DeveloperPage />} />
         <Route path="/users" element={<UsersPage />} />
         <Route path="/server-hub" element={<ServerHub />} />
-        <Route path="*" element={<Navigate to={businessSetup.appMode === 'SERVER' ? '/server-hub' : '/'} />} />
+
+        <Route path="*" element={<Navigate to={businessSetup.appMode === 'SERVER' ? '/server-hub' : '/'} replace />} />
       </Routes>
     </AppLayout>
   );

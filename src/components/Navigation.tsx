@@ -66,35 +66,48 @@ const Navigation = () => {
         </div>
       </div>
       <nav className="p-4 space-y-4 flex-1 overflow-y-auto">
-        <NavGroup title="Point of Sale">
-          <NavLink to="/" className={navLinkClasses}>
-            <Coffee className="w-5 h-5" />
-            <span>POS</span>
-          </NavLink>
-          <NavLink to="/mobile-receipts" className={navLinkClasses}>
-            <Smartphone className="w-5 h-5" />
-            <span>Mobile Receipts</span>
-          </NavLink>
-          <NavLink to="/customers" className={navLinkClasses}>
-            <Users className="w-5 h-5" />
-            <span>Credits</span>
-          </NavLink>
-          <NavLink to="/previous-receipts" className={navLinkClasses}>
-            <Printer className="w-5 h-5" />
-            <span>Old Receipts</span>
-          </NavLink>
-          <NavLink to="/invoices" className={navLinkClasses}>
-            <FileText className="w-5 h-5" />
-            <span>Invoices & Quotes</span>
-          </NavLink>
-        </NavGroup>
-
-
         {isAdminOrManager && businessSetup?.appMode === 'SERVER' && (
           <NavGroup title="Server Hub">
             <NavLink to="/server-hub" className={navLinkClasses}>
               <Store className="w-5 h-5" />
-              <span>Manage Outlets</span>
+              <span>Server Hub</span>
+            </NavLink>
+            <NavLink to="/mobile-receipts" className={navLinkClasses}>
+              <Smartphone className="w-5 h-5" />
+              <span>Mobile Receipts</span>
+            </NavLink>
+            <NavLink to="/customers" className={navLinkClasses}>
+              <Users className="w-5 h-5" />
+              <span>Credits</span>
+            </NavLink>
+            <NavLink to="/invoices" className={navLinkClasses}>
+              <FileText className="w-5 h-5" />
+              <span>Invoices & Quotes</span>
+            </NavLink>
+          </NavGroup>
+        )}
+
+        {businessSetup?.appMode !== 'SERVER' && (
+          <NavGroup title="Point of Sale">
+            <NavLink to="/" className={navLinkClasses}>
+              <Coffee className="w-5 h-5" />
+              <span>POS</span>
+            </NavLink>
+            <NavLink to="/mobile-receipts" className={navLinkClasses}>
+              <Smartphone className="w-5 h-5" />
+              <span>Mobile Receipts</span>
+            </NavLink>
+            <NavLink to="/customers" className={navLinkClasses}>
+              <Users className="w-5 h-5" />
+              <span>Credits</span>
+            </NavLink>
+            <NavLink to="/previous-receipts" className={navLinkClasses}>
+              <Printer className="w-5 h-5" />
+              <span>Old Receipts</span>
+            </NavLink>
+            <NavLink to="/invoices" className={navLinkClasses}>
+              <FileText className="w-5 h-5" />
+              <span>Invoices & Quotes</span>
             </NavLink>
           </NavGroup>
         )}
@@ -128,10 +141,12 @@ const Navigation = () => {
               <span>Salaries</span>
             </NavLink>
           )}
-          <NavLink to="/loyalty" className={navLinkClasses}>
-            <Gift className="w-5 h-5" />
-            <span>Loyalty</span>
-          </NavLink>
+          {businessSetup?.appMode !== 'SERVER' && (
+            <NavLink to="/loyalty" className={navLinkClasses}>
+              <Gift className="w-5 h-5" />
+              <span>Loyalty</span>
+            </NavLink>
+          )}
         </NavGroup>
 
         {isAdminOrManager && (
@@ -147,7 +162,7 @@ const Navigation = () => {
           <NavGroup title="Administration">
             <NavLink to="/sync" className={navLinkClasses}>
               <Database className="w-5 h-5" />
-              <span>Sync</span>
+              <span>Sync Status</span>
             </NavLink>
             <NavLink to="/manage" className={navLinkClasses}>
               <Settings className="w-5 h-5" />
@@ -160,12 +175,14 @@ const Navigation = () => {
           </NavGroup>
         )}
 
-        <NavGroup title="Tools">
-            <NavLink to="/scanner" className={navLinkClasses}>
-                <Camera className="w-5 h-5" />
-                <span>Scanner</span>
-            </NavLink>
-        </NavGroup>
+        {businessSetup?.appMode !== 'SERVER' && (
+          <NavGroup title="Tools">
+              <NavLink to="/scanner" className={navLinkClasses}>
+                  <Camera className="w-5 h-5" />
+                  <span>Scanner</span>
+              </NavLink>
+          </NavGroup>
+        )}
       </nav>
 
       <div className="p-4 border-t border-gray-200 space-y-2">

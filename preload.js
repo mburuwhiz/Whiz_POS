@@ -158,6 +158,9 @@ contextBridge.exposeInMainWorld('electron', {
 
   getLogs: () => ipcRenderer.invoke('get-logs'),
 
+  approveOutlet: (deviceId) => ipcRenderer.invoke('approve-outlet', deviceId),
+  rejectOutlet: (deviceId) => ipcRenderer.invoke('reject-outlet', deviceId),
+
   // --- Auth & User Management ---
 
   auth: {

@@ -47,9 +47,7 @@ export default function SettingsPage() {
     transactions,
     categories,
     addCategory,
-    deleteCategory,
-    backupData,
-    restoreData
+    deleteCategory
   } = usePosStore();
 
   const [activeTab, setActiveTab] = useState<'business' | 'categories' | 'security' | 'devices' | 'printers' | 'updates' | 'data'>('business');
@@ -175,11 +173,17 @@ export default function SettingsPage() {
 
   const handleBackup = async () => {
     try {
-      const res = await backupData();
+      if (!window.electron) {
+          Swal.fire('Error', 'Backup is only supported in Desktop mode', 'error');
+          return;
+      }
+      const res = await window.electron.backupData();
       if (res.success) {
         Swal.fire('Success', 'Backup created successfully at ' + res.filePath, 'success');
       } else {
-        Swal.fire('Failed', res.error || 'Failed to create backup.', 'error');
+        if (res.error !== 'User cancelled backup') {
+           Swal.fire('Failed', res.error || 'Failed to create backup.', 'error');
+        }
       }
     } catch (e) {
       Swal.fire('Error', 'An error occurred during backup.', 'error');
@@ -188,11 +192,20 @@ export default function SettingsPage() {
 
   const handleRestore = async () => {
     try {
-      const res = await restoreData();
+      if (!window.electron) {
+          Swal.fire('Error', 'Restore is only supported in Desktop mode', 'error');
+          return;
+      }
+      const res = await window.electron.restoreData();
       if (res.success) {
         Swal.fire('Success', 'Data restored successfully. Please restart the application.', 'success');
+        setTimeout(() => {
+            window.location.reload();
+        }, 2000);
       } else if (res.error) {
-        Swal.fire('Failed', res.error || 'Failed to restore data.', 'error');
+        if (res.error !== 'User cancelled restore') {
+            Swal.fire('Failed', res.error || 'Failed to restore data.', 'error');
+        }
       }
     } catch (e) {
       Swal.fire('Error', 'An error occurred during restore.', 'error');

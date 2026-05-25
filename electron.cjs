@@ -204,7 +204,9 @@ async function ensureDataFilesExist() {
     'inventory-logs.json': [], // New file for inventory logs
     'daily-summaries.json': {}, // New file for archived daily reports
     'sessions.json': [],
-    'suppliers.json': []
+    'suppliers.json': [],
+    'pending-outlets.json': [],
+    'approved-outlets.json': []
   };
 
   for (const [fileName, content] of Object.entries(dataFiles)) {

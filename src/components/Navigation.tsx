@@ -112,7 +112,7 @@ const Navigation = () => {
           </NavGroup>
         )}
 
-        {isAdminOrManager && (
+        {isAdminOrManager && businessSetup?.appMode === 'SERVER' && (
           <NavGroup title="Analytics">
 
             <NavLink to="/dashboard" className={navLinkClasses}>
@@ -149,7 +149,7 @@ const Navigation = () => {
           )}
         </NavGroup>
 
-        {isAdminOrManager && (
+        {isAdminOrManager && businessSetup?.appMode === 'SERVER' && (
           <NavGroup title="Inventory">
             <NavLink to="/inventory" className={navLinkClasses}>
               <Package className="w-5 h-5" />
@@ -158,7 +158,7 @@ const Navigation = () => {
           </NavGroup>
         )}
 
-        {isAdminOrManager && (
+        {isAdminOrManager && businessSetup?.appMode === 'SERVER' && (
           <NavGroup title="Administration">
             <NavLink to="/sync" className={navLinkClasses}>
               <Database className="w-5 h-5" />

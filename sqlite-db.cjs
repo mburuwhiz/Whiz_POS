@@ -24,6 +24,8 @@ function initDB(userDataPath) {
         CREATE TABLE IF NOT EXISTS dailySummaries (id TEXT PRIMARY KEY, data TEXT);
         CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, data TEXT);
         CREATE TABLE IF NOT EXISTS suppliers (id TEXT PRIMARY KEY, data TEXT);
+        CREATE TABLE IF NOT EXISTS pendingOutlets (id TEXT PRIMARY KEY, data TEXT);
+        CREATE TABLE IF NOT EXISTS approvedOutlets (id TEXT PRIMARY KEY, data TEXT);
     `);
 
     return dbPath;
@@ -46,7 +48,9 @@ async function migrateLegacyData(userDataPath) {
         { file: 'inventory-logs.json', table: 'inventoryLogs', isArray: true },
         { file: 'daily-summaries.json', table: 'dailySummaries', isArray: false },
         { file: 'sessions.json', table: 'sessions', isArray: true },
-        { file: 'suppliers.json', table: 'suppliers', isArray: true }
+        { file: 'suppliers.json', table: 'suppliers', isArray: true },
+        { file: 'pending-outlets.json', table: 'pendingOutlets', isArray: true },
+        { file: 'approved-outlets.json', table: 'approvedOutlets', isArray: true }
     ];
 
     let migrationOccurred = false;
@@ -73,7 +77,7 @@ async function migrateLegacyData(userDataPath) {
             const stmt = db.prepare(`INSERT OR REPLACE INTO ${table} (id, data) VALUES (?, ?)`);
             const insertMany = db.transaction((items) => {
                 for (const item of items) {
-                    const id = item.id || item.productId || item.userId || item.expenseId || item.transactionId || item.customerId || item.supplierId || item.token || `MIGRATE_${Date.now()}_${Math.random()}`;
+                    const id = item.id || item.productId || item.userId || item.expenseId || item.transactionId || item.customerId || item.supplierId || item.token || item.deviceId || `MIGRATE_${Date.now()}_${Math.random()}`;
                     stmt.run(String(id), JSON.stringify(item));
                 }
             });
@@ -171,7 +175,9 @@ function getFileTableMapping(filename) {
         'inventory-logs.json': { table: 'inventoryLogs', isArray: true },
         'daily-summaries.json': { table: 'dailySummaries', isArray: false },
         'sessions.json': { table: 'sessions', isArray: true },
-        'suppliers.json': { table: 'suppliers', isArray: true }
+        'suppliers.json': { table: 'suppliers', isArray: true },
+        'pending-outlets.json': { table: 'pendingOutlets', isArray: true },
+        'approved-outlets.json': { table: 'approvedOutlets', isArray: true }
     };
     return map[filename];
 }
@@ -195,7 +201,7 @@ async function writeJsonFileFallback(filename, data) {
         db.transaction(() => {
             const incomingIds = new Set();
             for (const item of data) {
-                const id = item.id || item.productId || item.userId || item.expenseId || item.transactionId || item.customerId || item.supplierId || item.token;
+                const id = item.id || item.productId || item.userId || item.expenseId || item.transactionId || item.customerId || item.supplierId || item.token || item.deviceId;
                 if (id) {
                     incomingIds.add(String(id));
                     insertStmt.run(String(id), JSON.stringify(item));
